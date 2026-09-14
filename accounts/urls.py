@@ -7,6 +7,7 @@ from .views import (
     TeacherLoginAPIView,
     ParentLoginAPIView,
     ParentChildrenAPIView,
+    ParentProfileAPIView,
 )
 
 urlpatterns = [
@@ -39,5 +40,10 @@ urlpatterns = [
     "parent/children/",
     ParentChildrenAPIView.as_view(),
     name="parent-children",
+),
+    path(
+    "parent/profile/",
+    ParentProfileAPIView.as_view(),
+    name="parent-profile",
 ),
 ]

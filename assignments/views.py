@@ -1162,6 +1162,23 @@ class ParentStudentAssignmentsAPIView(APIView):
                     if submission
                     else "pending"
                 ),
+                "marks_obtained": (
+                    str(submission.marks_obtained)
+                    if submission
+                    and submission.marks_obtained
+                    is not None
+                    else None
+                ),
+                "feedback": (
+                    submission.feedback
+                    if submission
+                    else ""
+                ),
+                "graded_at": (
+                    submission.graded_at
+                    if submission
+                    else None
+                ),
             })
 
         student_user = student_profile.user

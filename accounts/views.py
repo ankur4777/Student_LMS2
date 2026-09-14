@@ -560,3 +560,50 @@ class ParentChildrenAPIView(APIView):
         return Response({
             "children": children
         })
+
+
+class ParentProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "parent":
+            return Response(
+                {"detail": "Only parents can access profile details."},
+                status=403
+            )
+
+        parent_profile = ParentProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404
+            )
+
+        if parent_profile.user.organization_id != user.organization_id:
+            return Response(
+                {"detail": "Profile organization mismatch."},
+                status=403
+            )
+
+        return Response({
+            "profile": {
+                "name": (
+                    user.get_full_name().strip()
+                    or user.username
+                ),
+                "username": user.username,
+                "email": user.email,
+                "phone": parent_profile.phone,
+                "occupation": parent_profile.occupation,
+                "organization": (
+                    user.organization.name
+                    if user.organization
+                    else None
+                ),
+            }
+        })
