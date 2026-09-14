@@ -5,7 +5,12 @@ from .views import (
     StudentProfileAPIView,
     StudentLoginAPIView,
     TeacherDashboardView,
+    TeacherProfileAPIView,
     TeacherLoginAPIView,
+    CollegeAdminDashboardAPIView,
+    CollegeAdminLoginAPIView,
+    CollegeAdminStudentDetailAPIView,
+    CollegeAdminStudentsAPIView,
     ParentLoginAPIView,
     ParentChildrenAPIView,
     ParentProfileAPIView,
@@ -33,9 +38,34 @@ urlpatterns = [
     name="teacher-dashboard",
 ),
     path(
+    "teacher/profile/",
+    TeacherProfileAPIView.as_view(),
+    name="teacher-profile",
+),
+    path(
     "teacher/login/",
     TeacherLoginAPIView.as_view(),
     name="teacher-login",
+),
+    path(
+    "college-admin/login/",
+    CollegeAdminLoginAPIView.as_view(),
+    name="college-admin-login",
+),
+    path(
+    "college-admin/dashboard/",
+    CollegeAdminDashboardAPIView.as_view(),
+    name="college-admin-dashboard",
+),
+    path(
+    "college-admin/students/",
+    CollegeAdminStudentsAPIView.as_view(),
+    name="college-admin-students",
+),
+    path(
+    "college-admin/students/<int:student_id>/",
+    CollegeAdminStudentDetailAPIView.as_view(),
+    name="college-admin-student-detail",
 ),
     path(
     "parent/login/",

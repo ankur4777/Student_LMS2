@@ -44,6 +44,10 @@ export default function TeacherSidebar() {
         <Link href="/teacher/notifications">
           Notifications
         </Link>
+
+        <Link href="/teacher/profile">
+          Profile
+        </Link>
       </nav>
     </aside>
   );

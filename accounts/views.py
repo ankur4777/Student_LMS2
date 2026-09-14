@@ -1,10 +1,12 @@
 from django.utils import timezone
+from django.db import transaction
+from django.db.models import Q
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
-from .models import StudentProfile
+from .models import StudentProfile, User
 
 from attendance.models import StudentAttendance
 from liveclasses.models import LiveClass, LiveClassRecording
@@ -15,6 +17,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import TeacherProfile, ParentProfile
 from academics.models import (
+    AcademicSession,
+    ClassRoom,
+    Section,
+    Subject,
     TeacherAssignment,
     StudentEnrollment,
     ParentStudent,
@@ -462,7 +468,98 @@ class TeacherDashboardView(APIView):
 
             "recordings": recording_data,
         })
-        
+
+
+class TeacherProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "teacher":
+            return Response(
+                {"detail": "Only teachers can access profile details."},
+                status=403
+            )
+
+        teacher_profile = TeacherProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not teacher_profile:
+            return Response(
+                {"detail": "Teacher profile not found."},
+                status=404
+            )
+
+        if teacher_profile.user.organization_id != user.organization_id:
+            return Response(
+                {"detail": "Profile organization mismatch."},
+                status=403
+            )
+
+        assignments = TeacherAssignment.objects.filter(
+            teacher=teacher_profile,
+            is_active=True,
+            section__organization=user.organization,
+        ).select_related(
+            "subject",
+            "subject__classroom",
+            "subject__classroom__academic_session",
+            "section",
+            "section__classroom",
+            "section__classroom__academic_session",
+        ).order_by(
+            "section__classroom__name",
+            "section__name",
+            "subject__name",
+        )
+
+        assignment_data = []
+
+        for assignment in assignments:
+            classroom = assignment.section.classroom
+            academic_session = classroom.academic_session
+
+            assignment_data.append({
+                "teacher_assignment_id": assignment.id,
+                "subject_name": assignment.subject.name,
+                "subject_code": assignment.subject.code,
+                "classroom_name": classroom.name,
+                "section_name": assignment.section.name,
+                "academic_session": (
+                    academic_session.name
+                    if academic_session
+                    else ""
+                ),
+            })
+
+        return Response({
+            "profile": {
+                "teacher_profile_id": teacher_profile.id,
+                "name": (
+                    user.get_full_name().strip()
+                    or user.username
+                ),
+                "username": user.username,
+                "email": user.email,
+                "organization": (
+                    user.organization.name
+                    if user.organization
+                    else None
+                ),
+                "employee_id": teacher_profile.employee_id,
+                "phone": teacher_profile.phone,
+                "qualification": teacher_profile.qualification,
+                "joining_date": teacher_profile.joining_date,
+            },
+            "assignments": assignment_data,
+            "summary": {
+                "active_assignments": len(assignment_data),
+            },
+        })
+
+
 class TeacherLoginAPIView(APIView):
 
     def post(self, request):
@@ -511,7 +608,460 @@ class TeacherLoginAPIView(APIView):
                 ),
             }
         })
-        
+
+
+class CollegeAdminLoginAPIView(APIView):
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(
+            username=username,
+            password=password
+        )
+
+        if not user:
+            return Response(
+                {"detail": "Invalid username or password."},
+                status=401
+            )
+
+        if user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can login here."},
+                status=403
+            )
+
+        if not user.is_active:
+            return Response(
+                {"detail": "This account is inactive."},
+                status=403
+            )
+
+        if not user.organization:
+            return Response(
+                {"detail": "College admin organization not found."},
+                status=403
+            )
+
+        if not user.organization.is_active:
+            return Response(
+                {"detail": "This organization is inactive."},
+                status=403
+            )
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "username": user.username,
+                "name": (
+                    user.get_full_name().strip()
+                    or user.username
+                ),
+                "role": user.role,
+                "organization": user.organization.name,
+                "organization_code": user.organization.code,
+            }
+        })
+
+
+class CollegeAdminDashboardAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can access this dashboard."},
+                status=403
+            )
+
+        organization = user.organization
+
+        if not organization:
+            return Response(
+                {"detail": "College admin organization not found."},
+                status=403
+            )
+
+        if not organization.is_active:
+            return Response(
+                {"detail": "This organization is inactive."},
+                status=403
+            )
+
+        users = User.objects.filter(
+            organization=organization
+        )
+
+        return Response({
+            "organization": {
+                "name": organization.name,
+                "code": organization.code,
+                "is_active": organization.is_active,
+            },
+            "summary": {
+                "total_students": users.filter(
+                    role="student"
+                ).count(),
+                "total_teachers": users.filter(
+                    role="teacher"
+                ).count(),
+                "total_parents": users.filter(
+                    role="parent"
+                ).count(),
+                "academic_sessions": AcademicSession.objects.filter(
+                    organization=organization
+                ).count(),
+                "classrooms": ClassRoom.objects.filter(
+                    organization=organization
+                ).count(),
+                "sections": Section.objects.filter(
+                    organization=organization
+                ).count(),
+                "subjects": Subject.objects.filter(
+                    organization=organization
+                ).count(),
+                "active_student_enrollments": (
+                    StudentEnrollment.objects.filter(
+                        is_active=True,
+                        section__organization=organization,
+                    ).count()
+                ),
+                "active_teacher_assignments": (
+                    TeacherAssignment.objects.filter(
+                        is_active=True,
+                        section__organization=organization,
+                    ).count()
+                ),
+            },
+        })
+
+
+def college_admin_organization(user):
+    if user.role != "college_admin" or not user.is_active:
+        return None
+
+    if not user.organization or not user.organization.is_active:
+        return None
+
+    return user.organization
+
+
+def serialize_college_student(user):
+    student_profile = getattr(user, "student_profile", None)
+
+    return {
+        "id": user.id,
+        "name": (
+            user.get_full_name().strip()
+            or user.username
+        ),
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+        "date_joined": user.date_joined,
+        "profile": (
+            {
+                "student_profile_id": student_profile.id,
+                "admission_number": (
+                    student_profile.admission_number
+                ),
+                "phone": student_profile.phone,
+                "date_of_birth": student_profile.date_of_birth,
+                "admission_date": student_profile.admission_date,
+            }
+            if student_profile
+            else None
+        ),
+    }
+
+
+def college_student_queryset(organization):
+    return User.objects.filter(
+        role="student",
+        organization=organization,
+    ).select_related(
+        "student_profile"
+    )
+
+
+class CollegeAdminStudentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage students."},
+                status=403
+            )
+
+        students = college_student_queryset(
+            organization
+        ).order_by(
+            "-date_joined"
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            students = students.filter(
+                Q(username__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(email__icontains=search)
+            )
+
+        return Response({
+            "students": [
+                serialize_college_student(student)
+                for student in students
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create students."},
+                status=403
+            )
+
+        username = request.data.get("username", "").strip()
+        password = request.data.get("password", "")
+        first_name = request.data.get("first_name", "").strip()
+        last_name = request.data.get("last_name", "").strip()
+        email = request.data.get("email", "").strip()
+        admission_number = request.data.get(
+            "admission_number",
+            ""
+        ).strip()
+        phone = request.data.get("phone", "").strip()
+        date_of_birth = request.data.get("date_of_birth") or None
+        admission_date = request.data.get("admission_date") or None
+
+        if not username:
+            return Response(
+                {"detail": "Username is required."},
+                status=400
+            )
+
+        if not password:
+            return Response(
+                {"detail": "Password is required."},
+                status=400
+            )
+
+        if not admission_number:
+            return Response(
+                {"detail": "Admission number is required."},
+                status=400
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"detail": "Username already exists."},
+                status=400
+            )
+
+        if StudentProfile.objects.filter(
+            admission_number=admission_number
+        ).exists():
+            return Response(
+                {"detail": "Admission number already exists."},
+                status=400
+            )
+
+        with transaction.atomic():
+            student = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role="student",
+                organization=organization,
+            )
+
+            StudentProfile.objects.create(
+                user=student,
+                admission_number=admission_number,
+                phone=phone,
+                date_of_birth=date_of_birth,
+                admission_date=admission_date,
+            )
+
+        return Response(
+            {
+                "message": "Student created successfully.",
+                "student": serialize_college_student(student),
+            },
+            status=201
+        )
+
+
+class CollegeAdminStudentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_student(self, user, student_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_student_queryset(organization).filter(
+            id=student_id
+        ).first()
+
+    def get(self, request, student_id):
+        if request.user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can view students."},
+                status=403
+            )
+
+        student = self.get_student(request.user, student_id)
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404
+            )
+
+        return Response({
+            "student": serialize_college_student(student)
+        })
+
+    def patch(self, request, student_id):
+        if request.user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can update students."},
+                status=403
+            )
+
+        student = self.get_student(request.user, student_id)
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404
+            )
+
+        profile = getattr(student, "student_profile", None)
+
+        if not profile:
+            return Response(
+                {"detail": "Student profile not found."},
+                status=404
+            )
+
+        if "username" in request.data:
+            username = request.data.get("username", "").strip()
+
+            if not username:
+                return Response(
+                    {"detail": "Username cannot be empty."},
+                    status=400
+                )
+
+            if User.objects.filter(
+                username=username
+            ).exclude(id=student.id).exists():
+                return Response(
+                    {"detail": "Username already exists."},
+                    status=400
+                )
+
+            student.username = username
+
+        if "first_name" in request.data:
+            student.first_name = request.data.get(
+                "first_name",
+                ""
+            ).strip()
+
+        if "last_name" in request.data:
+            student.last_name = request.data.get(
+                "last_name",
+                ""
+            ).strip()
+
+        if "email" in request.data:
+            student.email = request.data.get("email", "").strip()
+
+        if "is_active" in request.data:
+            student.is_active = bool(request.data.get("is_active"))
+
+        if "admission_number" in request.data:
+            admission_number = request.data.get(
+                "admission_number",
+                ""
+            ).strip()
+
+            if not admission_number:
+                return Response(
+                    {"detail": "Admission number cannot be empty."},
+                    status=400
+                )
+
+            if StudentProfile.objects.filter(
+                admission_number=admission_number
+            ).exclude(id=profile.id).exists():
+                return Response(
+                    {"detail": "Admission number already exists."},
+                    status=400
+                )
+
+            profile.admission_number = admission_number
+
+        if "phone" in request.data:
+            profile.phone = request.data.get("phone", "").strip()
+
+        if "date_of_birth" in request.data:
+            profile.date_of_birth = (
+                request.data.get("date_of_birth") or None
+            )
+
+        if "admission_date" in request.data:
+            profile.admission_date = (
+                request.data.get("admission_date") or None
+            )
+
+        with transaction.atomic():
+            student.save(
+                update_fields=[
+                    "username",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "is_active",
+                ]
+            )
+            profile.save(
+                update_fields=[
+                    "admission_number",
+                    "phone",
+                    "date_of_birth",
+                    "admission_date",
+                ]
+            )
+
+        return Response({
+            "message": "Student updated successfully.",
+            "student": serialize_college_student(student),
+        })
+
+
 class ParentLoginAPIView(APIView):
 
     def post(self, request):
