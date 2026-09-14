@@ -626,3 +626,4 @@ For every task:
 8. Stop.
 
 Optimize for correctness with minimum repository reads, minimum generated text, and minimum unnecessary changes.
+
