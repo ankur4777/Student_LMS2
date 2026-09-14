@@ -2,14 +2,26 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
-from accounts.models import TeacherProfile
-from academics.models import TeacherAssignment, StudentEnrollment
 
-from accounts.models import StudentProfile
-from .models import StudentAttendance
+from accounts.models import (
+    StudentProfile,
+    TeacherProfile,
+    ParentProfile,
+)
+
+from academics.models import (
+    TeacherAssignment,
+    StudentEnrollment,
+    ParentStudent,
+)
+
+from .models import (
+    AttendanceSession,
+    StudentAttendance,
+)
+
 from .serializers import StudentAttendanceSerializer
-from .models import AttendanceSession, StudentAttendance
-from academics.models import TeacherAssignment, StudentEnrollment
+
 
 class StudentAttendanceAPIView(APIView):
     permission_classes = [IsAuthenticated]
@@ -462,4 +474,158 @@ class TeacherAttendanceSessionAPIView(APIView):
             'session_id': attendance_session.id,
             'date': attendance_session.date,
             'attendance': attendance_data,
+        })
+
+class ParentStudentAttendanceAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        user = request.user
+
+        if user.role != "parent":
+            return Response(
+                {"detail": "Only parents can access student attendance."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        parent_profile = ParentProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        parent_student = ParentStudent.objects.filter(
+            parent=parent_profile,
+            student_id=student_id,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        ).first()
+
+        if not parent_student:
+            return Response(
+                {"detail": "Student is not linked to this parent."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        student_profile = parent_student.student
+
+        enrollment = StudentEnrollment.objects.filter(
+            student=student_profile,
+            is_active=True,
+            section__organization=user.organization,
+        ).select_related(
+            "section",
+            "section__classroom",
+        ).first()
+
+        if not enrollment:
+            return Response(
+                {"detail": "Active enrollment not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        records = StudentAttendance.objects.filter(
+            student=student_profile,
+            attendance_session__organization=user.organization,
+            attendance_session__section=enrollment.section,
+        ).select_related(
+            "attendance_session",
+            "attendance_session__subject",
+            "attendance_session__teacher",
+            "attendance_session__teacher__user",
+        ).order_by(
+            "-attendance_session__date",
+            "-attendance_session__start_time",
+        )
+
+        total_classes = records.count()
+
+        present = records.filter(
+            status=StudentAttendance.Status.PRESENT
+        ).count()
+
+        absent = records.filter(
+            status=StudentAttendance.Status.ABSENT
+        ).count()
+
+        late = records.filter(
+            status=StudentAttendance.Status.LATE
+        ).count()
+
+        excused = records.filter(
+            status=StudentAttendance.Status.EXCUSED
+        ).count()
+
+        attended_classes = present + late
+        counted_classes = present + late + absent
+
+        attendance_percentage = 0
+
+        if counted_classes > 0:
+            attendance_percentage = round(
+                (attended_classes / counted_classes) * 100,
+                2,
+            )
+
+        attendance_data = []
+
+        for record in records:
+            session = record.attendance_session
+            teacher_user = session.teacher.user if session.teacher else None
+
+            attendance_data.append({
+                "id": record.id,
+                "date": session.date,
+                "start_time": session.start_time,
+                "subject_name": (
+                    session.subject.name
+                    if session.subject
+                    else ""
+                ),
+                "teacher_name": (
+                    (
+                        teacher_user.get_full_name().strip()
+                        if teacher_user
+                        else ""
+                    )
+                    or (
+                        teacher_user.username
+                        if teacher_user
+                        else ""
+                    )
+                ),
+                "status": record.status,
+                "remarks": record.remarks,
+            })
+
+        student_user = student_profile.user
+
+        return Response({
+            "student": {
+                "id": student_profile.id,
+                "name": (
+                    student_user.get_full_name().strip()
+                    or student_user.username
+                ),
+                "username": student_user.username,
+                "roll_number": enrollment.roll_number,
+                "classroom_name": enrollment.section.classroom.name,
+                "section_name": enrollment.section.name,
+            },
+            "summary": {
+                "total_classes": total_classes,
+                "present": present,
+                "absent": absent,
+                "late": late,
+                "excused": excused,
+                "attended_classes": attended_classes,
+                "attendance_percentage": attendance_percentage,
+            },
+            "records": attendance_data,
         })

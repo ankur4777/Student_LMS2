@@ -13,8 +13,12 @@ from liveclasses.serializers import LiveClassSerializer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from accounts.models import TeacherProfile
-from academics.models import TeacherAssignment
+from accounts.models import TeacherProfile, ParentProfile
+from academics.models import (
+    TeacherAssignment,
+    StudentEnrollment,
+    ParentStudent,
+)
 
 
 class StudentDashboardAPIView(APIView):
@@ -431,4 +435,128 @@ class TeacherLoginAPIView(APIView):
                     else None
                 ),
             }
+        })
+        
+class ParentLoginAPIView(APIView):
+
+    def post(self, request):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        user = authenticate(
+            username=username,
+            password=password
+        )
+
+        if not user:
+            return Response(
+                {"detail": "Invalid username or password."},
+                status=401
+            )
+
+        if user.role != "parent":
+            return Response(
+                {"detail": "Only parents can login here."},
+                status=403
+            )
+
+        if not user.is_active:
+            return Response(
+                {"detail": "This account is inactive."},
+                status=403
+            )
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "user": {
+                "username": user.username,
+                "name": (
+                    user.get_full_name().strip()
+                    or user.username
+                ),
+                "role": user.role,
+                "organization": (
+                    user.organization.name
+                    if user.organization
+                    else None
+                ),
+            }
+        })
+        
+        
+class ParentChildrenAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "parent":
+            return Response(
+                {"detail": "Only parents can access linked students."},
+                status=403
+            )
+
+        parent_profile = ParentProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404
+            )
+
+        links = ParentStudent.objects.filter(
+            parent=parent_profile,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        )
+
+        children = []
+
+        for link in links:
+            student = link.student
+            student_user = student.user
+
+            enrollment = StudentEnrollment.objects.filter(
+                student=student,
+                is_active=True,
+                section__organization=user.organization,
+            ).select_related(
+                "section",
+                "section__classroom",
+            ).first()
+
+            children.append({
+                "student_profile_id": student.id,
+                "name": (
+                    student_user.get_full_name().strip()
+                    or student_user.username
+                ),
+                "username": student_user.username,
+                "roll_number": (
+                    enrollment.roll_number
+                    if enrollment
+                    else ""
+                ),
+                "classroom_name": (
+                    enrollment.section.classroom.name
+                    if enrollment
+                    else ""
+                ),
+                "section_name": (
+                    enrollment.section.name
+                    if enrollment
+                    else ""
+                ),
+                "relationship": link.relationship,
+            })
+
+        return Response({
+            "children": children
         })

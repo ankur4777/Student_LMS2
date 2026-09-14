@@ -10,6 +10,7 @@ from .views import (
     TeacherAssignmentSubmissionsAPIView,
     TeacherSubmissionAttachmentAPIView,
     TeacherGradeSubmissionAPIView,
+    ParentStudentAssignmentsAPIView,
 )
 
 urlpatterns = [
@@ -58,5 +59,10 @@ urlpatterns = [
     "teacher/submissions/<int:submission_id>/grade/",
     TeacherGradeSubmissionAPIView.as_view(),
     name="teacher-grade-submission"
+),
+    path(
+    "parent/student/<int:student_id>/",
+    ParentStudentAssignmentsAPIView.as_view(),
+    name="parent-student-assignments",
 ),
 ]

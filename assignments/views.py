@@ -4,11 +4,17 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-from accounts.models import TeacherProfile
-from academics.models import TeacherAssignment
+from accounts.models import (
+    StudentProfile,
+    TeacherProfile,
+    ParentProfile,
+)
 from .models import Assignment
-from accounts.models import StudentProfile
-from academics.models import StudentEnrollment
+from academics.models import (
+    TeacherAssignment,
+    StudentEnrollment,
+    ParentStudent,
+)
 from django.utils import timezone
 from .models import AssignmentSubmission
 
@@ -1006,4 +1012,176 @@ class TeacherGradeSubmissionAPIView(APIView):
                 "status": submission.status,
                 "graded_at": submission.graded_at,
             }
+        })
+        
+class ParentStudentAssignmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        user = request.user
+
+        if user.role != "parent":
+            return Response(
+                {
+                    "detail": (
+                        "Only parents can access "
+                        "student assignments."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        parent_profile = ParentProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        parent_student = ParentStudent.objects.filter(
+            parent=parent_profile,
+            student_id=student_id,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        ).first()
+
+        if not parent_student:
+            return Response(
+                {
+                    "detail": (
+                        "Student is not linked "
+                        "to this parent."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        student_profile = parent_student.student
+
+        enrollment = StudentEnrollment.objects.filter(
+            student=student_profile,
+            is_active=True,
+            section__organization=user.organization,
+        ).select_related(
+            "section",
+            "section__classroom",
+        ).first()
+
+        if not enrollment:
+            return Response(
+                {"detail": "Active enrollment not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        assignments = Assignment.objects.filter(
+            organization=user.organization,
+            teacher_assignment__section=enrollment.section,
+            is_published=True,
+        ).select_related(
+            "teacher_assignment",
+            "teacher_assignment__subject",
+            "teacher_assignment__teacher",
+            "teacher_assignment__teacher__user",
+        ).order_by(
+            "-created_at"
+        )
+
+        submissions = AssignmentSubmission.objects.filter(
+            student=student_profile,
+            assignment__in=assignments,
+        ).select_related(
+            "assignment"
+        )
+
+        submission_map = {
+            item.assignment_id: item
+            for item in submissions
+        }
+
+        assignment_data = []
+
+        for assignment in assignments:
+            submission = submission_map.get(
+                assignment.id
+            )
+
+            teacher_user = (
+                assignment
+                .teacher_assignment
+                .teacher
+                .user
+            )
+
+            submission_data = None
+
+            if submission:
+                submission_data = {
+                    "id": submission.id,
+                    "status": submission.status,
+                    "submitted_at": submission.submitted_at,
+                    "marks_obtained": (
+                        str(submission.marks_obtained)
+                        if submission.marks_obtained
+                        is not None
+                        else None
+                    ),
+                    "feedback": submission.feedback,
+                    "graded_at": submission.graded_at,
+                }
+
+            assignment_data.append({
+                "id": assignment.id,
+                "title": assignment.title,
+                "instructions": assignment.instructions,
+                "due_date": assignment.due_date,
+                "due_time": assignment.due_time,
+                "subject_name": (
+                    assignment
+                    .teacher_assignment
+                    .subject
+                    .name
+                ),
+                "teacher_name": (
+                    teacher_user.get_full_name().strip()
+                    or teacher_user.username
+                ),
+                "classroom_name": (
+                    enrollment.section.classroom.name
+                ),
+                "section_name": (
+                    enrollment.section.name
+                ),
+                "submission": submission_data,
+                "status": (
+                    submission.status
+                    if submission
+                    else "pending"
+                ),
+            })
+
+        student_user = student_profile.user
+
+        return Response({
+            "student": {
+                "id": student_profile.id,
+                "name": (
+                    student_user.get_full_name().strip()
+                    or student_user.username
+                ),
+                "username": student_user.username,
+                "roll_number": enrollment.roll_number,
+                "classroom_name": (
+                    enrollment.section.classroom.name
+                ),
+                "section_name": (
+                    enrollment.section.name
+                ),
+            },
+
+            "assignments": assignment_data,
         })

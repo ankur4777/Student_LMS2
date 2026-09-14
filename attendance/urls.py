@@ -9,6 +9,7 @@ from .views import (
     TeacherAttendanceSetupAPIView,
     TeacherSaveAttendanceAPIView,
     TeacherAttendanceSessionAPIView,
+    ParentStudentAttendanceAPIView,
 )
 
 
@@ -39,4 +40,9 @@ urlpatterns = [
     TeacherAttendanceSessionAPIView.as_view(),
     name='teacher-attendance-session'
 ),
+    path(
+        "parent/student/<int:student_id>/",
+        ParentStudentAttendanceAPIView.as_view(),
+        name="parent-student-attendance",
+    ),
 ]

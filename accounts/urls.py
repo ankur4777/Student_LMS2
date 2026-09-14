@@ -5,6 +5,8 @@ from .views import (
     StudentLoginAPIView,
     TeacherDashboardView,
     TeacherLoginAPIView,
+    ParentLoginAPIView,
+    ParentChildrenAPIView,
 )
 
 urlpatterns = [
@@ -27,5 +29,15 @@ urlpatterns = [
     "teacher/login/",
     TeacherLoginAPIView.as_view(),
     name="teacher-login",
+),
+    path(
+    "parent/login/",
+    ParentLoginAPIView.as_view(),
+    name="parent-login",
+),  
+    path(
+    "parent/children/",
+    ParentChildrenAPIView.as_view(),
+    name="parent-children",
 ),
 ]
