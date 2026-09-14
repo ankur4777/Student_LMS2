@@ -1,0 +1,463 @@
+.student-dashboard {
+  min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.student-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+
+  width: 255px;
+  height: 100vh;
+
+  background: #ffffff;
+  border-right: 1px solid #e8edf3;
+
+  padding: 24px 16px;
+  z-index: 100;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 0 12px 28px;
+}
+
+.sidebar-brand h5 {
+  margin: 0;
+  font-weight: 700;
+}
+
+.sidebar-brand small {
+  color: #8a94a6;
+}
+
+.brand-logo {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+  background: #0d6efd;
+
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar-nav a {
+  padding: 12px 14px;
+  border-radius: 9px;
+
+  color: #5e6673;
+  font-weight: 500;
+
+  transition: 0.2s;
+}
+
+.sidebar-nav a:hover {
+  background: #f1f5fb;
+  color: #0d6efd;
+}
+
+.sidebar-nav a.active {
+  background: #eaf2ff;
+  color: #0d6efd;
+  font-weight: 600;
+}
+
+.dashboard-main {
+  margin-left: 255px;
+  min-height: 100vh;
+}
+
+.student-topbar {
+  min-height: 85px;
+
+  padding: 16px 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  background: #ffffff;
+  border-bottom: 1px solid #e8edf3;
+}
+
+.topbar-profile {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.topbar-profile > div:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar-profile small {
+  color: #8a94a6;
+}
+
+.profile-avatar {
+  width: 43px;
+  height: 43px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #0d6efd;
+  color: #ffffff;
+
+  font-weight: 700;
+}
+
+.dashboard-content {
+  padding: 30px;
+}
+
+.summary-card,
+.dashboard-panel {
+  background: #ffffff;
+
+  border: 1px solid #e8edf3;
+  border-radius: 14px;
+
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+}
+
+.summary-card {
+  padding: 22px;
+}
+
+.summary-card span {
+  color: #7c8595;
+  font-size: 14px;
+}
+
+.summary-card h2 {
+  margin: 10px 0 4px;
+  font-weight: 700;
+}
+
+.summary-card small {
+  color: #9aa3af;
+}
+
+.dashboard-panel {
+  padding: 22px;
+  height: 100%;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 20px;
+}
+
+.panel-heading h5 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.empty-state {
+  min-height: 120px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #929aaa;
+}
+
+.attendance-percentage {
+  text-align: center;
+  margin: 15px 0 24px;
+}
+
+.attendance-percentage strong {
+  display: block;
+  font-size: 36px;
+}
+
+.attendance-percentage span {
+  color: #929aaa;
+}
+
+.attendance-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.attendance-stats div {
+  padding: 12px;
+
+  text-align: center;
+
+  border-radius: 10px;
+  background: #f6f8fb;
+}
+
+.attendance-stats strong,
+.attendance-stats span {
+  display: block;
+}
+
+.attendance-stats span {
+  margin-top: 3px;
+
+  color: #929aaa;
+  font-size: 13px;
+}
+
+@media (max-width: 991px) {
+  .student-sidebar {
+    display: none;
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 576px) {
+  .student-topbar {
+    padding: 14px 18px;
+  }
+
+  .dashboard-content {
+    padding: 18px;
+  }
+
+  .student-topbar h4 {
+    font-size: 19px;
+  }
+
+  .topbar-profile > div:last-child {
+    display: none;
+  }
+}
+.video-modal-backdrop {
+  position: fixed;
+  inset: 0;
+
+  width: 100vw;
+  height: 100vh;
+
+  background: rgba(0, 0, 0, 0.72);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  z-index: 99999;
+}
+
+.video-modal {
+  width: 100%;
+  max-width: 900px;
+
+  background: #ffffff;
+
+  border-radius: 16px;
+
+  overflow: hidden;
+
+  box-shadow:
+    0 25px 80px rgba(0, 0, 0, 0.35);
+}
+
+.video-modal-header {
+  min-height: 65px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 16px 20px;
+
+  border-bottom: 1px solid #e8edf3;
+}
+
+.video-modal-header h5 {
+  margin: 0;
+
+  font-weight: 600;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  padding-right: 20px;
+}
+
+.video-modal-close {
+  width: 38px;
+  height: 38px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #f2f4f7;
+
+  color: #333;
+
+  font-size: 27px;
+  line-height: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+}
+
+.video-modal-close:hover {
+  background: #e6e9ee;
+}
+
+.video-modal-body {
+  padding: 20px;
+
+  background: #111;
+}
+
+.secure-video {
+  display: block;
+
+  width: 100%;
+  max-height: 70vh;
+
+  background: #000;
+
+  border-radius: 10px;
+}
+
+.video-loading {
+  min-height: 350px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+
+  align-items: center;
+  justify-content: center;
+
+  color: #ffffff;
+}
+
+@media (max-width: 768px) {
+  .video-modal-backdrop {
+    padding: 12px;
+  }
+
+  .video-modal {
+    max-width: 100%;
+  }
+
+  .video-modal-body {
+    padding: 10px;
+  }
+
+  .secure-video {
+    max-height: 65vh;
+  }
+}
+
+.share-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+
+  background: #212529;
+  color: #fff;
+
+  padding: 12px 18px;
+  border-radius: 10px;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+
+  animation: shareToastIn 0.25s ease;
+}
+
+@keyframes shareToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* =========================================
+   STUDENT PAGE LAYOUT FIX
+========================================= */
+
+.student-dashboard {
+  min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.student-dashboard-main {
+  margin-left: 250px;
+  min-height: 100vh;
+  width: calc(100% - 250px);
+}
+
+.student-dashboard-content {
+  padding: 30px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Prevent Bootstrap/container content from
+   moving underneath the fixed sidebar */
+.student-dashboard-content .container-fluid {
+  width: 100%;
+  max-width: 100%;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Tablet / Mobile */
+@media (max-width: 991px) {
+  .student-dashboard-main {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .student-dashboard-content {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .student-dashboard-content {
+    padding: 15px;
+  }
+}
