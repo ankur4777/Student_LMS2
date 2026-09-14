@@ -793,6 +793,342 @@ def college_student_queryset(organization):
     )
 
 
+def serialize_college_teacher(user):
+    teacher_profile = getattr(user, "teacher_profile", None)
+    assignments = []
+
+    if teacher_profile:
+        assignments = [
+            {
+                "id": assignment.id,
+                "subject_name": assignment.subject.name,
+                "classroom_name": assignment.section.classroom.name,
+                "section_name": assignment.section.name,
+            }
+            for assignment in teacher_profile.teaching_assignments.filter(
+                is_active=True,
+                subject__organization=user.organization,
+                section__organization=user.organization,
+            ).select_related(
+                "subject",
+                "section",
+                "section__classroom",
+            )
+        ]
+
+    return {
+        "id": user.id,
+        "name": (
+            user.get_full_name().strip()
+            or user.username
+        ),
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+        "date_joined": user.date_joined,
+        "organization": (
+            user.organization.name
+            if user.organization
+            else ""
+        ),
+        "profile": (
+            {
+                "teacher_profile_id": teacher_profile.id,
+                "employee_id": teacher_profile.employee_id,
+                "phone": teacher_profile.phone,
+                "qualification": teacher_profile.qualification,
+                "joining_date": teacher_profile.joining_date,
+            }
+            if teacher_profile
+            else None
+        ),
+        "assignment_count": len(assignments),
+        "assignments": assignments,
+    }
+
+
+def college_teacher_queryset(organization):
+    return User.objects.filter(
+        role="teacher",
+        organization=organization,
+    ).select_related(
+        "organization",
+        "teacher_profile",
+    )
+
+
+class CollegeAdminTeachersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage teachers."},
+                status=403
+            )
+
+        teachers = college_teacher_queryset(
+            organization
+        ).order_by(
+            "-date_joined"
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            teachers = teachers.filter(
+                Q(username__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(email__icontains=search)
+            )
+
+        return Response({
+            "teachers": [
+                serialize_college_teacher(teacher)
+                for teacher in teachers
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create teachers."},
+                status=403
+            )
+
+        username = request.data.get("username", "").strip()
+        password = request.data.get("password", "")
+        first_name = request.data.get("first_name", "").strip()
+        last_name = request.data.get("last_name", "").strip()
+        email = request.data.get("email", "").strip()
+        employee_id = request.data.get("employee_id", "").strip()
+        phone = request.data.get("phone", "").strip()
+        qualification = request.data.get("qualification", "").strip()
+        joining_date = request.data.get("joining_date") or None
+
+        if not username:
+            return Response(
+                {"detail": "Username is required."},
+                status=400
+            )
+
+        if not password:
+            return Response(
+                {"detail": "Password is required."},
+                status=400
+            )
+
+        if not employee_id:
+            return Response(
+                {"detail": "Employee ID is required."},
+                status=400
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"detail": "Username already exists."},
+                status=400
+            )
+
+        if TeacherProfile.objects.filter(employee_id=employee_id).exists():
+            return Response(
+                {"detail": "Employee ID already exists."},
+                status=400
+            )
+
+        with transaction.atomic():
+            teacher = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role="teacher",
+                organization=organization,
+            )
+
+            TeacherProfile.objects.create(
+                user=teacher,
+                employee_id=employee_id,
+                phone=phone,
+                qualification=qualification,
+                joining_date=joining_date,
+            )
+
+        return Response(
+            {
+                "message": "Teacher created successfully.",
+                "teacher": serialize_college_teacher(teacher),
+            },
+            status=201
+        )
+
+
+class CollegeAdminTeacherDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_teacher(self, user, teacher_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_teacher_queryset(organization).filter(
+            id=teacher_id
+        ).first()
+
+    def get(self, request, teacher_id):
+        if request.user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can view teachers."},
+                status=403
+            )
+
+        teacher = self.get_teacher(request.user, teacher_id)
+
+        if not teacher:
+            return Response(
+                {"detail": "Teacher not found."},
+                status=404
+            )
+
+        return Response({
+            "teacher": serialize_college_teacher(teacher)
+        })
+
+    def patch(self, request, teacher_id):
+        if request.user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can update teachers."},
+                status=403
+            )
+
+        teacher = self.get_teacher(request.user, teacher_id)
+
+        if not teacher:
+            return Response(
+                {"detail": "Teacher not found."},
+                status=404
+            )
+
+        profile = getattr(teacher, "teacher_profile", None)
+
+        if not profile:
+            return Response(
+                {"detail": "Teacher profile not found."},
+                status=404
+            )
+
+        if "username" in request.data:
+            username = request.data.get("username", "").strip()
+
+            if not username:
+                return Response(
+                    {"detail": "Username cannot be empty."},
+                    status=400
+                )
+
+            if User.objects.filter(
+                username=username
+            ).exclude(id=teacher.id).exists():
+                return Response(
+                    {"detail": "Username already exists."},
+                    status=400
+                )
+
+            teacher.username = username
+
+        if "first_name" in request.data:
+            teacher.first_name = request.data.get(
+                "first_name",
+                ""
+            ).strip()
+
+        if "last_name" in request.data:
+            teacher.last_name = request.data.get(
+                "last_name",
+                ""
+            ).strip()
+
+        if "email" in request.data:
+            teacher.email = request.data.get("email", "").strip()
+
+        if "is_active" in request.data:
+            value = request.data.get("is_active")
+            teacher.is_active = (
+                value.lower() in ["true", "1", "yes", "on"]
+                if isinstance(value, str)
+                else bool(value)
+            )
+
+        if "employee_id" in request.data:
+            employee_id = request.data.get(
+                "employee_id",
+                ""
+            ).strip()
+
+            if not employee_id:
+                return Response(
+                    {"detail": "Employee ID cannot be empty."},
+                    status=400
+                )
+
+            if TeacherProfile.objects.filter(
+                employee_id=employee_id
+            ).exclude(id=profile.id).exists():
+                return Response(
+                    {"detail": "Employee ID already exists."},
+                    status=400
+                )
+
+            profile.employee_id = employee_id
+
+        if "phone" in request.data:
+            profile.phone = request.data.get("phone", "").strip()
+
+        if "qualification" in request.data:
+            profile.qualification = request.data.get(
+                "qualification",
+                ""
+            ).strip()
+
+        if "joining_date" in request.data:
+            profile.joining_date = (
+                request.data.get("joining_date") or None
+            )
+
+        with transaction.atomic():
+            teacher.save(
+                update_fields=[
+                    "username",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "is_active",
+                ]
+            )
+            profile.save(
+                update_fields=[
+                    "employee_id",
+                    "phone",
+                    "qualification",
+                    "joining_date",
+                ]
+            )
+
+        return Response({
+            "message": "Teacher updated successfully.",
+            "teacher": serialize_college_teacher(teacher),
+        })
+
+
 class CollegeAdminStudentsAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1059,6 +1395,432 @@ class CollegeAdminStudentDetailAPIView(APIView):
         return Response({
             "message": "Student updated successfully.",
             "student": serialize_college_student(student),
+        })
+
+
+def serialize_college_enrollment(enrollment):
+    student_user = enrollment.student.user
+    section = enrollment.section
+    classroom = section.classroom
+    academic_session = classroom.academic_session
+
+    return {
+        "enrollment_id": enrollment.id,
+        "student_id": enrollment.student_id,
+        "academic_session_id": academic_session.id,
+        "class_id": classroom.id,
+        "section_id": section.id,
+        "student_name": (
+            student_user.get_full_name().strip()
+            or student_user.username
+        ),
+        "username": student_user.username,
+        "roll_number": enrollment.roll_number,
+        "classroom_name": classroom.name,
+        "section_name": section.name,
+        "academic_session": academic_session.name,
+        "is_active": enrollment.is_active,
+        "enrolled_at": enrollment.enrolled_at,
+    }
+
+
+def college_enrollment_queryset(organization):
+    return StudentEnrollment.objects.filter(
+        section__organization=organization,
+        student__user__organization=organization,
+        student__user__role="student",
+    ).select_related(
+        "student",
+        "student__user",
+        "section",
+        "section__classroom",
+        "section__classroom__academic_session",
+    )
+
+
+class CollegeAdminEnrollmentSetupAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage enrollments."},
+                status=403
+            )
+
+        students = college_student_queryset(
+            organization
+        ).order_by(
+            "first_name",
+            "username",
+        )
+
+        active_enrollments = {
+            enrollment.student.user_id: enrollment
+            for enrollment in college_enrollment_queryset(
+                organization
+            ).filter(is_active=True)
+        }
+
+        sessions = AcademicSession.objects.filter(
+            organization=organization
+        ).order_by(
+            "-is_active",
+            "name",
+        )
+
+        classrooms = ClassRoom.objects.filter(
+            organization=organization
+        ).select_related(
+            "academic_session"
+        ).order_by(
+            "name"
+        )
+
+        sections = Section.objects.filter(
+            organization=organization
+        ).select_related(
+            "classroom",
+            "classroom__academic_session",
+        ).order_by(
+            "classroom__name",
+            "name",
+        )
+
+        return Response({
+            "students": [
+                {
+                    "id": student.id,
+                    "name": (
+                        student.get_full_name().strip()
+                        or student.username
+                    ),
+                    "username": student.username,
+                    "active_enrollment": (
+                        serialize_college_enrollment(
+                            active_enrollments[student.id]
+                        )
+                        if student.id in active_enrollments
+                        else None
+                    ),
+                }
+                for student in students
+            ],
+            "academic_sessions": [
+                {
+                    "id": session.id,
+                    "name": session.name,
+                    "is_active": session.is_active,
+                }
+                for session in sessions
+            ],
+            "classes": [
+                {
+                    "id": classroom.id,
+                    "name": classroom.name,
+                    "academic_session_id": (
+                        classroom.academic_session_id
+                    ),
+                }
+                for classroom in classrooms
+            ],
+            "sections": [
+                {
+                    "id": section.id,
+                    "name": section.name,
+                    "class_id": section.classroom_id,
+                    "academic_session_id": (
+                        section.classroom.academic_session_id
+                    ),
+                }
+                for section in sections
+            ],
+        })
+
+
+class CollegeAdminEnrollmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view enrollments."},
+                status=403
+            )
+
+        enrollments = college_enrollment_queryset(
+            organization
+        ).order_by(
+            "-is_active",
+            "student__user__username",
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            enrollments = enrollments.filter(
+                Q(student__user__username__icontains=search)
+                | Q(student__user__first_name__icontains=search)
+                | Q(student__user__last_name__icontains=search)
+                | Q(roll_number__icontains=search)
+            )
+
+        return Response({
+            "enrollments": [
+                serialize_college_enrollment(enrollment)
+                for enrollment in enrollments
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create enrollments."},
+                status=403
+            )
+
+        student_id = request.data.get("student_id")
+        section_id = request.data.get("section_id")
+        roll_number = request.data.get("roll_number", "").strip()
+
+        student = StudentProfile.objects.filter(
+            user_id=student_id,
+            user__role="student",
+            user__organization=organization,
+        ).first()
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404
+            )
+
+        section = Section.objects.filter(
+            id=section_id,
+            organization=organization,
+            classroom__organization=organization,
+            classroom__academic_session__organization=organization,
+        ).first()
+
+        if not section:
+            return Response(
+                {"detail": "Section not found."},
+                status=404
+            )
+
+        with transaction.atomic():
+            StudentEnrollment.objects.filter(
+                student=student,
+                is_active=True,
+            ).exclude(
+                section=section
+            ).update(
+                is_active=False
+            )
+
+            enrollment, _created = StudentEnrollment.objects.get_or_create(
+                student=student,
+                section=section,
+                defaults={
+                    "roll_number": roll_number,
+                    "is_active": True,
+                },
+            )
+
+            enrollment.roll_number = roll_number
+            enrollment.is_active = True
+            enrollment.save(
+                update_fields=[
+                    "roll_number",
+                    "is_active",
+                ]
+            )
+
+        return Response(
+            {
+                "message": "Enrollment saved successfully.",
+                "enrollment": serialize_college_enrollment(enrollment),
+            },
+            status=201
+        )
+
+
+class CollegeAdminStudentEnrollmentAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view enrollments."},
+                status=403
+            )
+
+        student = StudentProfile.objects.filter(
+            user_id=student_id,
+            user__role="student",
+            user__organization=organization,
+        ).first()
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404
+            )
+
+        enrollment = college_enrollment_queryset(
+            organization
+        ).filter(
+            student=student,
+            is_active=True,
+        ).first()
+
+        return Response({
+            "enrollment": (
+                serialize_college_enrollment(enrollment)
+                if enrollment
+                else None
+            )
+        })
+
+
+class CollegeAdminEnrollmentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_enrollment(self, user, enrollment_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_enrollment_queryset(
+            organization
+        ).filter(
+            id=enrollment_id
+        ).first()
+
+    def get(self, request, enrollment_id):
+        enrollment = self.get_enrollment(
+            request.user,
+            enrollment_id,
+        )
+
+        if not enrollment:
+            return Response(
+                {"detail": "Enrollment not found."},
+                status=404
+            )
+
+        return Response({
+            "enrollment": serialize_college_enrollment(enrollment)
+        })
+
+    def patch(self, request, enrollment_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update enrollments."},
+                status=403
+            )
+
+        enrollment = self.get_enrollment(
+            request.user,
+            enrollment_id,
+        )
+
+        if not enrollment:
+            return Response(
+                {"detail": "Enrollment not found."},
+                status=404
+            )
+
+        section = enrollment.section
+
+        if "section_id" in request.data:
+            section = Section.objects.filter(
+                id=request.data.get("section_id"),
+                organization=organization,
+                classroom__organization=organization,
+                classroom__academic_session__organization=organization,
+            ).first()
+
+            if not section:
+                return Response(
+                    {"detail": "Section not found."},
+                    status=404
+                )
+
+        roll_number = (
+            request.data.get(
+                "roll_number",
+                enrollment.roll_number,
+            ).strip()
+        )
+
+        is_active = enrollment.is_active
+
+        if "is_active" in request.data:
+            value = request.data.get("is_active")
+            is_active = (
+                value.lower() in ["true", "1", "yes", "on"]
+                if isinstance(value, str)
+                else bool(value)
+            )
+
+        with transaction.atomic():
+            if is_active:
+                StudentEnrollment.objects.filter(
+                    student=enrollment.student,
+                    is_active=True,
+                ).exclude(
+                    id=enrollment.id
+                ).update(
+                    is_active=False
+                )
+
+            existing = StudentEnrollment.objects.filter(
+                student=enrollment.student,
+                section=section,
+            ).exclude(
+                id=enrollment.id
+            ).first()
+
+            if existing:
+                enrollment.is_active = False
+                enrollment.save(update_fields=["is_active"])
+
+                existing.roll_number = roll_number
+                existing.is_active = is_active
+                existing.save(
+                    update_fields=[
+                        "roll_number",
+                        "is_active",
+                    ]
+                )
+                enrollment = existing
+            else:
+                enrollment.section = section
+                enrollment.roll_number = roll_number
+                enrollment.is_active = is_active
+                enrollment.save(
+                    update_fields=[
+                        "section",
+                        "roll_number",
+                        "is_active",
+                    ]
+                )
+
+        return Response({
+            "message": "Enrollment updated successfully.",
+            "enrollment": serialize_college_enrollment(enrollment),
         })
 
 

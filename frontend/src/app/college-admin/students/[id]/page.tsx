@@ -36,6 +36,15 @@ interface Student {
   profile: StudentProfile | null;
 }
 
+interface Enrollment {
+  enrollment_id: number;
+  roll_number: string;
+  classroom_name: string;
+  section_name: string;
+  academic_session: string;
+  is_active: boolean;
+}
+
 function getSavedAdmin() {
   if (typeof window === "undefined") {
     return {};
@@ -68,6 +77,7 @@ export default function CollegeAdminStudentDetailPage() {
 
   const [admin] = useState<CollegeAdminUser>(getSavedAdmin);
   const [student, setStudent] = useState<Student | null>(null);
+  const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -89,31 +99,52 @@ export default function CollegeAdminStudentDetailPage() {
       }
 
       try {
-        const response = await fetch(
-          `${API_BASE}/api/accounts/college-admin/students/${params.id}/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const [studentResponse, enrollmentResponse] = await Promise.all([
+          fetch(
+            `${API_BASE}/api/accounts/college-admin/students/${params.id}/`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          ),
+          fetch(
+            `${API_BASE}/api/accounts/college-admin/students/${params.id}/enrollment/`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          ),
+        ]);
 
-        if (response.status === 401) {
+        if (
+          studentResponse.status === 401 ||
+          enrollmentResponse.status === 401
+        ) {
           clearSession();
           router.replace("/college-admin/login");
           return;
         }
 
-        const result = await response.json();
+        const studentResult = await studentResponse.json();
+        const enrollmentResult = await enrollmentResponse.json();
 
-        if (!response.ok) {
+        if (!studentResponse.ok) {
           throw new Error(
-            result?.detail || "Unable to load student."
+            studentResult?.detail || "Unable to load student."
+          );
+        }
+
+        if (!enrollmentResponse.ok) {
+          throw new Error(
+            enrollmentResult?.detail || "Unable to load enrollment."
           );
         }
 
         if (isMounted) {
-          setStudent(result.student || null);
+          setStudent(studentResult.student || null);
+          setEnrollment(enrollmentResult.enrollment || null);
         }
       } catch (err) {
         if (isMounted && err instanceof Error) {
@@ -252,6 +283,78 @@ export default function CollegeAdminStudentDetailPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <div className="card border-0 shadow-sm mt-4">
+                  <div className="card-body p-4">
+                    <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+                      <h5 className="fw-bold mb-0">
+                        Enrollment
+                      </h5>
+                      {enrollment ? (
+                        <Link
+                          className="btn btn-outline-primary btn-sm"
+                          href={`/college-admin/enrollments/${enrollment.enrollment_id}/edit`}
+                        >
+                          Manage Enrollment
+                        </Link>
+                      ) : (
+                        <Link
+                          className="btn btn-primary btn-sm"
+                          href={`/college-admin/enrollments/create?student_id=${student.id}`}
+                        >
+                          Enroll Student
+                        </Link>
+                      )}
+                    </div>
+
+                    {enrollment ? (
+                      <div className="row g-4">
+                        <div className="col-md-4">
+                          <div className="text-muted small">Roll Number</div>
+                          <div className="fw-semibold">
+                            {formatValue(enrollment.roll_number)}
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="text-muted small">
+                            Academic Session
+                          </div>
+                          <div className="fw-semibold">
+                            {enrollment.academic_session}
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="text-muted small">Class</div>
+                          <div className="fw-semibold">
+                            {enrollment.classroom_name}
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="text-muted small">Section</div>
+                          <div className="fw-semibold">
+                            {enrollment.section_name}
+                          </div>
+                        </div>
+                        <div className="col-md-4">
+                          <div className="text-muted small">Status</div>
+                          <span
+                            className={
+                              enrollment.is_active
+                                ? "badge bg-success"
+                                : "badge bg-secondary"
+                            }
+                          >
+                            {enrollment.is_active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-muted">
+                        Student is not currently enrolled.
+                      </div>
+                    )}
                   </div>
                 </div>
               </>
