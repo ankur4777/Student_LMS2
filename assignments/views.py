@@ -21,6 +21,10 @@ from .models import AssignmentSubmission
 import mimetypes
 
 from django.http import FileResponse
+from notifications.services import (
+    notify_assignment_published,
+    notify_assignment_submitted,
+)
 
 
 class TeacherAssignmentsAPIView(APIView):
@@ -185,6 +189,9 @@ class TeacherAssignmentCreateAPIView(APIView):
             is_published=is_published,
         )
 
+        if assignment.is_published:
+            notify_assignment_published(assignment)
+
         return Response(
             {
                 "message": "Assignment created successfully.",
@@ -317,6 +324,8 @@ class TeacherAssignmentDetailAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        was_published = assignment.is_published
+
         if "title" in request.data:
             title = request.data.get("title", "").strip()
 
@@ -373,6 +382,9 @@ class TeacherAssignmentDetailAPIView(APIView):
             ]
 
         assignment.save()
+
+        if not was_published and assignment.is_published:
+            notify_assignment_published(assignment)
 
         teacher_assignment = assignment.teacher_assignment
 
@@ -611,7 +623,8 @@ class StudentAssignmentSubmitAPIView(APIView):
             is_published=True
         ).select_related(
             "teacher_assignment__section",
-            "teacher_assignment__subject"
+            "teacher_assignment__subject",
+            "teacher_assignment__teacher__user",
         ).first()
 
         if not assignment:
@@ -684,6 +697,8 @@ class StudentAssignmentSubmitAPIView(APIView):
             attachment=attachment,
             status=submission_status
         )
+
+        notify_assignment_submitted(submission)
 
         return Response(
             {

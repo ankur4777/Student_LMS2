@@ -37,12 +37,16 @@ export default function StudentSidebar() {
           Results
         </Link>
 
-        <Link href="#">
+        <Link href="/student/documents">
           Documents
         </Link>
 
-        <Link href="#">
+        <Link href="/student/notifications">
           Notifications
+        </Link>
+
+        <Link href="/student/profile">
+          Profile
         </Link>
       </nav>
     </aside>

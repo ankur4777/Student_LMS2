@@ -176,7 +176,82 @@ class StudentDashboardAPIView(APIView):
                 many=True
             ).data,
         })
-        
+
+
+class StudentProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "student":
+            return Response(
+                {"detail": "Only students can access profile details."},
+                status=403
+            )
+
+        student_profile = StudentProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not student_profile:
+            return Response(
+                {"detail": "Student profile not found."},
+                status=404
+            )
+
+        if student_profile.user.organization_id != user.organization_id:
+            return Response(
+                {"detail": "Profile organization mismatch."},
+                status=403
+            )
+
+        enrollment = StudentEnrollment.objects.filter(
+            student=student_profile,
+            is_active=True,
+            section__organization=user.organization,
+        ).select_related(
+            "section",
+            "section__classroom",
+        ).first()
+
+        return Response({
+            "profile": {
+                "student_profile_id": student_profile.id,
+                "name": (
+                    user.get_full_name().strip()
+                    or user.username
+                ),
+                "username": user.username,
+                "email": user.email,
+                "organization": (
+                    user.organization.name
+                    if user.organization
+                    else None
+                ),
+                "admission_number": (
+                    student_profile.admission_number
+                ),
+                "phone": student_profile.phone,
+                "date_of_birth": student_profile.date_of_birth,
+                "admission_date": student_profile.admission_date,
+            },
+            "enrollment": (
+                {
+                    "roll_number": enrollment.roll_number,
+                    "classroom_name": (
+                        enrollment.section.classroom.name
+                    ),
+                    "section_name": enrollment.section.name,
+                    "is_active": enrollment.is_active,
+                    "enrolled_at": enrollment.enrolled_at,
+                }
+                if enrollment
+                else None
+            ),
+        })
+
+
 class StudentLoginAPIView(APIView):
 
     def post(self, request):

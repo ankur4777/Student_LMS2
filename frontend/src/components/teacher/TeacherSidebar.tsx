@@ -36,6 +36,14 @@ export default function TeacherSidebar() {
         <Link href="/teacher/results">
   Results
 </Link>
+
+        <Link href="/teacher/documents">
+          Documents
+        </Link>
+
+        <Link href="/teacher/notifications">
+          Notifications
+        </Link>
       </nav>
     </aside>
   );

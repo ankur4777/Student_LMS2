@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'assignments',
     "studentresults",
+    'notifications',
+    'documents',
 ]
 
 MIDDLEWARE = [

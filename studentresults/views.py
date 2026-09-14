@@ -8,6 +8,7 @@ from academics.models import TeacherAssignment, StudentEnrollment, ParentStudent
 from datetime import datetime
 
 from studentresults.models import Exam, StudentResult
+from notifications.services import notify_exam_published
 
 
 class TeacherResultsSetupAPIView(APIView):
@@ -619,6 +620,8 @@ class TeacherPublishExamAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        was_published = exam.is_published
+
         exam.is_published = is_published
         exam.save(
             update_fields=[
@@ -626,6 +629,9 @@ class TeacherPublishExamAPIView(APIView):
                 "updated_at",
             ]
         )
+
+        if not was_published and exam.is_published:
+            notify_exam_published(exam)
 
         return Response({
             "message": (

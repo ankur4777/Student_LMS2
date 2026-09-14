@@ -21,6 +21,7 @@ from .serializers import (
     TeacherRecordingUploadSerializer,
     TeacherRecordingUpdateSerializer,
 )
+from notifications.services import notify_recording_available
 
 
 
@@ -446,6 +447,8 @@ class TeacherRecordingUploadAPIView(APIView):
         recording = serializer.save(
             uploaded_by=teacher_profile
         )
+
+        notify_recording_available(recording)
 
         return Response(
             {

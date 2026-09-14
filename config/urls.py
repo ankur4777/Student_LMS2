@@ -38,8 +38,16 @@ urlpatterns = [
     "api/assignments/",
     include("assignments.urls")
 ),
-    path(
+path(
     "api/results/",
     include("studentresults.urls"),
+),
+path(
+    "api/notifications/",
+    include("notifications.urls"),
+),
+path(
+    "api/documents/",
+    include("documents.urls"),
 ),
 ]
