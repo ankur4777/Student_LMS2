@@ -233,12 +233,20 @@ export default function CollegeAdminTeacherDetailPage() {
 
                 <div className="card border-0 shadow-sm">
                   <div className="card-body p-4">
-                    <h5 className="fw-bold mb-4">
-                      Teaching Assignment Summary
-                    </h5>
+                    <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+                      <h5 className="fw-bold mb-0">
+                        Teaching Assignments
+                      </h5>
+                      <Link
+                        className="btn btn-outline-primary btn-sm"
+                        href="/college-admin/teacher-assignments"
+                      >
+                        Manage Assignments
+                      </Link>
+                    </div>
                     {teacher.assignments.length === 0 ? (
                       <div className="text-muted">
-                        No active assignments.
+                        No active teaching assignments.
                       </div>
                     ) : (
                       <div className="table-responsive">

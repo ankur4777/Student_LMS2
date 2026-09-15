@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 
 from rest_framework.views import APIView
@@ -1436,6 +1436,458 @@ def college_enrollment_queryset(organization):
         "section__classroom",
         "section__classroom__academic_session",
     )
+
+
+def serialize_college_teacher_assignment(assignment):
+    section = assignment.section
+    classroom = section.classroom
+    session = classroom.academic_session
+
+    return {
+        "assignment_id": assignment.id,
+        "teacher_id": assignment.teacher.user_id,
+        "teacher_name": (
+            assignment.teacher.user.get_full_name().strip()
+            or assignment.teacher.user.username
+        ),
+        "subject_id": assignment.subject_id,
+        "subject_name": assignment.subject.name,
+        "subject_code": assignment.subject.code,
+        "section_id": section.id,
+        "section_name": section.name,
+        "class_id": classroom.id,
+        "class_name": classroom.name,
+        "academic_session_id": session.id,
+        "academic_session": session.name,
+        "is_active": assignment.is_active,
+    }
+
+
+def college_teacher_assignment_queryset(organization):
+    return TeacherAssignment.objects.filter(
+        teacher__user__organization=organization,
+        teacher__user__role="teacher",
+        subject__organization=organization,
+        subject__classroom__organization=organization,
+        subject__classroom__academic_session__organization=organization,
+        section__organization=organization,
+        section__classroom__organization=organization,
+        section__classroom__academic_session__organization=organization,
+    ).select_related(
+        "teacher",
+        "teacher__user",
+        "subject",
+        "subject__classroom",
+        "section",
+        "section__classroom",
+        "section__classroom__academic_session",
+    )
+
+
+def parse_boolean(value):
+    return (
+        value.lower() in ["true", "1", "yes", "on"]
+        if isinstance(value, str)
+        else bool(value)
+    )
+
+
+def get_college_teacher_profile(teacher_id, organization):
+    return TeacherProfile.objects.filter(
+        user_id=teacher_id,
+        user__role="teacher",
+        user__is_active=True,
+        user__organization=organization,
+    ).select_related("user").first()
+
+
+def get_college_subject(subject_id, organization):
+    return Subject.objects.filter(
+        id=subject_id,
+        organization=organization,
+        classroom__organization=organization,
+        classroom__academic_session__organization=organization,
+    ).select_related(
+        "classroom",
+        "classroom__academic_session",
+    ).first()
+
+
+def get_college_section(section_id, organization):
+    return Section.objects.filter(
+        id=section_id,
+        organization=organization,
+        classroom__organization=organization,
+        classroom__academic_session__organization=organization,
+    ).select_related(
+        "classroom",
+        "classroom__academic_session",
+    ).first()
+
+
+def validate_teacher_assignment_payload(
+    data,
+    organization,
+    assignment=None,
+):
+    teacher = assignment.teacher if assignment else None
+    subject = assignment.subject if assignment else None
+    section = assignment.section if assignment else None
+    is_active = assignment.is_active if assignment else True
+
+    if "teacher_id" in data or not assignment:
+        teacher = get_college_teacher_profile(
+            data.get("teacher_id"),
+            organization,
+        )
+
+        if not teacher:
+            return None, {"detail": "Teacher not found."}, 404
+
+    if "subject_id" in data or not assignment:
+        subject = get_college_subject(
+            data.get("subject_id"),
+            organization,
+        )
+
+        if not subject:
+            return None, {"detail": "Subject not found."}, 404
+
+    if "section_id" in data or not assignment:
+        section = get_college_section(
+            data.get("section_id"),
+            organization,
+        )
+
+        if not section:
+            return None, {"detail": "Section not found."}, 404
+
+    if subject.classroom_id != section.classroom_id:
+        return (
+            None,
+            {"detail": "Subject and section must belong to the same class."},
+            400,
+        )
+
+    if "is_active" in data:
+        is_active = parse_boolean(data.get("is_active"))
+
+    duplicate = TeacherAssignment.objects.filter(
+        teacher=teacher,
+        subject=subject,
+        section=section,
+    )
+
+    if assignment:
+        duplicate = duplicate.exclude(id=assignment.id)
+
+    if duplicate.exists():
+        return (
+            None,
+            {
+                "detail": (
+                    "This teacher is already assigned to this subject "
+                    "and section."
+                )
+            },
+            400,
+        )
+
+    return {
+        "teacher": teacher,
+        "subject": subject,
+        "section": section,
+        "is_active": is_active,
+    }, None, None
+
+
+class CollegeAdminTeacherAssignmentSetupAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage assignments."},
+                status=403
+            )
+
+        teachers = college_teacher_queryset(
+            organization
+        ).filter(
+            is_active=True,
+            teacher_profile__isnull=False,
+        ).order_by(
+            "first_name",
+            "username",
+        )
+
+        sessions = AcademicSession.objects.filter(
+            organization=organization
+        ).order_by(
+            "-is_active",
+            "name",
+        )
+
+        classrooms = ClassRoom.objects.filter(
+            organization=organization,
+            academic_session__organization=organization,
+        ).select_related(
+            "academic_session"
+        ).order_by(
+            "name"
+        )
+
+        sections = Section.objects.filter(
+            organization=organization,
+            classroom__organization=organization,
+            classroom__academic_session__organization=organization,
+        ).select_related(
+            "classroom",
+            "classroom__academic_session",
+        ).order_by(
+            "classroom__name",
+            "name",
+        )
+
+        subjects = Subject.objects.filter(
+            organization=organization,
+            classroom__organization=organization,
+            classroom__academic_session__organization=organization,
+        ).select_related(
+            "classroom",
+            "classroom__academic_session",
+        ).order_by(
+            "name"
+        )
+
+        return Response({
+            "teachers": [
+                {
+                    "id": teacher.id,
+                    "name": (
+                        teacher.get_full_name().strip()
+                        or teacher.username
+                    ),
+                    "username": teacher.username,
+                }
+                for teacher in teachers
+            ],
+            "academic_sessions": [
+                {
+                    "id": session.id,
+                    "name": session.name,
+                    "is_active": session.is_active,
+                }
+                for session in sessions
+            ],
+            "classes": [
+                {
+                    "id": classroom.id,
+                    "name": classroom.name,
+                    "academic_session_id": (
+                        classroom.academic_session_id
+                    ),
+                }
+                for classroom in classrooms
+            ],
+            "sections": [
+                {
+                    "id": section.id,
+                    "name": section.name,
+                    "class_id": section.classroom_id,
+                    "academic_session_id": (
+                        section.classroom.academic_session_id
+                    ),
+                }
+                for section in sections
+            ],
+            "subjects": [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "code": subject.code,
+                    "class_id": subject.classroom_id,
+                    "academic_session_id": (
+                        subject.classroom.academic_session_id
+                    ),
+                }
+                for subject in subjects
+            ],
+        })
+
+
+class CollegeAdminTeacherAssignmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view assignments."},
+                status=403
+            )
+
+        assignments = college_teacher_assignment_queryset(
+            organization
+        ).order_by(
+            "-is_active",
+            "teacher__user__username",
+            "subject__name",
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            assignments = assignments.filter(
+                Q(teacher__user__username__icontains=search)
+                | Q(teacher__user__first_name__icontains=search)
+                | Q(teacher__user__last_name__icontains=search)
+                | Q(subject__name__icontains=search)
+                | Q(subject__code__icontains=search)
+                | Q(section__name__icontains=search)
+                | Q(section__classroom__name__icontains=search)
+            )
+
+        return Response({
+            "assignments": [
+                serialize_college_teacher_assignment(assignment)
+                for assignment in assignments
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create assignments."},
+                status=403
+            )
+
+        values, error, status_code = validate_teacher_assignment_payload(
+            request.data,
+            organization,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        try:
+            assignment = TeacherAssignment.objects.create(**values)
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "This teacher is already assigned to this subject "
+                        "and section."
+                    )
+                },
+                status=400
+            )
+
+        return Response(
+            {
+                "message": "Teacher assignment saved successfully.",
+                "assignment": serialize_college_teacher_assignment(
+                    assignment
+                ),
+            },
+            status=201
+        )
+
+
+class CollegeAdminTeacherAssignmentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_assignment(self, user, assignment_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_teacher_assignment_queryset(
+            organization
+        ).filter(
+            id=assignment_id
+        ).first()
+
+    def get(self, request, assignment_id):
+        assignment = self.get_assignment(
+            request.user,
+            assignment_id,
+        )
+
+        if not assignment:
+            return Response(
+                {"detail": "Teacher assignment not found."},
+                status=404
+            )
+
+        return Response({
+            "assignment": serialize_college_teacher_assignment(assignment)
+        })
+
+    def patch(self, request, assignment_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update assignments."},
+                status=403
+            )
+
+        assignment = self.get_assignment(
+            request.user,
+            assignment_id,
+        )
+
+        if not assignment:
+            return Response(
+                {"detail": "Teacher assignment not found."},
+                status=404
+            )
+
+        values, error, status_code = validate_teacher_assignment_payload(
+            request.data,
+            organization,
+            assignment=assignment,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        assignment.teacher = values["teacher"]
+        assignment.subject = values["subject"]
+        assignment.section = values["section"]
+        assignment.is_active = values["is_active"]
+
+        try:
+            assignment.save(
+                update_fields=[
+                    "teacher",
+                    "subject",
+                    "section",
+                    "is_active",
+                ]
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "This teacher is already assigned to this subject "
+                        "and section."
+                    )
+                },
+                status=400
+            )
+
+        return Response({
+            "message": "Teacher assignment updated successfully.",
+            "assignment": serialize_college_teacher_assignment(assignment),
+        })
 
 
 class CollegeAdminEnrollmentSetupAPIView(APIView):

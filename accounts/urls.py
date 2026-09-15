@@ -15,6 +15,9 @@ from .views import (
     CollegeAdminStudentDetailAPIView,
     CollegeAdminStudentEnrollmentAPIView,
     CollegeAdminStudentsAPIView,
+    CollegeAdminTeacherAssignmentDetailAPIView,
+    CollegeAdminTeacherAssignmentSetupAPIView,
+    CollegeAdminTeacherAssignmentsAPIView,
     CollegeAdminTeacherDetailAPIView,
     CollegeAdminTeachersAPIView,
     ParentLoginAPIView,
@@ -92,6 +95,21 @@ urlpatterns = [
         "college-admin/enrollments/<int:enrollment_id>/",
         CollegeAdminEnrollmentDetailAPIView.as_view(),
         name="college-admin-enrollment-detail",
+    ),
+    path(
+        "college-admin/teacher-assignments/setup/",
+        CollegeAdminTeacherAssignmentSetupAPIView.as_view(),
+        name="college-admin-teacher-assignment-setup",
+    ),
+    path(
+        "college-admin/teacher-assignments/",
+        CollegeAdminTeacherAssignmentsAPIView.as_view(),
+        name="college-admin-teacher-assignments",
+    ),
+    path(
+        "college-admin/teacher-assignments/<int:assignment_id>/",
+        CollegeAdminTeacherAssignmentDetailAPIView.as_view(),
+        name="college-admin-teacher-assignment-detail",
     ),
     path(
         "college-admin/teachers/",
