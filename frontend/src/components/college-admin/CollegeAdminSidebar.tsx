@@ -14,6 +14,7 @@ const links = [
   ["Subjects", "/college-admin/subjects"],
   ["Enrollments", "/college-admin/enrollments"],
   ["Teacher Assignments", "/college-admin/teacher-assignments"],
+  ["Live Classes", "/college-admin/live-classes"],
   ["Profile", "/college-admin/profile"],
 ];
 

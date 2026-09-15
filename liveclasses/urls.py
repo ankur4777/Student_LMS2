@@ -1,6 +1,10 @@
 from django.urls import path
 
 from .views import (
+    CollegeAdminLiveClassCancelAPIView,
+    CollegeAdminLiveClassDetailAPIView,
+    CollegeAdminLiveClassesAPIView,
+    CollegeAdminLiveClassSetupAPIView,
     StudentLiveClassesAPIView,
     StudentTodayClassesAPIView,
     StudentUpcomingClassesAPIView,
@@ -16,6 +20,26 @@ from .views import (
 
 
 urlpatterns = [
+    path(
+        'college-admin/setup/',
+        CollegeAdminLiveClassSetupAPIView.as_view(),
+        name='college-admin-live-class-setup'
+    ),
+    path(
+        'college-admin/classes/',
+        CollegeAdminLiveClassesAPIView.as_view(),
+        name='college-admin-live-classes'
+    ),
+    path(
+        'college-admin/classes/<int:class_id>/',
+        CollegeAdminLiveClassDetailAPIView.as_view(),
+        name='college-admin-live-class-detail'
+    ),
+    path(
+        'college-admin/classes/<int:class_id>/cancel/',
+        CollegeAdminLiveClassCancelAPIView.as_view(),
+        name='college-admin-live-class-cancel'
+    ),
     path(
         'student/classes/',
         StudentLiveClassesAPIView.as_view(),

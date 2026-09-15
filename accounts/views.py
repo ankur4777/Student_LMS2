@@ -743,6 +743,112 @@ class CollegeAdminDashboardAPIView(APIView):
         })
 
 
+def serialize_college_admin_profile(user, request):
+    organization = user.organization
+
+    return {
+        "account": {
+            "id": user.id,
+            "name": (
+                user.get_full_name().strip()
+                or user.username
+            ),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role,
+            "is_active": user.is_active,
+        },
+        "organization": (
+            {
+                "name": organization.name,
+                "code": organization.code,
+                "email": organization.email,
+                "phone": organization.phone,
+                "address": organization.address,
+                "website": organization.website,
+                "is_active": organization.is_active,
+                "logo": (
+                    request.build_absolute_uri(organization.logo.url)
+                    if organization.logo
+                    else ""
+                ),
+            }
+            if organization
+            else None
+        ),
+    }
+
+
+class CollegeAdminProfileAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_organization(self, user):
+        if user.role != "college_admin" or not user.is_active:
+            return None
+
+        if not user.organization:
+            return None
+
+        return user.organization
+
+    def get(self, request):
+        organization = self.get_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can access profile details."},
+                status=403
+            )
+
+        return Response(
+            serialize_college_admin_profile(
+                request.user,
+                request,
+            )
+        )
+
+    def patch(self, request):
+        organization = self.get_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update profile details."},
+                status=403
+            )
+
+        user = request.user
+
+        if "first_name" in request.data:
+            user.first_name = request.data.get(
+                "first_name",
+                ""
+            ).strip()
+
+        if "last_name" in request.data:
+            user.last_name = request.data.get(
+                "last_name",
+                ""
+            ).strip()
+
+        if "email" in request.data:
+            user.email = request.data.get("email", "").strip()
+
+        user.save(
+            update_fields=[
+                "first_name",
+                "last_name",
+                "email",
+            ]
+        )
+
+        return Response({
+            "message": "Profile updated successfully.",
+            **serialize_college_admin_profile(user, request),
+        })
+
+
 def college_admin_organization(user):
     if user.role != "college_admin" or not user.is_active:
         return None

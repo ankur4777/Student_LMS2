@@ -2,6 +2,8 @@ import mimetypes
 
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
+from django.db.models import Q
+from django.utils.dateparse import parse_date, parse_time
 
 from .models import LiveClass, LiveClassRecording
 from rest_framework.views import APIView
@@ -15,6 +17,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework import status
 
 from accounts.models import StudentProfile, TeacherProfile
+from academics.models import TeacherAssignment
 
 from .serializers import (
     LiveClassSerializer,
@@ -22,6 +25,460 @@ from .serializers import (
     TeacherRecordingUpdateSerializer,
 )
 from notifications.services import notify_recording_available
+
+
+def college_admin_organization(user):
+    if user.role != 'college_admin' or not user.is_active:
+        return None
+
+    if not user.organization or not user.organization.is_active:
+        return None
+
+    return user.organization
+
+
+def college_admin_assignment_queryset(organization):
+    return TeacherAssignment.objects.filter(
+        is_active=True,
+        teacher__user__organization=organization,
+        teacher__user__role='teacher',
+        subject__organization=organization,
+        subject__classroom__organization=organization,
+        subject__classroom__academic_session__organization=organization,
+        section__organization=organization,
+        section__classroom__organization=organization,
+        section__classroom__academic_session__organization=organization,
+    ).select_related(
+        'teacher',
+        'teacher__user',
+        'subject',
+        'section',
+        'section__classroom',
+        'section__classroom__academic_session',
+    )
+
+
+def serialize_college_admin_assignment(assignment):
+    section = assignment.section
+    classroom = section.classroom
+    session = classroom.academic_session
+
+    return {
+        'assignment_id': assignment.id,
+        'teacher_id': assignment.teacher.user_id,
+        'teacher_profile_id': assignment.teacher_id,
+        'teacher_name': (
+            assignment.teacher.user.get_full_name().strip()
+            or assignment.teacher.user.username
+        ),
+        'subject_id': assignment.subject_id,
+        'subject_name': assignment.subject.name,
+        'subject_code': assignment.subject.code,
+        'class_id': classroom.id,
+        'class_name': classroom.name,
+        'section_id': section.id,
+        'section_name': section.name,
+        'academic_session_id': session.id,
+        'academic_session': session.name,
+    }
+
+
+def college_admin_live_class_queryset(organization):
+    return LiveClass.objects.filter(
+        organization=organization,
+        teacher_assignment__teacher__user__organization=organization,
+        teacher_assignment__subject__organization=organization,
+        teacher_assignment__section__organization=organization,
+    ).select_related(
+        'organization',
+        'teacher_assignment',
+        'teacher_assignment__teacher',
+        'teacher_assignment__teacher__user',
+        'teacher_assignment__subject',
+        'teacher_assignment__section',
+        'teacher_assignment__section__classroom',
+        'teacher_assignment__section__classroom__academic_session',
+        'recording',
+    )
+
+
+def serialize_college_admin_live_class(live_class):
+    assignment = live_class.teacher_assignment
+    assignment_data = serialize_college_admin_assignment(assignment)
+
+    try:
+        recording = live_class.recording
+    except LiveClassRecording.DoesNotExist:
+        recording = None
+
+    return {
+        'id': live_class.id,
+        'teacher_assignment_id': assignment.id,
+        'title': live_class.title,
+        'description': live_class.description,
+        'class_date': live_class.class_date,
+        'start_time': live_class.start_time,
+        'end_time': live_class.end_time,
+        'meeting_link': live_class.meeting_link,
+        'status': live_class.status,
+        'can_edit': live_class.status != LiveClass.Status.CANCELLED,
+        'can_cancel': live_class.status not in [
+            LiveClass.Status.COMPLETED,
+            LiveClass.Status.CANCELLED,
+        ],
+        'created_at': live_class.created_at,
+        'updated_at': live_class.updated_at,
+        **assignment_data,
+        'recording': (
+            {
+                'exists': True,
+                'title': recording.title,
+                'is_available': recording.is_available,
+                'uploaded_at': recording.uploaded_at,
+            }
+            if recording
+            else {
+                'exists': False,
+                'title': '',
+                'is_available': False,
+                'uploaded_at': None,
+            }
+        ),
+    }
+
+
+def validate_college_admin_live_class_payload(data, organization, instance=None):
+    values = {}
+    is_create = instance is None
+
+    if is_create or 'teacher_assignment' in data or 'teacher_assignment_id' in data:
+        assignment_id = (
+            data.get('teacher_assignment')
+            or data.get('teacher_assignment_id')
+        )
+
+        if not assignment_id:
+            return None, {'detail': 'Teacher assignment is required.'}, 400
+
+        assignment = college_admin_assignment_queryset(
+            organization
+        ).filter(id=assignment_id).first()
+
+        if not assignment:
+            return None, {'detail': 'Teacher assignment not found.'}, 404
+
+        values['teacher_assignment'] = assignment
+
+    if is_create or 'title' in data:
+        title = data.get('title', '').strip()
+
+        if not title:
+            return None, {'detail': 'Title is required.'}, 400
+
+        values['title'] = title
+
+    if 'description' in data:
+        values['description'] = data.get('description', '').strip()
+
+    if is_create or 'class_date' in data:
+        raw_date = data.get('class_date')
+        class_date = parse_date(raw_date) if raw_date else None
+
+        if not class_date:
+            return None, {'detail': 'Valid class date is required.'}, 400
+
+        values['class_date'] = class_date
+
+    if is_create or 'start_time' in data:
+        raw_start = data.get('start_time')
+        start_time = parse_time(raw_start) if raw_start else None
+
+        if not start_time:
+            return None, {'detail': 'Valid start time is required.'}, 400
+
+        values['start_time'] = start_time
+
+    if is_create or 'end_time' in data:
+        raw_end = data.get('end_time')
+        end_time = parse_time(raw_end) if raw_end else None
+
+        if not end_time:
+            return None, {'detail': 'Valid end time is required.'}, 400
+
+        values['end_time'] = end_time
+
+    start_time = values.get(
+        'start_time',
+        instance.start_time if instance else None,
+    )
+    end_time = values.get(
+        'end_time',
+        instance.end_time if instance else None,
+    )
+
+    if start_time and end_time and start_time >= end_time:
+        return None, {'detail': 'Start time must be before end time.'}, 400
+
+    if 'meeting_link' in data:
+        values['meeting_link'] = data.get('meeting_link', '').strip()
+
+    return values, None, None
+
+
+class CollegeAdminLiveClassSetupAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {'detail': 'Only college admins can access live class setup.'},
+                status=403
+            )
+
+        assignments = college_admin_assignment_queryset(
+            organization
+        ).order_by(
+            'teacher__user__first_name',
+            'teacher__user__last_name',
+            'subject__name',
+        )
+
+        return Response({
+            'teacher_assignments': [
+                serialize_college_admin_assignment(assignment)
+                for assignment in assignments
+            ],
+            'statuses': [
+                {'value': value, 'label': label}
+                for value, label in LiveClass.Status.choices
+            ],
+        })
+
+
+class CollegeAdminLiveClassesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {'detail': 'Only college admins can view live classes.'},
+                status=403
+            )
+
+        live_classes = college_admin_live_class_queryset(
+            organization
+        ).order_by(
+            '-class_date',
+            '-start_time',
+        )
+
+        status_filter = request.query_params.get('status', '').strip()
+        date_filter = request.query_params.get('date', '').strip()
+        teacher_filter = request.query_params.get('teacher', '').strip()
+        subject_filter = request.query_params.get('subject', '').strip()
+        search = request.query_params.get('search', '').strip()
+
+        valid_statuses = [
+            choice[0]
+            for choice in LiveClass.Status.choices
+        ]
+
+        if status_filter in valid_statuses:
+            live_classes = live_classes.filter(status=status_filter)
+
+        if date_filter:
+            class_date = parse_date(date_filter)
+
+            if class_date:
+                live_classes = live_classes.filter(class_date=class_date)
+
+        if teacher_filter:
+            live_classes = live_classes.filter(
+                teacher_assignment__teacher__user_id=teacher_filter
+            )
+
+        if subject_filter:
+            live_classes = live_classes.filter(
+                teacher_assignment__subject_id=subject_filter
+            )
+
+        if search:
+            live_classes = live_classes.filter(
+                Q(title__icontains=search)
+            )
+
+        return Response({
+            'classes': [
+                serialize_college_admin_live_class(live_class)
+                for live_class in live_classes
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {'detail': 'Only college admins can schedule live classes.'},
+                status=403
+            )
+
+        values, error, status_code = validate_college_admin_live_class_payload(
+            request.data,
+            organization,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        live_class = LiveClass.objects.create(
+            organization=organization,
+            **values,
+        )
+
+        return Response(
+            {
+                'message': 'Live class scheduled successfully.',
+                'class': serialize_college_admin_live_class(live_class),
+            },
+            status=201
+        )
+
+
+class CollegeAdminLiveClassDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_live_class(self, user, class_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_admin_live_class_queryset(
+            organization
+        ).filter(id=class_id).first()
+
+    def get(self, request, class_id):
+        live_class = self.get_live_class(request.user, class_id)
+
+        if not live_class:
+            return Response(
+                {'detail': 'Live class not found.'},
+                status=404
+            )
+
+        return Response({
+            'class': serialize_college_admin_live_class(live_class)
+        })
+
+    def patch(self, request, class_id):
+        live_class = self.get_live_class(request.user, class_id)
+
+        if not live_class:
+            return Response(
+                {'detail': 'Live class not found.'},
+                status=404
+            )
+
+        if live_class.status == LiveClass.Status.CANCELLED:
+            return Response(
+                {'detail': 'Cancelled live classes cannot be edited.'},
+                status=400
+            )
+
+        protected_completed_fields = [
+            'teacher_assignment',
+            'teacher_assignment_id',
+            'class_date',
+            'start_time',
+            'end_time',
+        ]
+
+        if (
+            live_class.status == LiveClass.Status.COMPLETED
+            and any(field in request.data for field in protected_completed_fields)
+        ):
+            return Response(
+                {
+                    'detail': (
+                        'Completed live class assignment and schedule '
+                        'cannot be changed.'
+                    )
+                },
+                status=400
+            )
+
+        organization = request.user.organization
+        values, error, status_code = validate_college_admin_live_class_payload(
+            request.data,
+            organization,
+            instance=live_class,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        for field, value in values.items():
+            setattr(live_class, field, value)
+
+        live_class.save(
+            update_fields=[
+                *values.keys(),
+                'updated_at',
+            ]
+        )
+
+        return Response({
+            'message': 'Live class updated successfully.',
+            'class': serialize_college_admin_live_class(live_class),
+        })
+
+
+class CollegeAdminLiveClassCancelAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, class_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {'detail': 'Only college admins can cancel live classes.'},
+                status=403
+            )
+
+        live_class = college_admin_live_class_queryset(
+            organization
+        ).filter(id=class_id).first()
+
+        if not live_class:
+            return Response(
+                {'detail': 'Live class not found.'},
+                status=404
+            )
+
+        if live_class.status == LiveClass.Status.CANCELLED:
+            return Response(
+                {'detail': 'Live class is already cancelled.'},
+                status=400
+            )
+
+        if live_class.status == LiveClass.Status.COMPLETED:
+            return Response(
+                {'detail': 'Completed live classes cannot be cancelled.'},
+                status=400
+            )
+
+        live_class.status = LiveClass.Status.CANCELLED
+        live_class.save(update_fields=['status', 'updated_at'])
+
+        return Response({
+            'message': 'Live class cancelled successfully.',
+            'class': serialize_college_admin_live_class(live_class),
+        })
 
 
 

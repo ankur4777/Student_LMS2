@@ -17,6 +17,7 @@ from .views import (
     CollegeAdminParentsAPIView,
     CollegeAdminParentStudentLinkDetailAPIView,
     CollegeAdminParentStudentLinksAPIView,
+    CollegeAdminProfileAPIView,
     CollegeAdminStudentDetailAPIView,
     CollegeAdminStudentEnrollmentAPIView,
     CollegeAdminStudentsAPIView,
@@ -71,6 +72,11 @@ urlpatterns = [
     CollegeAdminDashboardAPIView.as_view(),
     name="college-admin-dashboard",
 ),
+    path(
+        "college-admin/profile/",
+        CollegeAdminProfileAPIView.as_view(),
+        name="college-admin-profile",
+    ),
     path(
     "college-admin/students/",
     CollegeAdminStudentsAPIView.as_view(),

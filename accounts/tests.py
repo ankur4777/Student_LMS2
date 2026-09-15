@@ -244,3 +244,149 @@ class CollegeAdminParentManagementTests(TestCase):
         ]
         self.assertIn(self.student_a.id, student_profile_ids)
         self.assertNotIn(self.student_b.id, student_profile_ids)
+
+
+class CollegeAdminProfileTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org = Organization.objects.create(
+            name="College",
+            code="college",
+            email="office@example.com",
+            phone="123",
+            address="Main Road",
+            website="https://example.com",
+        )
+        self.other_org = Organization.objects.create(
+            name="Other College",
+            code="other",
+        )
+        self.admin = User.objects.create_user(
+            username="college-admin",
+            password="pass",
+            role="college_admin",
+            organization=self.org,
+            first_name="College",
+            last_name="Admin",
+            email="admin@example.com",
+        )
+        self.student = User.objects.create_user(
+            username="student",
+            password="pass",
+            role="student",
+            organization=self.org,
+        )
+        self.teacher = User.objects.create_user(
+            username="teacher",
+            password="pass",
+            role="teacher",
+            organization=self.org,
+        )
+        self.parent = User.objects.create_user(
+            username="parent",
+            password="pass",
+            role="parent",
+            organization=self.org,
+        )
+
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
+
+    def test_college_admin_profile_get_returns_account_and_organization(self):
+        self.authenticate(self.admin)
+
+        response = self.client.get(
+            "/api/accounts/college-admin/profile/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["account"]["username"],
+            "college-admin",
+        )
+        self.assertEqual(
+            response.data["organization"]["code"],
+            "college",
+        )
+
+    def test_college_admin_profile_patch_updates_only_allowed_fields(self):
+        self.authenticate(self.admin)
+
+        response = self.client.patch(
+            "/api/accounts/college-admin/profile/",
+            {
+                "first_name": "Updated",
+                "last_name": "Name",
+                "email": "updated@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.first_name, "Updated")
+        self.assertEqual(self.admin.last_name, "Name")
+        self.assertEqual(self.admin.email, "updated@example.com")
+
+    def test_protected_fields_cannot_be_modified(self):
+        self.authenticate(self.admin)
+
+        response = self.client.patch(
+            "/api/accounts/college-admin/profile/",
+            {
+                "username": "changed",
+                "role": "platform_admin",
+                "organization": self.other_org.id,
+                "organization_id": self.other_org.id,
+                "is_staff": True,
+                "is_superuser": True,
+                "is_active": False,
+                "first_name": "Safe",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.admin.refresh_from_db()
+        self.assertEqual(self.admin.username, "college-admin")
+        self.assertEqual(self.admin.role, "college_admin")
+        self.assertEqual(self.admin.organization, self.org)
+        self.assertFalse(self.admin.is_staff)
+        self.assertFalse(self.admin.is_superuser)
+        self.assertTrue(self.admin.is_active)
+        self.assertEqual(self.admin.first_name, "Safe")
+
+    def test_organization_is_read_only_and_server_side(self):
+        self.authenticate(self.admin)
+
+        self.client.patch(
+            "/api/accounts/college-admin/profile/",
+            {
+                "organization": self.other_org.id,
+                "organization_id": self.other_org.id,
+                "code": "changed",
+                "is_active": False,
+            },
+            format="json",
+        )
+
+        self.admin.refresh_from_db()
+        self.org.refresh_from_db()
+        self.assertEqual(self.admin.organization, self.org)
+        self.assertEqual(self.org.code, "college")
+        self.assertTrue(self.org.is_active)
+
+    def test_other_roles_are_denied(self):
+        for user in [self.student, self.teacher, self.parent]:
+            self.authenticate(user)
+            response = self.client.get(
+                "/api/accounts/college-admin/profile/"
+            )
+            self.assertEqual(response.status_code, 403)
+
+    def test_unauthenticated_request_is_denied(self):
+        response = self.client.get(
+            "/api/accounts/college-admin/profile/"
+        )
+
+        self.assertEqual(response.status_code, 401)
