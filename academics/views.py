@@ -1,11 +1,12 @@
 from django.db import IntegrityError
+from django.db.models import Q
 from django.utils.dateparse import parse_date
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import AcademicSession
+from .models import AcademicSession, ClassRoom, Section, Subject
 
 
 def college_admin_organization(user):
@@ -257,4 +258,746 @@ class CollegeAdminAcademicSessionDetailAPIView(APIView):
         return Response({
             "message": "Academic session updated successfully.",
             "academic_session": serialize_academic_session(session),
+        })
+
+
+def serialize_classroom(classroom):
+    return {
+        "id": classroom.id,
+        "name": classroom.name,
+        "academic_session_id": classroom.academic_session_id,
+        "academic_session": classroom.academic_session.name,
+    }
+
+
+def college_classroom_queryset(organization):
+    return ClassRoom.objects.filter(
+        organization=organization,
+        academic_session__organization=organization,
+    ).select_related(
+        "academic_session"
+    )
+
+
+def get_college_academic_session(session_id, organization):
+    return AcademicSession.objects.filter(
+        id=session_id,
+        organization=organization,
+    ).first()
+
+
+def validate_classroom_payload(data, organization, classroom=None):
+    name = classroom.name if classroom else ""
+    academic_session = classroom.academic_session if classroom else None
+
+    if "name" in data or not classroom:
+        name = data.get("name", "").strip()
+
+        if not name:
+            return None, {"detail": "Class name is required."}, 400
+
+    if "academic_session_id" in data or not classroom:
+        academic_session = get_college_academic_session(
+            data.get("academic_session_id"),
+            organization,
+        )
+
+        if not academic_session:
+            return None, {"detail": "Academic session not found."}, 404
+
+    duplicate = ClassRoom.objects.filter(
+        organization=organization,
+        name=name,
+        academic_session=academic_session,
+    )
+
+    if classroom:
+        duplicate = duplicate.exclude(id=classroom.id)
+
+    if duplicate.exists():
+        return (
+            None,
+            {
+                "detail": (
+                    "A class with this name already exists for this "
+                    "academic session."
+                )
+            },
+            400,
+        )
+
+    return {
+        "name": name,
+        "academic_session": academic_session,
+    }, None, None
+
+
+class CollegeAdminClassesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view classes."},
+                status=403
+            )
+
+        classrooms = college_classroom_queryset(
+            organization
+        ).order_by(
+            "-academic_session__is_active",
+            "academic_session__name",
+            "name",
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            classrooms = classrooms.filter(
+                Q(name__icontains=search)
+                | Q(academic_session__name__icontains=search)
+            )
+
+        return Response({
+            "classes": [
+                serialize_classroom(classroom)
+                for classroom in classrooms
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create classes."},
+                status=403
+            )
+
+        values, error, status_code = validate_classroom_payload(
+            request.data,
+            organization,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        try:
+            classroom = ClassRoom.objects.create(
+                organization=organization,
+                **values
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "A class with this name already exists for this "
+                        "academic session."
+                    )
+                },
+                status=400
+            )
+
+        return Response(
+            {
+                "message": "Class saved successfully.",
+                "class": serialize_classroom(classroom),
+            },
+            status=201
+        )
+
+
+class CollegeAdminClassDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_classroom(self, user, classroom_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_classroom_queryset(
+            organization
+        ).filter(
+            id=classroom_id
+        ).first()
+
+    def get(self, request, classroom_id):
+        classroom = self.get_classroom(request.user, classroom_id)
+
+        if not classroom:
+            return Response(
+                {"detail": "Class not found."},
+                status=404
+            )
+
+        return Response({
+            "class": serialize_classroom(classroom)
+        })
+
+    def patch(self, request, classroom_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update classes."},
+                status=403
+            )
+
+        classroom = self.get_classroom(request.user, classroom_id)
+
+        if not classroom:
+            return Response(
+                {"detail": "Class not found."},
+                status=404
+            )
+
+        values, error, status_code = validate_classroom_payload(
+            request.data,
+            organization,
+            classroom=classroom,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        classroom.name = values["name"]
+        classroom.academic_session = values["academic_session"]
+
+        try:
+            classroom.save(
+                update_fields=[
+                    "name",
+                    "academic_session",
+                ]
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "A class with this name already exists for this "
+                        "academic session."
+                    )
+                },
+                status=400
+            )
+
+        return Response({
+            "message": "Class updated successfully.",
+            "class": serialize_classroom(classroom),
+        })
+
+
+def serialize_section(section):
+    classroom = section.classroom
+
+    return {
+        "id": section.id,
+        "name": section.name,
+        "class_id": classroom.id,
+        "class_name": classroom.name,
+        "academic_session_id": classroom.academic_session_id,
+        "academic_session": classroom.academic_session.name,
+    }
+
+
+def college_section_queryset(organization):
+    return Section.objects.filter(
+        organization=organization,
+        classroom__organization=organization,
+        classroom__academic_session__organization=organization,
+    ).select_related(
+        "classroom",
+        "classroom__academic_session",
+    )
+
+
+def get_college_classroom(classroom_id, organization):
+    return ClassRoom.objects.filter(
+        id=classroom_id,
+        organization=organization,
+        academic_session__organization=organization,
+    ).select_related(
+        "academic_session"
+    ).first()
+
+
+def validate_section_payload(data, organization, section=None):
+    name = section.name if section else ""
+    classroom = section.classroom if section else None
+
+    if "name" in data or not section:
+        name = data.get("name", "").strip()
+
+        if not name:
+            return None, {"detail": "Section name is required."}, 400
+
+    if "class_id" in data or not section:
+        classroom = get_college_classroom(
+            data.get("class_id"),
+            organization,
+        )
+
+        if not classroom:
+            return None, {"detail": "Class not found."}, 404
+
+    if (
+        section
+        and section.classroom_id != classroom.id
+        and section.teacher_assignments.exclude(
+            subject__classroom=classroom
+        ).exists()
+    ):
+        return (
+            None,
+            {
+                "detail": (
+                    "This section has teacher assignments that do not "
+                    "belong to the selected class."
+                )
+            },
+            400,
+        )
+
+    duplicate = Section.objects.filter(
+        organization=organization,
+        name=name,
+        classroom=classroom,
+    )
+
+    if section:
+        duplicate = duplicate.exclude(id=section.id)
+
+    if duplicate.exists():
+        return (
+            None,
+            {
+                "detail": (
+                    "A section with this name already exists for this class."
+                )
+            },
+            400,
+        )
+
+    return {
+        "name": name,
+        "classroom": classroom,
+    }, None, None
+
+
+class CollegeAdminSectionsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view sections."},
+                status=403
+            )
+
+        sections = college_section_queryset(
+            organization
+        ).order_by(
+            "-classroom__academic_session__is_active",
+            "classroom__academic_session__name",
+            "classroom__name",
+            "name",
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            sections = sections.filter(
+                Q(name__icontains=search)
+                | Q(classroom__name__icontains=search)
+                | Q(classroom__academic_session__name__icontains=search)
+            )
+
+        return Response({
+            "sections": [
+                serialize_section(section)
+                for section in sections
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create sections."},
+                status=403
+            )
+
+        values, error, status_code = validate_section_payload(
+            request.data,
+            organization,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        try:
+            section = Section.objects.create(
+                organization=organization,
+                **values
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "A section with this name already exists for "
+                        "this class."
+                    )
+                },
+                status=400
+            )
+
+        return Response(
+            {
+                "message": "Section saved successfully.",
+                "section": serialize_section(section),
+            },
+            status=201
+        )
+
+
+class CollegeAdminSectionDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_section(self, user, section_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_section_queryset(
+            organization
+        ).filter(
+            id=section_id
+        ).first()
+
+    def get(self, request, section_id):
+        section = self.get_section(request.user, section_id)
+
+        if not section:
+            return Response(
+                {"detail": "Section not found."},
+                status=404
+            )
+
+        return Response({
+            "section": serialize_section(section)
+        })
+
+    def patch(self, request, section_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update sections."},
+                status=403
+            )
+
+        section = self.get_section(request.user, section_id)
+
+        if not section:
+            return Response(
+                {"detail": "Section not found."},
+                status=404
+            )
+
+        values, error, status_code = validate_section_payload(
+            request.data,
+            organization,
+            section=section,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        section.name = values["name"]
+        section.classroom = values["classroom"]
+
+        try:
+            section.save(
+                update_fields=[
+                    "name",
+                    "classroom",
+                ]
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "A section with this name already exists for "
+                        "this class."
+                    )
+                },
+                status=400
+            )
+
+        return Response({
+            "message": "Section updated successfully.",
+            "section": serialize_section(section),
+        })
+
+
+def serialize_subject(subject):
+    classroom = subject.classroom
+
+    return {
+        "id": subject.id,
+        "name": subject.name,
+        "code": subject.code,
+        "class_id": classroom.id,
+        "class_name": classroom.name,
+        "academic_session_id": classroom.academic_session_id,
+        "academic_session": classroom.academic_session.name,
+    }
+
+
+def college_subject_queryset(organization):
+    return Subject.objects.filter(
+        organization=organization,
+        classroom__organization=organization,
+        classroom__academic_session__organization=organization,
+    ).select_related(
+        "classroom",
+        "classroom__academic_session",
+    )
+
+
+def validate_subject_payload(data, organization, subject=None):
+    name = subject.name if subject else ""
+    code = subject.code if subject else ""
+    classroom = subject.classroom if subject else None
+
+    if "name" in data or not subject:
+        name = data.get("name", "").strip()
+
+        if not name:
+            return None, {"detail": "Subject name is required."}, 400
+
+    if "code" in data or not subject:
+        code = data.get("code", "").strip()
+
+    if "class_id" in data or not subject:
+        classroom = get_college_classroom(
+            data.get("class_id"),
+            organization,
+        )
+
+        if not classroom:
+            return None, {"detail": "Class not found."}, 404
+
+    if (
+        subject
+        and subject.classroom_id != classroom.id
+        and subject.teacher_assignments.exclude(
+            section__classroom=classroom
+        ).exists()
+    ):
+        return (
+            None,
+            {
+                "detail": (
+                    "This subject has teacher assignments that do not "
+                    "belong to the selected class."
+                )
+            },
+            400,
+        )
+
+    duplicate = Subject.objects.filter(
+        organization=organization,
+        name=name,
+        classroom=classroom,
+    )
+
+    if subject:
+        duplicate = duplicate.exclude(id=subject.id)
+
+    if duplicate.exists():
+        return (
+            None,
+            {
+                "detail": (
+                    "A subject with this name already exists for this class."
+                )
+            },
+            400,
+        )
+
+    return {
+        "name": name,
+        "code": code,
+        "classroom": classroom,
+    }, None, None
+
+
+class CollegeAdminSubjectsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view subjects."},
+                status=403
+            )
+
+        subjects = college_subject_queryset(
+            organization
+        ).order_by(
+            "-classroom__academic_session__is_active",
+            "classroom__academic_session__name",
+            "classroom__name",
+            "name",
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            subjects = subjects.filter(
+                Q(name__icontains=search)
+                | Q(code__icontains=search)
+                | Q(classroom__name__icontains=search)
+                | Q(classroom__academic_session__name__icontains=search)
+            )
+
+        return Response({
+            "subjects": [
+                serialize_subject(subject)
+                for subject in subjects
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create subjects."},
+                status=403
+            )
+
+        values, error, status_code = validate_subject_payload(
+            request.data,
+            organization,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        try:
+            subject = Subject.objects.create(
+                organization=organization,
+                **values
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "A subject with this name already exists for "
+                        "this class."
+                    )
+                },
+                status=400
+            )
+
+        return Response(
+            {
+                "message": "Subject saved successfully.",
+                "subject": serialize_subject(subject),
+            },
+            status=201
+        )
+
+
+class CollegeAdminSubjectDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_subject(self, user, subject_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_subject_queryset(
+            organization
+        ).filter(
+            id=subject_id
+        ).first()
+
+    def get(self, request, subject_id):
+        subject = self.get_subject(request.user, subject_id)
+
+        if not subject:
+            return Response(
+                {"detail": "Subject not found."},
+                status=404
+            )
+
+        return Response({
+            "subject": serialize_subject(subject)
+        })
+
+    def patch(self, request, subject_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update subjects."},
+                status=403
+            )
+
+        subject = self.get_subject(request.user, subject_id)
+
+        if not subject:
+            return Response(
+                {"detail": "Subject not found."},
+                status=404
+            )
+
+        values, error, status_code = validate_subject_payload(
+            request.data,
+            organization,
+            subject=subject,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        subject.name = values["name"]
+        subject.code = values["code"]
+        subject.classroom = values["classroom"]
+
+        try:
+            subject.save(
+                update_fields=[
+                    "name",
+                    "code",
+                    "classroom",
+                ]
+            )
+        except IntegrityError:
+            return Response(
+                {
+                    "detail": (
+                        "A subject with this name already exists for "
+                        "this class."
+                    )
+                },
+                status=400
+            )
+
+        return Response({
+            "message": "Subject updated successfully.",
+            "subject": serialize_subject(subject),
         })

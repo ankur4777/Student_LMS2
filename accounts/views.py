@@ -1,6 +1,6 @@
 from django.utils import timezone
 from django.db import IntegrityError, transaction
-from django.db.models import Q
+from django.db.models import Count, Q
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -793,6 +793,102 @@ def college_student_queryset(organization):
     )
 
 
+def serialize_parent_student_link(link):
+    student = link.student
+    student_user = student.user
+    enrollment = StudentEnrollment.objects.filter(
+        student=student,
+        is_active=True,
+        section__organization=student_user.organization,
+    ).select_related(
+        "section",
+        "section__classroom",
+    ).first()
+
+    return {
+        "link_id": link.id,
+        "student_id": student_user.id,
+        "student_profile_id": student.id,
+        "name": (
+            student_user.get_full_name().strip()
+            or student_user.username
+        ),
+        "username": student_user.username,
+        "admission_number": student.admission_number,
+        "relationship": link.relationship,
+        "classroom_name": (
+            enrollment.section.classroom.name
+            if enrollment
+            else ""
+        ),
+        "section_name": (
+            enrollment.section.name
+            if enrollment
+            else ""
+        ),
+    }
+
+
+def serialize_college_parent(user, include_links=False):
+    parent_profile = getattr(user, "parent_profile", None)
+    linked_students = []
+
+    if include_links and parent_profile:
+        links = ParentStudent.objects.filter(
+            parent=parent_profile,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        ).order_by(
+            "student__user__first_name",
+            "student__user__last_name",
+            "student__user__username",
+        )
+        linked_students = [
+            serialize_parent_student_link(link)
+            for link in links
+        ]
+
+    return {
+        "id": user.id,
+        "name": (
+            user.get_full_name().strip()
+            or user.username
+        ),
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "username": user.username,
+        "email": user.email,
+        "is_active": user.is_active,
+        "date_joined": user.date_joined,
+        "profile": (
+            {
+                "parent_profile_id": parent_profile.id,
+                "phone": parent_profile.phone,
+                "occupation": parent_profile.occupation,
+            }
+            if parent_profile
+            else None
+        ),
+        "linked_students_count": (
+            getattr(user, "linked_students_count", None)
+            if not include_links
+            else len(linked_students)
+        ) or 0,
+        "linked_students": linked_students,
+    }
+
+
+def college_parent_queryset(organization):
+    return User.objects.filter(
+        role="parent",
+        organization=organization,
+    ).select_related(
+        "parent_profile",
+    )
+
+
 def serialize_college_teacher(user):
     teacher_profile = getattr(user, "teacher_profile", None)
     assignments = []
@@ -1395,6 +1491,451 @@ class CollegeAdminStudentDetailAPIView(APIView):
         return Response({
             "message": "Student updated successfully.",
             "student": serialize_college_student(student),
+        })
+
+
+class CollegeAdminParentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage parents."},
+                status=403
+            )
+
+        parents = college_parent_queryset(
+            organization
+        ).annotate(
+            linked_students_count=Count(
+                "parent_profile__student_links",
+                distinct=True,
+            )
+        ).order_by(
+            "-date_joined"
+        )
+
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            parents = parents.filter(
+                Q(username__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(email__icontains=search)
+            )
+
+        return Response({
+            "parents": [
+                serialize_college_parent(parent)
+                for parent in parents
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create parents."},
+                status=403
+            )
+
+        username = request.data.get("username", "").strip()
+        password = request.data.get("password", "")
+        first_name = request.data.get("first_name", "").strip()
+        last_name = request.data.get("last_name", "").strip()
+        email = request.data.get("email", "").strip()
+        phone = request.data.get("phone", "").strip()
+        occupation = request.data.get("occupation", "").strip()
+
+        if not username:
+            return Response(
+                {"detail": "Username is required."},
+                status=400
+            )
+
+        if not password:
+            return Response(
+                {"detail": "Password is required."},
+                status=400
+            )
+
+        if User.objects.filter(username=username).exists():
+            return Response(
+                {"detail": "Username already exists."},
+                status=400
+            )
+
+        with transaction.atomic():
+            parent = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+                last_name=last_name,
+                role="parent",
+                organization=organization,
+            )
+
+            ParentProfile.objects.create(
+                user=parent,
+                phone=phone,
+                occupation=occupation,
+            )
+
+        return Response(
+            {
+                "message": "Parent created successfully.",
+                "parent": serialize_college_parent(parent),
+            },
+            status=201
+        )
+
+
+class CollegeAdminParentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_parent(self, user, parent_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_parent_queryset(organization).filter(
+            id=parent_id
+        ).first()
+
+    def get(self, request, parent_id):
+        if request.user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can view parents."},
+                status=403
+            )
+
+        parent = self.get_parent(request.user, parent_id)
+
+        if not parent:
+            return Response(
+                {"detail": "Parent not found."},
+                status=404
+            )
+
+        return Response({
+            "parent": serialize_college_parent(
+                parent,
+                include_links=True,
+            )
+        })
+
+    def patch(self, request, parent_id):
+        if request.user.role != "college_admin":
+            return Response(
+                {"detail": "Only college admins can update parents."},
+                status=403
+            )
+
+        parent = self.get_parent(request.user, parent_id)
+
+        if not parent:
+            return Response(
+                {"detail": "Parent not found."},
+                status=404
+            )
+
+        profile = getattr(parent, "parent_profile", None)
+
+        if not profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404
+            )
+
+        if "username" in request.data:
+            username = request.data.get("username", "").strip()
+
+            if not username:
+                return Response(
+                    {"detail": "Username cannot be empty."},
+                    status=400
+                )
+
+            if User.objects.filter(
+                username=username
+            ).exclude(id=parent.id).exists():
+                return Response(
+                    {"detail": "Username already exists."},
+                    status=400
+                )
+
+            parent.username = username
+
+        if "first_name" in request.data:
+            parent.first_name = request.data.get(
+                "first_name",
+                ""
+            ).strip()
+
+        if "last_name" in request.data:
+            parent.last_name = request.data.get(
+                "last_name",
+                ""
+            ).strip()
+
+        if "email" in request.data:
+            parent.email = request.data.get("email", "").strip()
+
+        if "is_active" in request.data:
+            value = request.data.get("is_active")
+            parent.is_active = (
+                value.lower() in ["true", "1", "yes", "on"]
+                if isinstance(value, str)
+                else bool(value)
+            )
+
+        if "phone" in request.data:
+            profile.phone = request.data.get("phone", "").strip()
+
+        if "occupation" in request.data:
+            profile.occupation = request.data.get(
+                "occupation",
+                ""
+            ).strip()
+
+        with transaction.atomic():
+            parent.save(
+                update_fields=[
+                    "username",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "is_active",
+                ]
+            )
+            profile.save(
+                update_fields=[
+                    "phone",
+                    "occupation",
+                ]
+            )
+
+        return Response({
+            "message": "Parent updated successfully.",
+            "parent": serialize_college_parent(
+                parent,
+                include_links=True,
+            ),
+        })
+
+
+class CollegeAdminParentLinkOptionsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, parent_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage parent links."},
+                status=403
+            )
+
+        parent = college_parent_queryset(organization).filter(
+            id=parent_id
+        ).first()
+
+        if not parent:
+            return Response(
+                {"detail": "Parent not found."},
+                status=404
+            )
+
+        parent_profile = getattr(parent, "parent_profile", None)
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404
+            )
+
+        linked_student_ids = ParentStudent.objects.filter(
+            parent=parent_profile,
+            student__user__organization=organization,
+        ).values_list(
+            "student_id",
+            flat=True,
+        )
+
+        students = StudentProfile.objects.filter(
+            user__role="student",
+            user__organization=organization,
+        ).exclude(
+            id__in=linked_student_ids,
+        ).select_related(
+            "user",
+        ).order_by(
+            "user__first_name",
+            "user__last_name",
+            "user__username",
+        )
+
+        return Response({
+            "students": [
+                {
+                    "student_profile_id": student.id,
+                    "student_id": student.user_id,
+                    "name": (
+                        student.user.get_full_name().strip()
+                        or student.user.username
+                    ),
+                    "username": student.user.username,
+                    "admission_number": student.admission_number,
+                }
+                for student in students
+            ],
+            "relationships": [
+                {
+                    "value": value,
+                    "label": label,
+                }
+                for value, label in ParentStudent.Relationship.choices
+            ],
+        })
+
+
+class CollegeAdminParentStudentLinksAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, parent_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can link students."},
+                status=403
+            )
+
+        parent = college_parent_queryset(organization).filter(
+            id=parent_id
+        ).first()
+
+        if not parent:
+            return Response(
+                {"detail": "Parent not found."},
+                status=404
+            )
+
+        parent_profile = getattr(parent, "parent_profile", None)
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404
+            )
+
+        student_profile_id = request.data.get("student_profile_id")
+        relationship = request.data.get(
+            "relationship",
+            ParentStudent.Relationship.GUARDIAN,
+        )
+
+        valid_relationships = [
+            choice[0]
+            for choice in ParentStudent.Relationship.choices
+        ]
+
+        if relationship not in valid_relationships:
+            return Response(
+                {"detail": "Invalid relationship."},
+                status=400
+            )
+
+        student = StudentProfile.objects.filter(
+            id=student_profile_id,
+            user__role="student",
+            user__organization=organization,
+        ).select_related(
+            "user",
+        ).first()
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404
+            )
+
+        if ParentStudent.objects.filter(
+            parent=parent_profile,
+            student=student,
+        ).exists():
+            return Response(
+                {"detail": "Student is already linked to this parent."},
+                status=400
+            )
+
+        link = ParentStudent.objects.create(
+            parent=parent_profile,
+            student=student,
+            relationship=relationship,
+        )
+
+        return Response(
+            {
+                "message": "Student linked successfully.",
+                "link": serialize_parent_student_link(link),
+            },
+            status=201
+        )
+
+
+class CollegeAdminParentStudentLinkDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, parent_id, link_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can unlink students."},
+                status=403
+            )
+
+        parent = college_parent_queryset(organization).filter(
+            id=parent_id
+        ).first()
+
+        if not parent:
+            return Response(
+                {"detail": "Parent not found."},
+                status=404
+            )
+
+        parent_profile = getattr(parent, "parent_profile", None)
+
+        if not parent_profile:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404
+            )
+
+        link = ParentStudent.objects.filter(
+            id=link_id,
+            parent=parent_profile,
+            student__user__organization=organization,
+        ).first()
+
+        if not link:
+            return Response(
+                {"detail": "Parent-student link not found."},
+                status=404
+            )
+
+        link.delete()
+
+        return Response({
+            "message": "Student unlinked successfully."
         })
 
 
