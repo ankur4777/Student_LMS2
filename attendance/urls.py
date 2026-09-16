@@ -6,6 +6,11 @@ from .views import (
     StudentAttendanceSummaryAPIView,
 )
 from .views import (
+    CollegeAdminAttendanceSessionDetailAPIView,
+    CollegeAdminAttendanceSessionsAPIView,
+    CollegeAdminAttendanceSetupAPIView,
+    CollegeAdminAttendanceSummaryAPIView,
+    CollegeAdminStudentAttendanceAPIView,
     TeacherAttendanceSetupAPIView,
     TeacherSaveAttendanceAPIView,
     TeacherAttendanceSessionAPIView,
@@ -44,5 +49,30 @@ urlpatterns = [
         "parent/student/<int:student_id>/",
         ParentStudentAttendanceAPIView.as_view(),
         name="parent-student-attendance",
+    ),
+    path(
+        "college-admin/setup/",
+        CollegeAdminAttendanceSetupAPIView.as_view(),
+        name="college-admin-attendance-setup",
+    ),
+    path(
+        "college-admin/sessions/",
+        CollegeAdminAttendanceSessionsAPIView.as_view(),
+        name="college-admin-attendance-sessions",
+    ),
+    path(
+        "college-admin/sessions/<int:session_id>/",
+        CollegeAdminAttendanceSessionDetailAPIView.as_view(),
+        name="college-admin-attendance-session-detail",
+    ),
+    path(
+        "college-admin/summary/",
+        CollegeAdminAttendanceSummaryAPIView.as_view(),
+        name="college-admin-attendance-summary",
+    ),
+    path(
+        "college-admin/students/<int:student_id>/",
+        CollegeAdminStudentAttendanceAPIView.as_view(),
+        name="college-admin-student-attendance",
     ),
 ]

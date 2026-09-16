@@ -1,4 +1,5 @@
 import mimetypes
+from datetime import datetime
 
 from django.http import FileResponse
 from django.shortcuts import get_object_or_404
@@ -158,15 +159,19 @@ def student_live_class_queryset(user, student_profile):
 
 
 def live_class_has_ended(live_class):
-    today = timezone.localdate()
+    current_timezone = timezone.get_current_timezone()
+    class_end = timezone.make_aware(
+        datetime.combine(
+            live_class.class_date,
+            live_class.end_time,
+        ),
+        current_timezone,
+    )
 
-    if live_class.class_date < today:
-        return True
-
-    if live_class.class_date > today:
-        return False
-
-    return live_class.end_time <= timezone.localtime().time()
+    return timezone.localtime(
+        timezone.now(),
+        current_timezone,
+    ) >= class_end
 
 
 def live_class_can_start(live_class):

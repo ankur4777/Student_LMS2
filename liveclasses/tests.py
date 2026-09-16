@@ -1,8 +1,9 @@
-from datetime import date, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from unittest import mock
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from academics.models import (
@@ -696,6 +697,154 @@ class LiveClassTeacherStudentIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.live_class.refresh_from_db()
         self.assertEqual(self.live_class.status, LiveClass.Status.SCHEDULED)
+
+    @override_settings(TIME_ZONE="Asia/Kolkata")
+    def test_live_class_ended_in_local_timezone_can_be_completed(self):
+        self.live_class.class_date = date(2026, 9, 16)
+        self.live_class.end_time = time(16, 15)
+        self.live_class.status = LiveClass.Status.LIVE
+        self.live_class.save(
+            update_fields=["class_date", "end_time", "status"]
+        )
+        current_time = datetime(
+            2026,
+            9,
+            16,
+            10,
+            46,
+            tzinfo=dt_timezone.utc,
+        )
+
+        with (
+            timezone.override("Asia/Kolkata"),
+            mock.patch("liveclasses.views.timezone.now", return_value=current_time),
+        ):
+            self.authenticate(self.teacher_user)
+            list_response = self.client.get(
+                "/api/live-classes/teacher/classes/"
+            )
+
+            self.assertEqual(list_response.status_code, 200)
+            live_class_data = next(
+                item
+                for item in list_response.data["classes"]
+                if item["id"] == self.live_class.id
+            )
+            self.assertTrue(live_class_data["can_complete"])
+
+            complete_response = self.client.patch(
+                f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+                {"status": LiveClass.Status.COMPLETED},
+                format="json",
+            )
+
+        self.assertEqual(complete_response.status_code, 200)
+        self.live_class.refresh_from_db()
+        self.assertEqual(self.live_class.status, LiveClass.Status.COMPLETED)
+
+    @override_settings(TIME_ZONE="Asia/Kolkata")
+    def test_local_future_end_time_cannot_be_completed(self):
+        self.live_class.class_date = date(2026, 9, 16)
+        self.live_class.end_time = time(16, 15)
+        self.live_class.status = LiveClass.Status.LIVE
+        self.live_class.save(
+            update_fields=["class_date", "end_time", "status"]
+        )
+        current_time = datetime(
+            2026,
+            9,
+            16,
+            10,
+            30,
+            tzinfo=dt_timezone.utc,
+        )
+
+        with (
+            timezone.override("Asia/Kolkata"),
+            mock.patch("liveclasses.views.timezone.now", return_value=current_time),
+        ):
+            self.authenticate(self.teacher_user)
+            list_response = self.client.get(
+                "/api/live-classes/teacher/classes/"
+            )
+            complete_response = self.client.patch(
+                f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+                {"status": LiveClass.Status.COMPLETED},
+                format="json",
+            )
+
+        self.assertEqual(list_response.status_code, 200)
+        live_class_data = next(
+            item
+            for item in list_response.data["classes"]
+            if item["id"] == self.live_class.id
+        )
+        self.assertFalse(live_class_data["can_complete"])
+        self.assertEqual(complete_response.status_code, 400)
+        self.live_class.refresh_from_db()
+        self.assertEqual(self.live_class.status, LiveClass.Status.LIVE)
+
+    @override_settings(TIME_ZONE="Asia/Kolkata")
+    def test_cancelled_class_has_no_complete_action(self):
+        self.live_class.class_date = date(2026, 9, 16)
+        self.live_class.end_time = time(16, 15)
+        self.live_class.status = LiveClass.Status.CANCELLED
+        self.live_class.save(
+            update_fields=["class_date", "end_time", "status"]
+        )
+        current_time = datetime(
+            2026,
+            9,
+            16,
+            10,
+            46,
+            tzinfo=dt_timezone.utc,
+        )
+
+        with (
+            timezone.override("Asia/Kolkata"),
+            mock.patch("liveclasses.views.timezone.now", return_value=current_time),
+        ):
+            self.authenticate(self.teacher_user)
+            response = self.client.get("/api/live-classes/teacher/classes/")
+
+        self.assertEqual(response.status_code, 200)
+        live_class_data = next(
+            item
+            for item in response.data["classes"]
+            if item["id"] == self.live_class.id
+        )
+        self.assertFalse(live_class_data["can_complete"])
+
+    @override_settings(TIME_ZONE="Asia/Kolkata")
+    def test_unrelated_teacher_denied_for_local_ended_live_class(self):
+        self.live_class.class_date = date(2026, 9, 16)
+        self.live_class.end_time = time(16, 15)
+        self.live_class.status = LiveClass.Status.LIVE
+        self.live_class.save(
+            update_fields=["class_date", "end_time", "status"]
+        )
+        current_time = datetime(
+            2026,
+            9,
+            16,
+            10,
+            46,
+            tzinfo=dt_timezone.utc,
+        )
+
+        with (
+            timezone.override("Asia/Kolkata"),
+            mock.patch("liveclasses.views.timezone.now", return_value=current_time),
+        ):
+            self.authenticate(self.other_teacher_user)
+            response = self.client.patch(
+                f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+                {"status": LiveClass.Status.COMPLETED},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, 404)
 
     def test_completed_class_becomes_recording_eligible(self):
         self.complete_class_date(self.live_class)
