@@ -1,5 +1,7 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -8,12 +10,13 @@ from academics.models import (
     ClassRoom,
     Section,
     Subject,
+    StudentEnrollment,
     TeacherAssignment,
 )
 from accounts.models import ParentProfile, StudentProfile, TeacherProfile, User
 from institutions.models import Organization
 
-from .models import LiveClass
+from .models import LiveClass, LiveClassRecording
 
 
 class CollegeAdminLiveClassManagementTests(TestCase):
@@ -344,3 +347,393 @@ class CollegeAdminLiveClassManagementTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+class LiveClassTeacherStudentIntegrationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org_du = Organization.objects.create(name="DU", code="du")
+        self.org_other = Organization.objects.create(
+            name="Other College",
+            code="other-college",
+        )
+
+        self.session_du = AcademicSession.objects.create(
+            organization=self.org_du,
+            name="2026-2027",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom_du = ClassRoom.objects.create(
+            organization=self.org_du,
+            name="BCA",
+            academic_session=self.session_du,
+        )
+        self.section_a = Section.objects.create(
+            organization=self.org_du,
+            name="A",
+            classroom=self.classroom_du,
+        )
+        self.section_b = Section.objects.create(
+            organization=self.org_du,
+            name="B",
+            classroom=self.classroom_du,
+        )
+        self.subject_du = Subject.objects.create(
+            organization=self.org_du,
+            name="Web Development",
+            code="WEB",
+            classroom=self.classroom_du,
+        )
+
+        self.teacher_user = User.objects.create_user(
+            username="du-teacher",
+            password="pass",
+            role="teacher",
+            organization=self.org_du,
+        )
+        self.teacher_profile = TeacherProfile.objects.create(
+            user=self.teacher_user,
+            employee_id="DU-T1",
+        )
+        self.other_teacher_user = User.objects.create_user(
+            username="du-other-teacher",
+            password="pass",
+            role="teacher",
+            organization=self.org_du,
+        )
+        self.other_teacher_profile = TeacherProfile.objects.create(
+            user=self.other_teacher_user,
+            employee_id="DU-T2",
+        )
+        self.cross_org_teacher_user = User.objects.create_user(
+            username="other-teacher",
+            password="pass",
+            role="teacher",
+            organization=self.org_other,
+        )
+        self.cross_org_teacher_profile = TeacherProfile.objects.create(
+            user=self.cross_org_teacher_user,
+            employee_id="OT-T1",
+        )
+
+        self.assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher_profile,
+            subject=self.subject_du,
+            section=self.section_a,
+            is_active=True,
+        )
+        self.other_assignment = TeacherAssignment.objects.create(
+            teacher=self.other_teacher_profile,
+            subject=self.subject_du,
+            section=self.section_b,
+            is_active=True,
+        )
+
+        self.live_class = LiveClass.objects.create(
+            organization=self.org_du,
+            teacher_assignment=self.assignment,
+            title="Web Development Live Class",
+            class_date=timezone.localdate() + timedelta(days=1),
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            meeting_link="https://meet.example.com/du-web",
+        )
+
+        self.student_profile = self.create_student(
+            "du-student-a",
+            self.org_du,
+            "DU-S1",
+            self.section_a,
+        )
+        self.other_section_student = self.create_student(
+            "du-student-b",
+            self.org_du,
+            "DU-S2",
+            self.section_b,
+        )
+        self.inactive_student = self.create_student(
+            "du-student-inactive",
+            self.org_du,
+            "DU-S3",
+            self.section_a,
+            is_active=False,
+        )
+
+        other_session = AcademicSession.objects.create(
+            organization=self.org_other,
+            name="2026-2027",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        other_classroom = ClassRoom.objects.create(
+            organization=self.org_other,
+            name="BCA",
+            academic_session=other_session,
+        )
+        other_section = Section.objects.create(
+            organization=self.org_other,
+            name="A",
+            classroom=other_classroom,
+        )
+        self.cross_org_student = self.create_student(
+            "other-student",
+            self.org_other,
+            "OT-S1",
+            other_section,
+        )
+
+    def create_student(
+        self,
+        username,
+        organization,
+        admission_number,
+        section,
+        is_active=True,
+    ):
+        user = User.objects.create_user(
+            username=username,
+            password="pass",
+            role="student",
+            organization=organization,
+        )
+        student_profile = StudentProfile.objects.create(
+            user=user,
+            admission_number=admission_number,
+        )
+        StudentEnrollment.objects.create(
+            student=student_profile,
+            section=section,
+            is_active=is_active,
+        )
+        return student_profile
+
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
+
+    def teacher_class_titles(self, user):
+        self.authenticate(user)
+        response = self.client.get("/api/live-classes/teacher/classes/")
+        self.assertEqual(response.status_code, 200)
+        return [item["title"] for item in response.data["classes"]]
+
+    def student_class_response(self, user):
+        self.authenticate(user)
+        return self.client.get("/api/live-classes/student/classes/")
+
+    def test_assigned_teacher_can_see_college_admin_live_class(self):
+        titles = self.teacher_class_titles(self.teacher_user)
+
+        self.assertIn("Web Development Live Class", titles)
+
+    def test_other_teachers_cannot_see_assigned_teacher_live_class(self):
+        same_org_titles = self.teacher_class_titles(self.other_teacher_user)
+        cross_org_titles = self.teacher_class_titles(
+            self.cross_org_teacher_user
+        )
+
+        self.assertNotIn("Web Development Live Class", same_org_titles)
+        self.assertNotIn("Web Development Live Class", cross_org_titles)
+
+    def test_active_enrolled_student_can_see_live_class(self):
+        response = self.student_class_response(self.student_profile.user)
+
+        self.assertEqual(response.status_code, 200)
+        titles = [item["title"] for item in response.data]
+        self.assertIn("Web Development Live Class", titles)
+
+    def test_wrong_section_cross_org_and_inactive_students_cannot_see_class(self):
+        for profile in [
+            self.other_section_student,
+            self.cross_org_student,
+            self.inactive_student,
+        ]:
+            response = self.student_class_response(profile.user)
+            titles = [
+                item["title"]
+                for item in response.data
+            ] if response.status_code == 200 else []
+            links = [
+                item["meeting_link"]
+                for item in response.data
+            ] if response.status_code == 200 else []
+
+            self.assertNotIn("Web Development Live Class", titles)
+            self.assertNotIn("https://meet.example.com/du-web", links)
+
+    def test_student_dashboard_uses_same_active_enrollment_visibility(self):
+        self.authenticate(self.student_profile.user)
+        response = self.client.get("/api/accounts/student/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        titles = [item["title"] for item in response.data["upcoming_classes"]]
+        self.assertIn("Web Development Live Class", titles)
+
+        self.authenticate(self.other_section_student.user)
+        response = self.client.get("/api/accounts/student/dashboard/")
+
+        self.assertEqual(response.status_code, 200)
+        titles = [item["title"] for item in response.data["upcoming_classes"]]
+        self.assertNotIn("Web Development Live Class", titles)
+
+    def test_recording_playback_requires_authorized_active_enrollment(self):
+        self.live_class.status = LiveClass.Status.COMPLETED
+        self.live_class.save(update_fields=["status"])
+        recording = LiveClassRecording.objects.create(
+            live_class=self.live_class,
+            uploaded_by=self.teacher_profile,
+            title="Web Development Recording",
+            is_available=True,
+        )
+
+        playback_url = (
+            f"/api/live-classes/student/recordings/"
+            f"{recording.public_id}/play/"
+        )
+
+        for profile in [
+            self.other_section_student,
+            self.cross_org_student,
+            self.inactive_student,
+        ]:
+            self.authenticate(profile.user)
+            response = self.client.get(playback_url)
+            self.assertEqual(response.status_code, 403)
+
+    def complete_class_date(self, live_class):
+        live_class.class_date = timezone.localdate() - timedelta(days=1)
+        live_class.save(update_fields=["class_date"])
+
+    def test_assigned_teacher_can_start_and_complete_class(self):
+        self.complete_class_date(self.live_class)
+        self.authenticate(self.teacher_user)
+
+        start_response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.LIVE},
+            format="json",
+        )
+        complete_response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.COMPLETED},
+            format="json",
+        )
+
+        self.assertEqual(start_response.status_code, 200)
+        self.assertEqual(complete_response.status_code, 200)
+        self.live_class.refresh_from_db()
+        self.assertEqual(self.live_class.status, LiveClass.Status.COMPLETED)
+
+    def test_teacher_can_complete_missed_started_class_after_end(self):
+        self.complete_class_date(self.live_class)
+        self.authenticate(self.teacher_user)
+
+        response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.COMPLETED},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.live_class.refresh_from_db()
+        self.assertEqual(self.live_class.status, LiveClass.Status.COMPLETED)
+
+    def test_unrelated_cross_org_teacher_and_student_cannot_update_status(self):
+        self.complete_class_date(self.live_class)
+
+        for user, expected_status in [
+            (self.other_teacher_user, 404),
+            (self.cross_org_teacher_user, 404),
+            (self.student_profile.user, 403),
+        ]:
+            self.authenticate(user)
+            response = self.client.patch(
+                f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+                {"status": LiveClass.Status.COMPLETED},
+                format="json",
+            )
+            self.assertEqual(response.status_code, expected_status)
+
+        self.live_class.refresh_from_db()
+        self.assertEqual(self.live_class.status, LiveClass.Status.SCHEDULED)
+
+    def test_cancelled_and_completed_classes_are_protected_from_transitions(self):
+        self.complete_class_date(self.live_class)
+        self.authenticate(self.teacher_user)
+
+        self.live_class.status = LiveClass.Status.CANCELLED
+        self.live_class.save(update_fields=["status"])
+
+        cancelled_response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.COMPLETED},
+            format="json",
+        )
+
+        self.live_class.status = LiveClass.Status.COMPLETED
+        self.live_class.save(update_fields=["status"])
+
+        completed_response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.LIVE},
+            format="json",
+        )
+
+        self.assertEqual(cancelled_response.status_code, 400)
+        self.assertEqual(completed_response.status_code, 400)
+
+    def test_future_class_cannot_be_completed(self):
+        self.authenticate(self.teacher_user)
+
+        response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.COMPLETED},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.live_class.refresh_from_db()
+        self.assertEqual(self.live_class.status, LiveClass.Status.SCHEDULED)
+
+    def test_completed_class_becomes_recording_eligible(self):
+        self.complete_class_date(self.live_class)
+        self.live_class.status = LiveClass.Status.COMPLETED
+        self.live_class.save(update_fields=["status"])
+        self.authenticate(self.teacher_user)
+
+        response = self.client.get(
+            "/api/live-classes/teacher/recordings/eligible-classes/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        class_ids = [item["id"] for item in response.data]
+        self.assertIn(self.live_class.id, class_ids)
+
+    def test_recording_upload_remains_attached_to_same_live_class(self):
+        self.complete_class_date(self.live_class)
+        self.live_class.status = LiveClass.Status.COMPLETED
+        self.live_class.save(update_fields=["status"])
+        self.authenticate(self.teacher_user)
+
+        video = SimpleUploadedFile(
+            "class.mp4",
+            b"test video",
+            content_type="video/mp4",
+        )
+        response = self.client.post(
+            "/api/live-classes/teacher/recordings/upload/",
+            {
+                "live_class": self.live_class.id,
+                "title": "Web Development Recording",
+                "video": video,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        recording = LiveClassRecording.objects.get(
+            public_id=response.data["public_id"]
+        )
+        self.assertEqual(recording.live_class_id, self.live_class.id)

@@ -20,6 +20,8 @@ interface TeacherClass {
   section_name: string;
   classroom_name: string;
   has_recording: boolean;
+  can_start: boolean;
+  can_complete: boolean;
 }
 
 interface ClassesResponse {
@@ -33,30 +35,41 @@ interface TeacherUser {
   organization?: string;
 }
 
+function getSavedTeacher() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const savedTeacher = localStorage.getItem("teacher_user");
+
+  if (!savedTeacher) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(savedTeacher);
+  } catch {
+    return {};
+  }
+}
+
 export default function TeacherClassesPage() {
   const router = useRouter();
 
   const [classes, setClasses] = useState<TeacherClass[]>([]);
-  const [teacher, setTeacher] = useState<TeacherUser>({});
+  const [teacher] = useState<TeacherUser>(getSavedTeacher);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [filter, setFilter] = useState("all");
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("teacher_access_token");
-    const savedTeacher = localStorage.getItem("teacher_user");
 
     if (!token) {
       router.replace("/teacher/login");
       return;
-    }
-
-    if (savedTeacher) {
-      try {
-        setTeacher(JSON.parse(savedTeacher));
-      } catch {
-        // Ignore invalid local storage data
-      }
     }
 
     const fetchClasses = async () => {
@@ -110,6 +123,82 @@ export default function TeacherClassesPage() {
       : classes.filter(
           (liveClass) => liveClass.category === filter
         );
+
+  const updateClassStatus = async (
+    liveClass: TeacherClass,
+    nextStatus: "live" | "completed"
+  ) => {
+    const token = localStorage.getItem("teacher_access_token");
+
+    if (!token) {
+      router.replace("/teacher/login");
+      return;
+    }
+
+    try {
+      setUpdatingId(liveClass.id);
+      setError("");
+      setMessage("");
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/live-classes/teacher/classes/${liveClass.id}/status/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: nextStatus,
+          }),
+        }
+      );
+
+      if (response.status === 401) {
+        localStorage.removeItem("teacher_access_token");
+        localStorage.removeItem("teacher_refresh_token");
+        localStorage.removeItem("teacher_user");
+
+        router.replace("/teacher/login");
+        return;
+      }
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result.detail || "Unable to update class status."
+        );
+      }
+
+      setClasses((items) =>
+        items.map((item) =>
+          item.id === liveClass.id
+            ? {
+                ...item,
+                status: result.class.status,
+                category:
+                  result.class.status === "completed"
+                    ? "completed"
+                    : item.category,
+                can_start: result.class.can_start,
+                can_complete: result.class.can_complete,
+              }
+            : item
+        )
+      );
+
+      setMessage(result.message || "Class status updated.");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to update class status."
+      );
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   return (
     <div className="teacher-dashboard">
@@ -172,6 +261,12 @@ export default function TeacherClassesPage() {
             {error && (
               <div className="alert alert-danger">
                 {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="alert alert-success">
+                {message}
               </div>
             )}
 
@@ -256,6 +351,36 @@ export default function TeacherClassesPage() {
                               Open Class
                             </a>
                           )}
+
+                        {liveClass.can_start && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            disabled={updatingId === liveClass.id}
+                            onClick={() =>
+                              updateClassStatus(liveClass, "live")
+                            }
+                          >
+                            {updatingId === liveClass.id
+                              ? "Updating..."
+                              : "Start Class"}
+                          </button>
+                        )}
+
+                        {liveClass.can_complete && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-success btn-sm"
+                            disabled={updatingId === liveClass.id}
+                            onClick={() =>
+                              updateClassStatus(liveClass, "completed")
+                            }
+                          >
+                            {updatingId === liveClass.id
+                              ? "Updating..."
+                              : "Mark Completed"}
+                          </button>
+                        )}
 
                       </div>
                     </div>

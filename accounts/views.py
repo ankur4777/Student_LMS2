@@ -64,12 +64,15 @@ class StudentDashboardAPIView(APIView):
             )
 
         section = enrollment.section
+        active_sections = student_profile.enrollments.filter(
+            is_active=True
+        ).values('section_id')
         today = timezone.localdate()
 
         # Today's classes
         today_classes = LiveClass.objects.filter(
             organization=user.organization,
-            teacher_assignment__section=section,
+            teacher_assignment__section_id__in=active_sections,
             class_date=today
         ).select_related(
             'teacher_assignment__teacher__user',
@@ -80,7 +83,7 @@ class StudentDashboardAPIView(APIView):
         # Upcoming classes
         upcoming_classes = LiveClass.objects.filter(
             organization=user.organization,
-            teacher_assignment__section=section,
+            teacher_assignment__section_id__in=active_sections,
             class_date__gt=today,
             status=LiveClass.Status.SCHEDULED
         ).select_related(
@@ -95,9 +98,11 @@ class StudentDashboardAPIView(APIView):
         # Available recorded classes
         recorded_classes = LiveClass.objects.filter(
             organization=user.organization,
-            teacher_assignment__section=section,
+            teacher_assignment__section_id__in=active_sections,
             status=LiveClass.Status.COMPLETED,
             recording__is_available=True
+        ).exclude(
+            recording__video=''
         ).select_related(
             'teacher_assignment__teacher__user',
             'teacher_assignment__subject',

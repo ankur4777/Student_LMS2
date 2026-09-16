@@ -5,20 +5,18 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils.dateparse import parse_date, parse_time
 
-from .models import LiveClass, LiveClassRecording
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from accounts.models import StudentProfile
 from django.utils import timezone
 
-from .serializers import LiveClassSerializer
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework import status
 
 from accounts.models import StudentProfile, TeacherProfile
 from academics.models import TeacherAssignment
 
+from .models import LiveClass, LiveClassRecording
 from .serializers import (
     LiveClassSerializer,
     TeacherRecordingUploadSerializer,
@@ -145,6 +143,80 @@ def serialize_college_admin_live_class(live_class):
             }
         ),
     }
+
+
+def student_live_class_queryset(user, student_profile):
+    return LiveClass.objects.filter(
+        organization=user.organization,
+        teacher_assignment__section__student_enrollments__student=student_profile,
+        teacher_assignment__section__student_enrollments__is_active=True,
+    ).select_related(
+        'teacher_assignment__teacher__user',
+        'teacher_assignment__subject',
+        'teacher_assignment__section'
+    ).distinct()
+
+
+def live_class_has_ended(live_class):
+    today = timezone.localdate()
+
+    if live_class.class_date < today:
+        return True
+
+    if live_class.class_date > today:
+        return False
+
+    return live_class.end_time <= timezone.localtime().time()
+
+
+def live_class_can_start(live_class):
+    return (
+        live_class.status == LiveClass.Status.SCHEDULED
+        and live_class.class_date <= timezone.localdate()
+    )
+
+
+def live_class_can_complete(live_class):
+    return (
+        live_class.status in [
+            LiveClass.Status.SCHEDULED,
+            LiveClass.Status.LIVE,
+        ]
+        and live_class_has_ended(live_class)
+    )
+
+
+def validate_live_class_status_transition(live_class, next_status):
+    if next_status not in [
+        LiveClass.Status.LIVE,
+        LiveClass.Status.COMPLETED,
+    ]:
+        return {'detail': 'Invalid status transition.'}, 400
+
+    if live_class.status == LiveClass.Status.CANCELLED:
+        return {'detail': 'Cancelled live classes cannot be changed.'}, 400
+
+    if live_class.status == LiveClass.Status.COMPLETED:
+        return {'detail': 'Completed live classes cannot be changed.'}, 400
+
+    if next_status == LiveClass.Status.LIVE:
+        if live_class.status != LiveClass.Status.SCHEDULED:
+            return {'detail': 'Only scheduled classes can be started.'}, 400
+
+        if not live_class_can_start(live_class):
+            return {'detail': 'Future classes cannot be started.'}, 400
+
+    if next_status == LiveClass.Status.COMPLETED:
+        if live_class.status not in [
+            LiveClass.Status.SCHEDULED,
+            LiveClass.Status.LIVE,
+        ]:
+            return {'detail': 'This class cannot be completed.'}, 400
+
+        if not live_class_has_ended(live_class):
+            return {'detail': 'Live class cannot be completed before it ends.'}, 400
+
+    return None, None
 
 
 def validate_college_admin_live_class_payload(data, organization, instance=None):
@@ -507,24 +579,15 @@ class StudentLiveClassesAPIView(APIView):
                     status=404
                 )
 
-        # Get active enrollment
-        enrollment = student_profile.enrollments.filter(
-            is_active=True
-        ).select_related('section').first()
-
-        if not enrollment:
+        if not student_profile.enrollments.filter(is_active=True).exists():
             return Response(
                 {'detail': 'No active student enrollment found.'},
                 status=404
             )
 
-        live_classes = LiveClass.objects.filter(
-            organization=user.organization,
-            teacher_assignment__section=enrollment.section
-        ).select_related(
-            'teacher_assignment__teacher__user',
-            'teacher_assignment__subject',
-            'teacher_assignment__section'
+        live_classes = student_live_class_queryset(
+            user,
+            student_profile
         ).order_by(
             'class_date',
             'start_time'
@@ -559,11 +622,7 @@ class StudentTodayClassesAPIView(APIView):
                 status=404
             )
 
-        enrollment = student_profile.enrollments.filter(
-            is_active=True
-        ).select_related('section').first()
-
-        if not enrollment:
+        if not student_profile.enrollments.filter(is_active=True).exists():
             return Response(
                 {'detail': 'No active student enrollment found.'},
                 status=404
@@ -571,14 +630,11 @@ class StudentTodayClassesAPIView(APIView):
 
         today = timezone.localdate()
 
-        live_classes = LiveClass.objects.filter(
-            organization=user.organization,
-            teacher_assignment__section=enrollment.section,
+        live_classes = student_live_class_queryset(
+            user,
+            student_profile
+        ).filter(
             class_date=today
-        ).select_related(
-            'teacher_assignment__teacher__user',
-            'teacher_assignment__subject',
-            'teacher_assignment__section'
         ).order_by('start_time')
 
         serializer = LiveClassSerializer(
@@ -610,11 +666,7 @@ class StudentUpcomingClassesAPIView(APIView):
                 status=404
             )
 
-        enrollment = student_profile.enrollments.filter(
-            is_active=True
-        ).select_related('section').first()
-
-        if not enrollment:
+        if not student_profile.enrollments.filter(is_active=True).exists():
             return Response(
                 {'detail': 'No active student enrollment found.'},
                 status=404
@@ -622,15 +674,12 @@ class StudentUpcomingClassesAPIView(APIView):
 
         today = timezone.localdate()
 
-        live_classes = LiveClass.objects.filter(
-            organization=user.organization,
-            teacher_assignment__section=enrollment.section,
+        live_classes = student_live_class_queryset(
+            user,
+            student_profile
+        ).filter(
             class_date__gt=today,
             status=LiveClass.Status.SCHEDULED
-        ).select_related(
-            'teacher_assignment__teacher__user',
-            'teacher_assignment__subject',
-            'teacher_assignment__section'
         ).order_by(
             'class_date',
             'start_time'
@@ -665,24 +714,17 @@ class StudentCompletedClassesAPIView(APIView):
                 status=404
             )
 
-        enrollment = student_profile.enrollments.filter(
-            is_active=True
-        ).select_related('section').first()
-
-        if not enrollment:
+        if not student_profile.enrollments.filter(is_active=True).exists():
             return Response(
                 {'detail': 'No active student enrollment found.'},
                 status=404
             )
 
-        live_classes = LiveClass.objects.filter(
-            organization=user.organization,
-            teacher_assignment__section=enrollment.section,
+        live_classes = student_live_class_queryset(
+            user,
+            student_profile
+        ).filter(
             status=LiveClass.Status.COMPLETED
-        ).select_related(
-            'teacher_assignment__teacher__user',
-            'teacher_assignment__subject',
-            'teacher_assignment__section'
         ).order_by(
             '-class_date',
             '-start_time'
@@ -717,27 +759,21 @@ class StudentRecordedClassesAPIView(APIView):
                 status=404
             )
 
-        enrollment = student_profile.enrollments.filter(
-            is_active=True
-        ).select_related('section').first()
-
-        if not enrollment:
+        if not student_profile.enrollments.filter(is_active=True).exists():
             return Response(
                 {'detail': 'No active student enrollment found.'},
                 status=404
             )
 
-        live_classes = LiveClass.objects.filter(
-            organization=user.organization,
-            teacher_assignment__section=enrollment.section,
+        live_classes = student_live_class_queryset(
+            user,
+            student_profile
+        ).filter(
             status=LiveClass.Status.COMPLETED,
             recording__is_available=True
         ).exclude(
             recording__video=''
         ).select_related(
-            'teacher_assignment__teacher__user',
-            'teacher_assignment__subject',
-            'teacher_assignment__section',
             'recording'
         ).order_by(
             '-class_date',
@@ -1075,6 +1111,69 @@ class TeacherRecordingDetailAPIView(APIView):
             'title': updated_recording.title,
             'is_available': updated_recording.is_available,
         })
+
+
+class TeacherLiveClassStatusAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, class_id):
+        user = request.user
+
+        if user.role != 'teacher':
+            return Response(
+                {'detail': 'Only teachers can update live class status.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        teacher_profile = TeacherProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not teacher_profile:
+            return Response(
+                {'detail': 'Teacher profile not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        live_class = LiveClass.objects.filter(
+            id=class_id,
+            organization=user.organization,
+            teacher_assignment__teacher=teacher_profile,
+        ).select_related(
+            'teacher_assignment__subject',
+            'teacher_assignment__section',
+            'teacher_assignment__section__classroom'
+        ).first()
+
+        if not live_class:
+            return Response(
+                {'detail': 'Live class not found.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        next_status = request.data.get('status')
+        error, status_code = validate_live_class_status_transition(
+            live_class,
+            next_status,
+        )
+
+        if error:
+            return Response(error, status=status_code)
+
+        live_class.status = next_status
+        live_class.save(update_fields=['status', 'updated_at'])
+
+        return Response({
+            'message': 'Live class status updated successfully.',
+            'class': {
+                'id': live_class.id,
+                'status': live_class.status,
+                'can_start': live_class_can_start(live_class),
+                'can_complete': live_class_can_complete(live_class),
+            },
+        })
+
+
 class TeacherLiveClassesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1182,92 +1281,12 @@ class TeacherLiveClassesAPIView(APIView):
                         live_class,
                         'recording'
                     ),
-            })
 
-        return Response({
-            'count': len(data),
-            'classes': data,
-        })
-        
-    class TeacherLiveClassesAPIView(APIView):
-        permission_classes = [IsAuthenticated]
+                'can_start':
+                    live_class_can_start(live_class),
 
-    def get(self, request):
-        user = request.user
-
-        if user.role != 'teacher':
-            return Response(
-                {
-                    'detail': 'Only teachers can access this endpoint.'
-                },
-                status=status.HTTP_403_FORBIDDEN
-            )
-
-        teacher_profile = TeacherProfile.objects.filter(
-            user=user
-        ).first()
-
-        if not teacher_profile:
-            return Response(
-                {
-                    'detail': 'Teacher profile not found.'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        live_classes = LiveClass.objects.filter(
-            organization=user.organization,
-            teacher_assignment__teacher=teacher_profile,
-            teacher_assignment__is_active=True
-        ).select_related(
-            'teacher_assignment__subject',
-            'teacher_assignment__section',
-            'teacher_assignment__section__classroom'
-        ).order_by(
-            '-class_date',
-            '-start_time'
-        )
-
-        today = timezone.localdate()
-
-        data = []
-
-        for live_class in live_classes:
-
-            if live_class.status == LiveClass.Status.COMPLETED:
-                category = 'completed'
-
-            elif live_class.class_date == today:
-                category = 'today'
-
-            elif live_class.class_date > today:
-                category = 'upcoming'
-
-            else:
-                category = 'past'
-
-            data.append({
-                'id': live_class.id,
-                'title': live_class.title,
-                'description': live_class.description,
-                'class_date': live_class.class_date,
-                'start_time': live_class.start_time,
-                'end_time': live_class.end_time,
-                'meeting_link': live_class.meeting_link,
-                'status': live_class.status,
-                'category': category,
-
-                'subject_name':
-                    live_class.teacher_assignment.subject.name,
-
-                'section_name':
-                    live_class.teacher_assignment.section.name,
-
-                'classroom_name':
-                    live_class.teacher_assignment.section.classroom.name,
-
-                'has_recording':
-                    hasattr(live_class, 'recording'),
+                'can_complete':
+                    live_class_can_complete(live_class),
             })
 
         return Response({

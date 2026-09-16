@@ -16,6 +16,7 @@ from .views import (
     TeacherRecordingsAPIView,
     TeacherRecordingDetailAPIView,
     TeacherLiveClassesAPIView,
+    TeacherLiveClassStatusAPIView,
 )
 
 
@@ -95,6 +96,11 @@ urlpatterns = [
     'teacher/classes/',
     TeacherLiveClassesAPIView.as_view(),
     name='teacher-classes'
+),
+    path(
+    'teacher/classes/<int:class_id>/status/',
+    TeacherLiveClassStatusAPIView.as_view(),
+    name='teacher-class-status'
 ),
     
 ]
