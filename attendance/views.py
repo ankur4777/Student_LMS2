@@ -456,6 +456,9 @@ class CollegeAdminStudentAttendanceAPIView(APIView):
         records = StudentAttendance.objects.filter(
             student=student,
             attendance_session__organization=organization,
+            attendance_session__section__organization=organization,
+            attendance_session__subject__organization=organization,
+            attendance_session__teacher__user__organization=organization,
         ).select_related(
             'attendance_session',
             'attendance_session__subject',

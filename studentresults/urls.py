@@ -9,6 +9,9 @@ from .views import (
     TeacherPublishExamAPIView,
     StudentResultsAPIView,
     ParentStudentResultsAPIView,
+    CollegeAdminResultsAPIView,
+    CollegeAdminResultsSetupAPIView,
+    CollegeAdminResultDetailAPIView,
 )
 
 
@@ -53,6 +56,21 @@ path(
     "parent/student/<int:student_id>/",
     ParentStudentResultsAPIView.as_view(),
     name="parent-student-results",
+),
+path(
+    "college-admin/",
+    CollegeAdminResultsAPIView.as_view(),
+    name="college-admin-results",
+),
+path(
+    "college-admin/setup/",
+    CollegeAdminResultsSetupAPIView.as_view(),
+    name="college-admin-results-setup",
+),
+path(
+    "college-admin/<int:exam_id>/",
+    CollegeAdminResultDetailAPIView.as_view(),
+    name="college-admin-result-detail",
 ),
     
 ]

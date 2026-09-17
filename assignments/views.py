@@ -14,6 +14,9 @@ from academics.models import (
     TeacherAssignment,
     StudentEnrollment,
     ParentStudent,
+    ClassRoom,
+    Section,
+    Subject,
 )
 from django.utils import timezone
 from .models import AssignmentSubmission
@@ -25,6 +28,296 @@ from notifications.services import (
     notify_assignment_published,
     notify_assignment_submitted,
 )
+
+
+def _display_name(user):
+    return user.get_full_name().strip() or user.username
+
+
+def _college_admin_required(user):
+    return user.role == "college_admin" and user.organization_id
+
+
+def _college_assignment_queryset(user):
+    return Assignment.objects.filter(
+        organization=user.organization
+    ).select_related(
+        "teacher_assignment",
+        "teacher_assignment__teacher",
+        "teacher_assignment__teacher__user",
+        "teacher_assignment__subject",
+        "teacher_assignment__section",
+        "teacher_assignment__section__classroom",
+        "teacher_assignment__section__classroom__academic_session",
+    )
+
+
+def _assignment_summary(assignment):
+    teacher_assignment = assignment.teacher_assignment
+    teacher_user = teacher_assignment.teacher.user
+    subject = teacher_assignment.subject
+    section = teacher_assignment.section
+    classroom = section.classroom
+    academic_session = classroom.academic_session
+
+    eligible_students = StudentEnrollment.objects.filter(
+        section=section,
+        is_active=True,
+        student__user__organization=assignment.organization,
+    ).count()
+
+    submission_count = assignment.submissions.filter(
+        student__user__organization=assignment.organization,
+        student__enrollments__section=section,
+        student__enrollments__is_active=True,
+    ).distinct().count()
+
+    graded_count = assignment.submissions.filter(
+        student__user__organization=assignment.organization,
+        student__enrollments__section=section,
+        student__enrollments__is_active=True,
+        status=AssignmentSubmission.Status.GRADED,
+    ).distinct().count()
+
+    return {
+        "id": assignment.id,
+        "title": assignment.title,
+        "instructions": assignment.instructions,
+        "teacher_id": teacher_assignment.teacher_id,
+        "teacher_name": _display_name(teacher_user),
+        "subject_id": subject.id,
+        "subject_name": subject.name,
+        "class_id": classroom.id,
+        "classroom_name": classroom.name,
+        "section_id": section.id,
+        "section_name": section.name,
+        "academic_session_id": academic_session.id,
+        "academic_session_name": academic_session.name,
+        "due_date": assignment.due_date,
+        "due_time": assignment.due_time,
+        "is_published": assignment.is_published,
+        "status": "published" if assignment.is_published else "draft",
+        "created_at": assignment.created_at,
+        "updated_at": assignment.updated_at,
+        "has_attachment": bool(assignment.attachment),
+        "total_eligible_students": eligible_students,
+        "submission_count": submission_count,
+        "graded_count": graded_count,
+    }
+
+
+class CollegeAdminAssignmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not _college_admin_required(user):
+            return Response(
+                {"detail": "Only college admins can access assignments."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        assignments = _college_assignment_queryset(user)
+
+        teacher = request.query_params.get("teacher")
+        subject = request.query_params.get("subject")
+        classroom = request.query_params.get("class")
+        section = request.query_params.get("section")
+        published = request.query_params.get("is_published")
+        status_filter = request.query_params.get("status")
+        search = request.query_params.get("search", "").strip()
+
+        if teacher:
+            assignments = assignments.filter(
+                teacher_assignment__teacher_id=teacher,
+                teacher_assignment__teacher__user__organization=user.organization,
+            )
+        if subject:
+            assignments = assignments.filter(
+                teacher_assignment__subject_id=subject,
+                teacher_assignment__subject__organization=user.organization,
+            )
+        if classroom:
+            assignments = assignments.filter(
+                teacher_assignment__section__classroom_id=classroom,
+                teacher_assignment__section__classroom__organization=user.organization,
+            )
+        if section:
+            assignments = assignments.filter(
+                teacher_assignment__section_id=section,
+                teacher_assignment__section__organization=user.organization,
+            )
+        if published is not None:
+            assignments = assignments.filter(
+                is_published=str(published).lower() in ["true", "1", "yes"]
+            )
+        if status_filter in ["published", "draft"]:
+            assignments = assignments.filter(
+                is_published=status_filter == "published"
+            )
+        if search:
+            assignments = assignments.filter(title__icontains=search)
+
+        data = [
+            _assignment_summary(assignment)
+            for assignment in assignments.order_by("-created_at")
+        ]
+
+        return Response({
+            "count": len(data),
+            "assignments": data,
+        })
+
+
+class CollegeAdminAssignmentSetupAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not _college_admin_required(user):
+            return Response(
+                {"detail": "Only college admins can access assignment setup."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        teachers = TeacherProfile.objects.filter(
+            user__organization=user.organization,
+            user__role="teacher",
+        ).select_related("user").order_by("user__first_name", "user__username")
+
+        subjects = Subject.objects.filter(
+            organization=user.organization
+        ).select_related("classroom").order_by("name")
+
+        classrooms = ClassRoom.objects.filter(
+            organization=user.organization
+        ).select_related("academic_session").order_by("name")
+
+        sections = Section.objects.filter(
+            organization=user.organization
+        ).select_related("classroom").order_by("classroom__name", "name")
+
+        return Response({
+            "teachers": [
+                {
+                    "id": teacher.id,
+                    "name": _display_name(teacher.user),
+                }
+                for teacher in teachers
+            ],
+            "subjects": [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "class_id": subject.classroom_id,
+                }
+                for subject in subjects
+            ],
+            "classes": [
+                {
+                    "id": classroom.id,
+                    "name": classroom.name,
+                    "academic_session_id": classroom.academic_session_id,
+                }
+                for classroom in classrooms
+            ],
+            "sections": [
+                {
+                    "id": section.id,
+                    "name": section.name,
+                    "class_id": section.classroom_id,
+                    "classroom_name": section.classroom.name,
+                }
+                for section in sections
+            ],
+        })
+
+
+class CollegeAdminAssignmentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, assignment_id):
+        user = request.user
+
+        if not _college_admin_required(user):
+            return Response(
+                {"detail": "Only college admins can access assignments."},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        assignment = _college_assignment_queryset(user).filter(
+            id=assignment_id
+        ).first()
+
+        if not assignment:
+            return Response(
+                {"detail": "Assignment not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        section = assignment.teacher_assignment.section
+
+        enrollments = StudentEnrollment.objects.filter(
+            section=section,
+            is_active=True,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        ).order_by("roll_number", "student__user__username")
+
+        submissions = {
+            submission.student_id: submission
+            for submission in AssignmentSubmission.objects.filter(
+                assignment=assignment,
+                student__user__organization=user.organization,
+                student__enrollments__section=section,
+                student__enrollments__is_active=True,
+            ).distinct()
+        }
+
+        students = []
+
+        for enrollment in enrollments:
+            student = enrollment.student
+            student_user = student.user
+            submission = submissions.get(student.id)
+
+            students.append({
+                "student_profile_id": student.id,
+                "student_name": _display_name(student_user),
+                "username": student_user.username,
+                "roll_number": enrollment.roll_number,
+                "submitted": submission is not None,
+                "status": submission.status if submission else "pending",
+                "submitted_at": submission.submitted_at if submission else None,
+                "marks_obtained": (
+                    submission.marks_obtained if submission else None
+                ),
+                "feedback": submission.feedback if submission else "",
+                "graded_at": submission.graded_at if submission else None,
+                "has_attachment": bool(submission and submission.attachment),
+            })
+
+        submitted_count = sum(1 for item in students if item["submitted"])
+        graded_count = sum(
+            1
+            for item in students
+            if item["status"] == AssignmentSubmission.Status.GRADED
+        )
+
+        return Response({
+            "assignment": _assignment_summary(assignment),
+            "summary": {
+                "total_students": len(students),
+                "submitted": submitted_count,
+                "not_submitted": len(students) - submitted_count,
+                "graded": graded_count,
+            },
+            "students": students,
+        })
 
 
 class TeacherAssignmentsAPIView(APIView):

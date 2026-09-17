@@ -11,6 +11,9 @@ from .views import (
     TeacherSubmissionAttachmentAPIView,
     TeacherGradeSubmissionAPIView,
     ParentStudentAssignmentsAPIView,
+    CollegeAdminAssignmentsAPIView,
+    CollegeAdminAssignmentSetupAPIView,
+    CollegeAdminAssignmentDetailAPIView,
 )
 
 urlpatterns = [
@@ -65,4 +68,19 @@ urlpatterns = [
     ParentStudentAssignmentsAPIView.as_view(),
     name="parent-student-assignments",
 ),
+    path(
+        "college-admin/",
+        CollegeAdminAssignmentsAPIView.as_view(),
+        name="college-admin-assignments",
+    ),
+    path(
+        "college-admin/setup/",
+        CollegeAdminAssignmentSetupAPIView.as_view(),
+        name="college-admin-assignment-setup",
+    ),
+    path(
+        "college-admin/<int:assignment_id>/",
+        CollegeAdminAssignmentDetailAPIView.as_view(),
+        name="college-admin-assignment-detail",
+    ),
 ]

@@ -140,28 +140,28 @@ class CollegeAdminAttendanceAPITests(TestCase):
             user=self.student_user_b,
             admission_number="OT-S1",
         )
-        session_b = AcademicSession.objects.create(
+        self.session_b = AcademicSession.objects.create(
             organization=self.org_b,
             name="2026-2027",
             start_date=date(2026, 6, 1),
             end_date=date(2027, 5, 31),
             is_active=True,
         )
-        classroom_b = ClassRoom.objects.create(
+        self.classroom_b = ClassRoom.objects.create(
             organization=self.org_b,
             name="BCA",
-            academic_session=session_b,
+            academic_session=self.session_b,
         )
         self.section_b = Section.objects.create(
             organization=self.org_b,
             name="A",
-            classroom=classroom_b,
+            classroom=self.classroom_b,
         )
         self.subject_b = Subject.objects.create(
             organization=self.org_b,
             name="Science",
             code="SCI",
-            classroom=classroom_b,
+            classroom=self.classroom_b,
         )
         self.attendance_session_b = AttendanceSession.objects.create(
             organization=self.org_b,
@@ -192,6 +192,34 @@ class CollegeAdminAttendanceAPITests(TestCase):
         session_ids = [item["id"] for item in response.data["sessions"]]
         self.assertIn(self.attendance_session_a.id, session_ids)
         self.assertNotIn(self.attendance_session_b.id, session_ids)
+
+    def test_college_b_admin_lists_only_college_b_sessions(self):
+        self.authenticate(self.admin_b)
+
+        response = self.client.get(
+            "/api/attendance/college-admin/sessions/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        session_ids = [item["id"] for item in response.data["sessions"]]
+        self.assertIn(self.attendance_session_b.id, session_ids)
+        self.assertNotIn(self.attendance_session_a.id, session_ids)
+
+    def test_own_session_detail_is_allowed(self):
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            (
+                "/api/attendance/college-admin/sessions/"
+                f"{self.attendance_session_a.id}/"
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["session"]["id"],
+            self.attendance_session_a.id,
+        )
 
     def test_cross_college_session_detail_access_is_denied(self):
         self.authenticate(self.admin_a)
@@ -226,6 +254,22 @@ class CollegeAdminAttendanceAPITests(TestCase):
             self.student_profile.id,
         )
 
+    def test_own_student_attendance_access_is_allowed(self):
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            (
+                "/api/attendance/college-admin/students/"
+                f"{self.student_user.id}/"
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["student"]["username"],
+            self.student_user.username,
+        )
+
     def test_cross_college_student_attendance_access_is_denied(self):
         self.authenticate(self.admin_a)
 
@@ -238,20 +282,70 @@ class CollegeAdminAttendanceAPITests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_cross_college_filter_ids_do_not_leak_data(self):
+    def assert_foreign_filter_returns_no_sessions(self, query):
         self.authenticate(self.admin_a)
 
         response = self.client.get(
             "/api/attendance/college-admin/sessions/",
-            {
-                "section": self.section_b.id,
-                "subject": self.subject_b.id,
-                "teacher": self.teacher_user_b.id,
-            },
+            query,
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["sessions"], [])
+
+    def test_foreign_teacher_filter_cannot_leak_data(self):
+        self.assert_foreign_filter_returns_no_sessions({
+            "teacher": self.teacher_user_b.id,
+        })
+
+    def test_foreign_subject_filter_cannot_leak_data(self):
+        self.assert_foreign_filter_returns_no_sessions({
+            "subject": self.subject_b.id,
+        })
+
+    def test_foreign_section_class_and_session_filters_cannot_leak_data(self):
+        for query in [
+            {"section": self.section_b.id},
+            {"class": self.classroom_b.id},
+            {"academic_session": self.session_b.id},
+        ]:
+            with self.subTest(query=query):
+                self.assert_foreign_filter_returns_no_sessions(query)
+
+    def test_mixed_own_and_foreign_filters_cannot_bypass_scope(self):
+        self.assert_foreign_filter_returns_no_sessions({
+            "section": self.section_a.id,
+            "subject": self.subject_b.id,
+        })
+
+    def test_setup_endpoint_contains_own_organization_data_only(self):
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/attendance/college-admin/setup/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item["id"] for item in response.data["teachers"]],
+            [self.teacher_user.id],
+        )
+        self.assertEqual(
+            [item["id"] for item in response.data["subjects"]],
+            [self.subject_a.id],
+        )
+        self.assertEqual(
+            [item["id"] for item in response.data["classes"]],
+            [self.classroom_a.id],
+        )
+        self.assertEqual(
+            [item["id"] for item in response.data["sections"]],
+            [self.section_a.id],
+        )
+        self.assertEqual(
+            [item["id"] for item in response.data["academic_sessions"]],
+            [self.session_a.id],
+        )
 
     def test_summary_uses_existing_attendance_percentage_rule(self):
         StudentAttendance.objects.create(
@@ -276,29 +370,57 @@ class CollegeAdminAttendanceAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["total_sessions"], 1)
         self.assertEqual(response.data["present"], 1)
+        self.assertEqual(response.data["absent"], 0)
         self.assertEqual(response.data["late"], 1)
         self.assertEqual(response.data["attendance_percentage"], 100)
 
     def test_non_admin_roles_cannot_access_college_admin_endpoints(self):
+        endpoints = [
+            "/api/attendance/college-admin/setup/",
+            "/api/attendance/college-admin/sessions/",
+            (
+                "/api/attendance/college-admin/sessions/"
+                f"{self.attendance_session_a.id}/"
+            ),
+            "/api/attendance/college-admin/summary/",
+            (
+                "/api/attendance/college-admin/students/"
+                f"{self.student_user.id}/"
+            ),
+        ]
+
         for user in [
             self.teacher_user,
             self.student_user,
             self.parent_user,
         ]:
             self.authenticate(user)
-            response = self.client.get(
-                "/api/attendance/college-admin/sessions/"
-            )
-            self.assertEqual(response.status_code, 403)
+            for endpoint in endpoints:
+                with self.subTest(user=user.username, endpoint=endpoint):
+                    response = self.client.get(endpoint)
+                    self.assertEqual(response.status_code, 403)
 
     def test_unauthenticated_requests_are_rejected(self):
         self.client.force_authenticate(user=None)
 
-        response = self.client.get(
-            "/api/attendance/college-admin/sessions/"
-        )
+        endpoints = [
+            "/api/attendance/college-admin/setup/",
+            "/api/attendance/college-admin/sessions/",
+            (
+                "/api/attendance/college-admin/sessions/"
+                f"{self.attendance_session_a.id}/"
+            ),
+            "/api/attendance/college-admin/summary/",
+            (
+                "/api/attendance/college-admin/students/"
+                f"{self.student_user.id}/"
+            ),
+        ]
 
-        self.assertIn(response.status_code, [401, 403])
+        for endpoint in endpoints:
+            with self.subTest(endpoint=endpoint):
+                response = self.client.get(endpoint)
+                self.assertIn(response.status_code, [401, 403])
 
     def test_college_admin_attendance_endpoints_are_read_only(self):
         self.authenticate(self.admin_a)
@@ -308,7 +430,33 @@ class CollegeAdminAttendanceAPITests(TestCase):
             {},
             format="json",
         )
+        setup_post_response = self.client.post(
+            "/api/attendance/college-admin/setup/",
+            {},
+            format="json",
+        )
+        summary_post_response = self.client.post(
+            "/api/attendance/college-admin/summary/",
+            {},
+            format="json",
+        )
+        student_post_response = self.client.post(
+            (
+                "/api/attendance/college-admin/students/"
+                f"{self.student_user.id}/"
+            ),
+            {},
+            format="json",
+        )
         patch_response = self.client.patch(
+            (
+                "/api/attendance/college-admin/sessions/"
+                f"{self.attendance_session_a.id}/"
+            ),
+            {"date": "2026-09-17"},
+            format="json",
+        )
+        put_response = self.client.put(
             (
                 "/api/attendance/college-admin/sessions/"
                 f"{self.attendance_session_a.id}/"
@@ -324,5 +472,9 @@ class CollegeAdminAttendanceAPITests(TestCase):
         )
 
         self.assertEqual(post_response.status_code, 405)
+        self.assertEqual(setup_post_response.status_code, 405)
+        self.assertEqual(summary_post_response.status_code, 405)
+        self.assertEqual(student_post_response.status_code, 405)
         self.assertEqual(patch_response.status_code, 405)
+        self.assertEqual(put_response.status_code, 405)
         self.assertEqual(delete_response.status_code, 405)

@@ -4,11 +4,380 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from accounts.models import TeacherProfile
-from academics.models import TeacherAssignment, StudentEnrollment, ParentStudent
+from academics.models import (
+    TeacherAssignment,
+    StudentEnrollment,
+    ParentStudent,
+    AcademicSession,
+    ClassRoom,
+    Section,
+    Subject,
+)
 from datetime import datetime
 
 from studentresults.models import Exam, StudentResult
 from notifications.services import notify_exam_published
+
+
+def _display_name(user):
+    return user.get_full_name().strip() or user.username
+
+
+def _college_admin_required(user):
+    return user.role == "college_admin" and user.organization_id
+
+
+def _college_exam_queryset(user):
+    return Exam.objects.filter(
+        organization=user.organization,
+        section__organization=user.organization,
+        section__classroom__organization=user.organization,
+        section__classroom__academic_session__organization=user.organization,
+    ).select_related(
+        "section",
+        "section__classroom",
+        "section__classroom__academic_session",
+    )
+
+
+def _exam_summary(exam):
+    section = exam.section
+    classroom = section.classroom
+    academic_session = classroom.academic_session
+
+    eligible_students = StudentEnrollment.objects.filter(
+        section=section,
+        is_active=True,
+        student__user__organization=exam.organization,
+    ).count()
+
+    results = StudentResult.objects.filter(
+        exam=exam,
+        student__user__organization=exam.organization,
+        student__enrollments__section=section,
+        student__enrollments__is_active=True,
+        subject__organization=exam.organization,
+        teacher__user__organization=exam.organization,
+    ).select_related(
+        "subject",
+        "teacher",
+        "teacher__user",
+    ).distinct()
+
+    subjects = []
+    teachers = []
+    subject_ids = set()
+    teacher_ids = set()
+    maximum_marks = None
+
+    for result in results:
+        if result.subject_id not in subject_ids:
+            subject_ids.add(result.subject_id)
+            subjects.append({
+                "id": result.subject_id,
+                "name": result.subject.name,
+            })
+        if result.teacher_id not in teacher_ids:
+            teacher_ids.add(result.teacher_id)
+            teachers.append({
+                "id": result.teacher_id,
+                "name": _display_name(result.teacher.user),
+            })
+        if maximum_marks is None:
+            maximum_marks = result.maximum_marks
+
+    entered_count = results.values("student_id").distinct().count()
+
+    return {
+        "id": exam.id,
+        "name": exam.name,
+        "exam_date": exam.exam_date,
+        "is_published": exam.is_published,
+        "status": "published" if exam.is_published else "unpublished",
+        "class_id": classroom.id,
+        "classroom_name": classroom.name,
+        "section_id": section.id,
+        "section_name": section.name,
+        "academic_session_id": academic_session.id,
+        "academic_session_name": academic_session.name,
+        "subjects": subjects,
+        "subject_names": ", ".join(item["name"] for item in subjects),
+        "teachers": teachers,
+        "teacher_names": ", ".join(item["name"] for item in teachers),
+        "maximum_marks": maximum_marks,
+        "eligible_students": eligible_students,
+        "results_entered": entered_count,
+        "pending_students": eligible_students - entered_count,
+        "created_at": exam.created_at,
+        "updated_at": exam.updated_at,
+    }
+
+
+class CollegeAdminResultsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not _college_admin_required(user):
+            return Response(
+                {"detail": "Only college admins can access results."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        exams = _college_exam_queryset(user)
+
+        teacher = request.query_params.get("teacher")
+        subject = request.query_params.get("subject")
+        classroom = request.query_params.get("class")
+        section = request.query_params.get("section")
+        academic_session = request.query_params.get("academic_session")
+        published = request.query_params.get("is_published")
+        status_filter = request.query_params.get("status")
+        search = request.query_params.get("search", "").strip()
+
+        if teacher:
+            exams = exams.filter(
+                results__teacher_id=teacher,
+                results__teacher__user__organization=user.organization,
+            )
+        if subject:
+            exams = exams.filter(
+                results__subject_id=subject,
+                results__subject__organization=user.organization,
+            )
+        if classroom:
+            exams = exams.filter(
+                section__classroom_id=classroom,
+                section__classroom__organization=user.organization,
+            )
+        if section:
+            exams = exams.filter(
+                section_id=section,
+                section__organization=user.organization,
+            )
+        if academic_session:
+            exams = exams.filter(
+                section__classroom__academic_session_id=academic_session,
+                section__classroom__academic_session__organization=(
+                    user.organization
+                ),
+            )
+        if published is not None:
+            exams = exams.filter(
+                is_published=str(published).lower() in ["true", "1", "yes"]
+            )
+        if status_filter in ["published", "unpublished"]:
+            exams = exams.filter(
+                is_published=status_filter == "published"
+            )
+        if search:
+            exams = exams.filter(name__icontains=search)
+
+        data = [
+            _exam_summary(exam)
+            for exam in exams.distinct().order_by("-exam_date", "-created_at")
+        ]
+
+        return Response({
+            "count": len(data),
+            "exams": data,
+        })
+
+
+class CollegeAdminResultsSetupAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if not _college_admin_required(user):
+            return Response(
+                {"detail": "Only college admins can access result setup."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        teachers = TeacherProfile.objects.filter(
+            user__organization=user.organization,
+            user__role="teacher",
+        ).select_related("user").order_by("user__first_name", "user__username")
+        subjects = Subject.objects.filter(
+            organization=user.organization
+        ).order_by("name")
+        classrooms = ClassRoom.objects.filter(
+            organization=user.organization
+        ).select_related("academic_session").order_by("name")
+        sections = Section.objects.filter(
+            organization=user.organization
+        ).select_related("classroom").order_by("classroom__name", "name")
+        sessions = AcademicSession.objects.filter(
+            organization=user.organization
+        ).order_by("-start_date", "name")
+
+        return Response({
+            "teachers": [
+                {
+                    "id": teacher.id,
+                    "name": _display_name(teacher.user),
+                }
+                for teacher in teachers
+            ],
+            "subjects": [
+                {
+                    "id": subject.id,
+                    "name": subject.name,
+                    "class_id": subject.classroom_id,
+                }
+                for subject in subjects
+            ],
+            "classes": [
+                {
+                    "id": classroom.id,
+                    "name": classroom.name,
+                    "academic_session_id": classroom.academic_session_id,
+                }
+                for classroom in classrooms
+            ],
+            "sections": [
+                {
+                    "id": section.id,
+                    "name": section.name,
+                    "class_id": section.classroom_id,
+                    "classroom_name": section.classroom.name,
+                }
+                for section in sections
+            ],
+            "academic_sessions": [
+                {
+                    "id": session.id,
+                    "name": session.name,
+                }
+                for session in sessions
+            ],
+        })
+
+
+class CollegeAdminResultDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, exam_id):
+        user = request.user
+
+        if not _college_admin_required(user):
+            return Response(
+                {"detail": "Only college admins can access results."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        exam = _college_exam_queryset(user).filter(id=exam_id).first()
+
+        if not exam:
+            return Response(
+                {"detail": "Exam not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        enrollments = StudentEnrollment.objects.filter(
+            section=exam.section,
+            is_active=True,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        ).order_by("roll_number", "student__user__username")
+
+        results = StudentResult.objects.filter(
+            exam=exam,
+            student__user__organization=user.organization,
+            student__enrollments__section=exam.section,
+            student__enrollments__is_active=True,
+            subject__organization=user.organization,
+            teacher__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+            "subject",
+            "teacher",
+            "teacher__user",
+        ).distinct()
+
+        results_by_student = {}
+
+        for result in results:
+            results_by_student.setdefault(result.student_id, []).append(result)
+
+        students = []
+
+        for enrollment in enrollments:
+            student = enrollment.student
+            student_user = student.user
+            student_results = results_by_student.get(student.id, [])
+            total_obtained = sum(
+                float(result.marks_obtained)
+                for result in student_results
+            )
+            total_maximum = sum(
+                float(result.maximum_marks)
+                for result in student_results
+            )
+            percentage = None
+
+            if total_maximum > 0:
+                percentage = round((total_obtained / total_maximum) * 100, 2)
+
+            students.append({
+                "student_profile_id": student.id,
+                "student_name": _display_name(student_user),
+                "username": student_user.username,
+                "roll_number": enrollment.roll_number,
+                "marks_obtained": (
+                    round(total_obtained, 2)
+                    if student_results
+                    else None
+                ),
+                "maximum_marks": (
+                    round(total_maximum, 2)
+                    if student_results
+                    else None
+                ),
+                "percentage": percentage,
+                "status": "entered" if student_results else "pending",
+                "remarks": "; ".join(
+                    result.remarks
+                    for result in student_results
+                    if result.remarks
+                ),
+                "subjects": [
+                    {
+                        "subject_id": result.subject_id,
+                        "subject_name": result.subject.name,
+                        "marks_obtained": str(result.marks_obtained),
+                        "maximum_marks": str(result.maximum_marks),
+                        "percentage": result.percentage,
+                        "remarks": result.remarks,
+                        "teacher_name": _display_name(result.teacher.user),
+                    }
+                    for result in student_results
+                ],
+            })
+
+        entered_count = sum(
+            1
+            for item in students
+            if item["status"] == "entered"
+        )
+
+        return Response({
+            "exam": _exam_summary(exam),
+            "summary": {
+                "eligible_students": len(students),
+                "results_entered": entered_count,
+                "pending_students": len(students) - entered_count,
+                "is_published": exam.is_published,
+                "status": "published" if exam.is_published else "unpublished",
+            },
+            "students": students,
+        })
 
 
 class TeacherResultsSetupAPIView(APIView):

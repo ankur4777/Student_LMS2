@@ -16,14 +16,28 @@ const links = [
   ["Teacher Assignments", "/college-admin/teacher-assignments"],
   ["Live Classes", "/college-admin/live-classes"],
   ["Attendance", "/college-admin/attendance"],
+  ["Assignments", "/college-admin/assignments"],
+  ["Results", "/college-admin/results"],
   ["Profile", "/college-admin/profile"],
 ];
 
 export default function CollegeAdminSidebar() {
   const pathname = usePathname();
+  const isActive = (href: string) => (
+    pathname === href ||
+    (href === "/college-admin/results" &&
+      pathname.startsWith("/college-admin/results/"))
+  );
 
   return (
-    <aside className="teacher-sidebar">
+    <aside
+      className="teacher-sidebar"
+      style={{
+        height: "100vh",
+        overflowY: "auto",
+        boxSizing: "border-box",
+      }}
+    >
       <div className="teacher-sidebar-brand">
         College Admin LMS
       </div>
@@ -33,7 +47,7 @@ export default function CollegeAdminSidebar() {
           <Link
             key={href}
             href={href}
-            className={pathname === href ? "active" : ""}
+            className={isActive(href) ? "active" : ""}
           >
             {label}
           </Link>
