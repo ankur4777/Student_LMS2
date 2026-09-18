@@ -39,3 +39,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Private uploaded media
+private_media/
+
+# Public/local media if used
+media/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment
+venv/
+.env
+
+# Database/local files
+*.sqlite3
+
+# Next.js
+frontend/node_modules/
+frontend/.next/

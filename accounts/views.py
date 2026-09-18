@@ -1,3 +1,5 @@
+import re
+
 from django.utils import timezone
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -8,9 +10,13 @@ from rest_framework.permissions import IsAuthenticated
 
 from .models import StudentProfile, User
 
-from attendance.models import StudentAttendance
+from attendance.models import AttendanceSession, StudentAttendance
+from assignments.models import Assignment, AssignmentSubmission
+from documents.models import Document
 from liveclasses.models import LiveClass, LiveClassRecording
 from liveclasses.serializers import LiveClassSerializer
+from notifications.models import Notification
+from studentresults.models import Exam, StudentResult
 
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -25,6 +31,52 @@ from academics.models import (
     StudentEnrollment,
     ParentStudent,
 )
+
+
+def _college_admin_activity_url(related_url):
+    if related_url and related_url.startswith("/college-admin/"):
+        return related_url
+    return None
+
+
+def _notification_activity_label(notification):
+    text = f"{notification.title} {notification.message}"
+    quoted = re.search(r'"([^"]+)"', text)
+    if quoted:
+        return quoted.group(1).strip().lower()
+    return notification.message.strip().lower()
+
+
+def _college_admin_activity_description(notification):
+    message = notification.message
+    quoted = re.search(r'"([^"]+)"', message)
+    item_name = quoted.group(1).strip() if quoted else None
+
+    if notification.notification_type == Notification.Type.RESULT and item_name:
+        return f'Result "{item_name}" was published.'
+
+    if notification.notification_type == Notification.Type.ASSIGNMENT and item_name:
+        if "graded" in message.lower():
+            return f'Assignment "{item_name}" was graded.'
+        return f'Assignment "{item_name}" was published.'
+
+    if (
+        notification.notification_type == Notification.Type.GENERAL
+        and item_name
+        and "document" in notification.title.lower()
+    ):
+        subject_match = re.search(
+            r"published for (.+?)[.]?$",
+            message,
+            flags=re.IGNORECASE,
+        )
+        if subject_match:
+            subject = subject_match.group(1).strip()
+            if subject.lower() != "your child":
+                return f'Document "{item_name}" was published for {subject}.'
+        return f'Document "{item_name}" was published.'
+
+    return message
 
 
 class StudentDashboardAPIView(APIView):
@@ -307,8 +359,6 @@ class StudentLoginAPIView(APIView):
                 ),
             }
         })
-        
-        
 class TeacherDashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -703,6 +753,158 @@ class CollegeAdminDashboardAPIView(APIView):
         users = User.objects.filter(
             organization=organization
         )
+        today = timezone.localdate()
+        attendance_start = today - timezone.timedelta(days=29)
+
+        attendance_sessions = AttendanceSession.objects.filter(
+            organization=organization,
+            date__gte=attendance_start,
+            date__lte=today,
+        )
+        attendance_records = StudentAttendance.objects.filter(
+            attendance_session__organization=organization,
+            attendance_session__date__gte=attendance_start,
+            attendance_session__date__lte=today,
+            student__user__organization=organization,
+        )
+        attendance_counts = attendance_records.values(
+            "status"
+        ).annotate(
+            total=Count("id")
+        )
+        attendance_by_status = {
+            item["status"]: item["total"]
+            for item in attendance_counts
+        }
+        present_count = attendance_by_status.get(
+            StudentAttendance.Status.PRESENT,
+            0,
+        )
+        late_count = attendance_by_status.get(
+            StudentAttendance.Status.LATE,
+            0,
+        )
+        absent_count = attendance_by_status.get(
+            StudentAttendance.Status.ABSENT,
+            0,
+        )
+        excused_count = attendance_by_status.get(
+            StudentAttendance.Status.EXCUSED,
+            0,
+        )
+        counted_attendance = present_count + late_count + absent_count
+        attendance_percentage = (
+            round(((present_count + late_count) / counted_attendance) * 100, 2)
+            if counted_attendance
+            else 0
+        )
+
+        assignments = Assignment.objects.filter(
+            organization=organization,
+            teacher_assignment__section__organization=organization,
+        ).select_related(
+            "teacher_assignment__section"
+        )
+        assignment_ids = assignments.values_list("id", flat=True)
+        eligible_assignments = 0
+
+        for assignment in assignments:
+            eligible_assignments += StudentEnrollment.objects.filter(
+                section=assignment.teacher_assignment.section,
+                is_active=True,
+                student__user__organization=organization,
+            ).count()
+
+        assignment_submissions = AssignmentSubmission.objects.filter(
+            assignment_id__in=assignment_ids,
+            assignment__organization=organization,
+            student__user__organization=organization,
+        )
+        submitted_assignments = assignment_submissions.values(
+            "assignment_id",
+            "student_id",
+        ).distinct().count()
+        graded_assignments = assignment_submissions.filter(
+            status=AssignmentSubmission.Status.GRADED
+        ).values(
+            "assignment_id",
+            "student_id",
+        ).distinct().count()
+
+        exams = Exam.objects.filter(
+            organization=organization,
+            section__organization=organization,
+        )
+        results_entered = StudentResult.objects.filter(
+            exam__organization=organization,
+            student__user__organization=organization,
+        ).count()
+
+        live_classes = LiveClass.objects.filter(
+            organization=organization,
+            teacher_assignment__section__organization=organization,
+        )
+        recordings = LiveClassRecording.objects.filter(
+            live_class__organization=organization,
+            live_class__teacher_assignment__section__organization=organization,
+        )
+
+        recent_notifications = Notification.objects.filter(
+            organization=organization,
+            user__organization=organization,
+        ).order_by("-created_at", "-id")[:50]
+
+        safe_activity_labels = {
+            (
+                notification.notification_type,
+                _notification_activity_label(notification),
+                notification.created_at.strftime("%Y-%m-%d %H:%M"),
+            )
+            for notification in recent_notifications
+            if _college_admin_activity_url(notification.related_url)
+        }
+        seen_activity = set()
+        recent_activity = []
+        for notification in recent_notifications:
+            related_url = _college_admin_activity_url(notification.related_url)
+            activity_label = _notification_activity_label(notification)
+            timestamp_bucket = notification.created_at.strftime("%Y-%m-%d %H:%M")
+
+            if related_url:
+                activity_key = (
+                    "college-admin-url",
+                    notification.notification_type,
+                    related_url,
+                )
+            else:
+                activity_key = (
+                    "notification-event",
+                    notification.notification_type,
+                    notification.title.strip().lower(),
+                    activity_label,
+                    timestamp_bucket,
+                )
+                if (
+                    notification.notification_type,
+                    activity_label,
+                    timestamp_bucket,
+                ) in safe_activity_labels:
+                    continue
+
+            if activity_key in seen_activity:
+                continue
+
+            seen_activity.add(activity_key)
+            recent_activity.append({
+                "id": notification.id,
+                "title": notification.title,
+                "description": _college_admin_activity_description(notification),
+                "timestamp": notification.created_at,
+                "related_url": related_url,
+                "notification_type": notification.notification_type,
+            })
+            if len(recent_activity) == 10:
+                break
 
         return Response({
             "organization": {
@@ -732,6 +934,12 @@ class CollegeAdminDashboardAPIView(APIView):
                 "subjects": Subject.objects.filter(
                     organization=organization
                 ).count(),
+                "live_classes": live_classes.count(),
+                "assignments": assignments.count(),
+                "exams": exams.count(),
+                "documents": Document.objects.filter(
+                    organization=organization
+                ).count(),
                 "active_student_enrollments": (
                     StudentEnrollment.objects.filter(
                         is_active=True,
@@ -745,6 +953,53 @@ class CollegeAdminDashboardAPIView(APIView):
                     ).count()
                 ),
             },
+            "attendance": {
+                "period_label": "Last 30 Days",
+                "session_count": attendance_sessions.count(),
+                "record_count": attendance_records.count(),
+                "present": present_count,
+                "absent": absent_count,
+                "late": late_count,
+                "excused": excused_count,
+                "attendance_percentage": attendance_percentage,
+            },
+            "assignments": {
+                "total": assignments.count(),
+                "published": assignments.filter(
+                    is_published=True
+                ).count(),
+                "eligible_submissions": eligible_assignments,
+                "submitted": submitted_assignments,
+                "pending": max(
+                    eligible_assignments - submitted_assignments,
+                    0,
+                ),
+                "graded": graded_assignments,
+            },
+            "results": {
+                "total_exams": exams.count(),
+                "published_exams": exams.filter(
+                    is_published=True
+                ).count(),
+                "unpublished_exams": exams.filter(
+                    is_published=False
+                ).count(),
+                "results_entered": results_entered,
+            },
+            "live_classes": {
+                "today": live_classes.filter(
+                    class_date=today
+                ).count(),
+                "upcoming": live_classes.filter(
+                    class_date__gt=today,
+                    status=LiveClass.Status.SCHEDULED,
+                ).count(),
+                "completed": live_classes.filter(
+                    status=LiveClass.Status.COMPLETED
+                ).count(),
+                "recorded": recordings.count(),
+            },
+            "recent_activity": recent_activity,
         })
 
 

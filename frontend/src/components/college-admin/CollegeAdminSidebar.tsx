@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -19,18 +20,55 @@ const links = [
   ["Assignments", "/college-admin/assignments"],
   ["Results", "/college-admin/results"],
   ["Documents", "/college-admin/documents"],
+  ["Notifications", "/college-admin/notifications"],
   ["Profile", "/college-admin/profile"],
 ];
 
 export default function CollegeAdminSidebar() {
   const pathname = usePathname();
+  const [unreadCount, setUnreadCount] = useState(0);
   const isActive = (href: string) => (
     pathname === href ||
     (href === "/college-admin/results" &&
       pathname.startsWith("/college-admin/results/")) ||
     (href === "/college-admin/documents" &&
-      pathname.startsWith("/college-admin/documents/"))
+      pathname.startsWith("/college-admin/documents/")) ||
+    (href === "/college-admin/notifications" &&
+      pathname.startsWith("/college-admin/notifications/"))
   );
+  const loadUnreadCount = useCallback(async () => {
+    const token = localStorage.getItem("college_admin_access_token");
+
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/notifications/unread-count/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const result = await response.json();
+      setUnreadCount(result.unread_count || 0);
+    } catch {
+      setUnreadCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadUnreadCount();
+    });
+  }, [loadUnreadCount]);
 
   return (
     <aside
@@ -52,7 +90,13 @@ export default function CollegeAdminSidebar() {
             href={href}
             className={isActive(href) ? "active" : ""}
           >
-            {label}
+            <span>{label}</span>
+            {href === "/college-admin/notifications" &&
+              unreadCount > 0 && (
+                <span className="badge bg-primary ms-2">
+                  {unreadCount}
+                </span>
+              )}
           </Link>
         ))}
       </nav>

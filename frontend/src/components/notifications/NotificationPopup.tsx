@@ -137,21 +137,21 @@ export default function NotificationPopup({
     const key = shownKeyRef.current || shownStorageKey(role, userStorageKey);
     shownKeyRef.current = key;
     const shownIds = loadShownIds(key);
-    const unseen = notifications
-      .filter((item) => !shownIds.has(item.id))
+    const unreadUnseen = notifications
+      .filter((item) => !item.is_read && !shownIds.has(item.id))
       .slice(0, 5);
 
-    if (unseen.length === 0) {
+    if (unreadUnseen.length === 0) {
       return;
     }
 
-    unseen.forEach((item) => shownIds.add(item.id));
+    unreadUnseen.forEach((item) => shownIds.add(item.id));
     saveShownIds(key, shownIds);
 
     setItems((current) => {
       const existingIds = new Set(current.map((item) => item.id));
       return [
-        ...unseen.filter((item) => !existingIds.has(item.id)),
+        ...unreadUnseen.filter((item) => !existingIds.has(item.id)),
         ...current,
       ].slice(0, 5);
     });
