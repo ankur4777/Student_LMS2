@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
@@ -9,6 +9,7 @@ import TeacherTopbar from "@/components/teacher/TeacherTopbar";
 import "../../../dashboard/dashboard.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const MAX_ASSIGNMENT_MARKS = 9999.99;
 
 interface TeacherUser {
   username?: string;
@@ -53,13 +54,45 @@ interface Summary {
   not_submitted: number;
 }
 
+type ApiObject = Record<string, unknown>;
+
+function getSavedTeacher() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const savedTeacher = localStorage.getItem("teacher_user");
+
+  if (!savedTeacher) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(savedTeacher);
+  } catch {
+    return {};
+  }
+}
+
+function getErrorDetail(result: unknown, fallback: string) {
+  if (result && typeof result === "object" && "detail" in result) {
+    const detail = (result as ApiObject).detail;
+
+    if (typeof detail === "string") {
+      return detail;
+    }
+  }
+
+  return fallback;
+}
+
 export default function TeacherAssignmentSubmissionsPage() {
   const router = useRouter();
   const params = useParams();
 
   const assignmentId = params.assignmentId as string;
 
-  const [teacher, setTeacher] = useState<TeacherUser>({});
+  const [teacher] = useState<TeacherUser>(getSavedTeacher);
   const [assignment, setAssignment] =
     useState<AssignmentInfo | null>(null);
 
@@ -76,36 +109,17 @@ export default function TeacherAssignmentSubmissionsPage() {
   const [gradingId, setGradingId] = useState<number | null>(null);
   const [gradeMarks, setGradeMarks] = useState("");
   const [gradeFeedback, setGradeFeedback] = useState("");
+  const [gradeError, setGradeError] = useState("");
   const [savingGradeId, setSavingGradeId] = useState<number | null>(null);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    const token = localStorage.getItem("teacher_access_token");
-    const savedTeacher = localStorage.getItem("teacher_user");
-
-    if (!token) {
-      router.replace("/teacher/login");
-      return;
-    }
-
-    if (savedTeacher) {
-      try {
-        setTeacher(JSON.parse(savedTeacher));
-      } catch {
-        // ignore invalid localStorage data
-      }
-    }
-
-    loadSubmissions(token);
-  }, [router, assignmentId]);
-
-  const clearTeacherSession = () => {
+  const clearTeacherSession = useCallback(() => {
     localStorage.removeItem("teacher_access_token");
     localStorage.removeItem("teacher_refresh_token");
     localStorage.removeItem("teacher_user");
-  };
+  }, []);
 
-  const loadSubmissions = async (token: string) => {
+  const loadSubmissions = useCallback(async (token: string) => {
     try {
       setLoading(true);
       setError("");
@@ -127,7 +141,7 @@ export default function TeacherAssignmentSubmissionsPage() {
 
       const contentType = response.headers.get("content-type");
 
-      let result: any = null;
+      let result: unknown = null;
 
       if (contentType?.includes("application/json")) {
         result = await response.json();
@@ -146,13 +160,15 @@ export default function TeacherAssignmentSubmissionsPage() {
 
       if (!response.ok) {
         throw new Error(
-          result?.detail || "Unable to load submissions."
+          getErrorDetail(result, "Unable to load submissions.")
         );
       }
 
-      setAssignment(result.assignment);
-      setSummary(result.summary);
-      setStudents(result.students || []);
+      const data = result as ApiObject;
+
+      setAssignment(data.assignment as AssignmentInfo);
+      setSummary(data.summary as Summary);
+      setStudents((data.students as StudentItem[]) || []);
     } catch (err) {
       setError(
         err instanceof Error
@@ -162,7 +178,20 @@ export default function TeacherAssignmentSubmissionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [assignmentId, clearTeacherSession, router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("teacher_access_token");
+
+    if (!token) {
+      router.replace("/teacher/login");
+      return;
+    }
+
+    queueMicrotask(() => {
+      void loadSubmissions(token);
+    });
+  }, [loadSubmissions, router]);
 
   const statusBadge = (submission: Submission | null) => {
     if (!submission) {
@@ -230,7 +259,7 @@ export default function TeacherAssignmentSubmissionsPage() {
           const result = await response.json();
 
           throw new Error(
-            result?.detail || "Unable to open attachment."
+            getErrorDetail(result, "Unable to open attachment.")
           );
         }
 
@@ -272,6 +301,7 @@ export default function TeacherAssignmentSubmissionsPage() {
   );
 
   setGradeFeedback(submission.feedback || "");
+  setGradeError("");
 
   setMessage("");
   setError("");
@@ -281,6 +311,22 @@ const cancelGrading = () => {
   setGradingId(null);
   setGradeMarks("");
   setGradeFeedback("");
+  setGradeError("");
+};
+
+const getGradeErrorMessage = (result: unknown) => {
+  const data = result as ApiObject | null;
+  const marksErrors = data?.marks_obtained;
+
+  if (Array.isArray(marksErrors) && marksErrors.length > 0) {
+    return String(marksErrors[0]);
+  }
+
+  if (typeof marksErrors === "string") {
+    return marksErrors;
+  }
+
+  return getErrorDetail(result, "Unable to save grade.");
 };
 
 const saveGrade = async (submissionId: number) => {
@@ -292,14 +338,24 @@ const saveGrade = async (submissionId: number) => {
   }
 
   if (!gradeMarks.trim()) {
-    setError("Please enter marks.");
+    setGradeError("Please enter marks.");
     return;
   }
 
   const numericMarks = Number(gradeMarks);
 
-  if (Number.isNaN(numericMarks) || numericMarks < 0) {
-    setError("Please enter valid marks.");
+  if (!Number.isFinite(numericMarks)) {
+    setGradeError("Please enter valid marks.");
+    return;
+  }
+
+  if (numericMarks < 0) {
+    setGradeError("Marks cannot be negative.");
+    return;
+  }
+
+  if (numericMarks > MAX_ASSIGNMENT_MARKS) {
+    setGradeError(`Marks cannot exceed ${MAX_ASSIGNMENT_MARKS}.`);
     return;
   }
 
@@ -307,6 +363,7 @@ const saveGrade = async (submissionId: number) => {
     setSavingGradeId(submissionId);
     setMessage("");
     setError("");
+    setGradeError("");
 
     const response = await fetch(
       `${API_BASE}/api/assignments/teacher/submissions/${submissionId}/grade/`,
@@ -331,7 +388,7 @@ const saveGrade = async (submissionId: number) => {
 
     const contentType = response.headers.get("content-type");
 
-    let result: any = null;
+    let result: unknown = null;
 
     if (contentType?.includes("application/json")) {
       result = await response.json();
@@ -346,9 +403,8 @@ const saveGrade = async (submissionId: number) => {
     }
 
     if (!response.ok) {
-      throw new Error(
-        result?.detail || "Unable to save grade."
-      );
+      setGradeError(getGradeErrorMessage(result));
+      return;
     }
 
     setMessage("Grade saved successfully.");
@@ -613,6 +669,7 @@ const saveGrade = async (submissionId: number) => {
                                         <input
                                           type="number"
                                           min="0"
+                                          max={MAX_ASSIGNMENT_MARKS}
                                           step="0.01"
                                           className="form-control form-control-sm"
                                           value={gradeMarks}
@@ -621,6 +678,12 @@ const saveGrade = async (submissionId: number) => {
                                           }
                                           placeholder="Enter marks"
                                         />
+
+                                        {gradeError && (
+                                          <div className="text-danger small mt-1">
+                                            {gradeError}
+                                          </div>
+                                        )}
                                       </div>
 
                                       <div className="mb-2">

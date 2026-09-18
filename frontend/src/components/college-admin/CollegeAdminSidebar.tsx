@@ -18,6 +18,7 @@ const links = [
   ["Attendance", "/college-admin/attendance"],
   ["Assignments", "/college-admin/assignments"],
   ["Results", "/college-admin/results"],
+  ["Documents", "/college-admin/documents"],
   ["Profile", "/college-admin/profile"],
 ];
 
@@ -26,7 +27,9 @@ export default function CollegeAdminSidebar() {
   const isActive = (href: string) => (
     pathname === href ||
     (href === "/college-admin/results" &&
-      pathname.startsWith("/college-admin/results/"))
+      pathname.startsWith("/college-admin/results/")) ||
+    (href === "/college-admin/documents" &&
+      pathname.startsWith("/college-admin/documents/"))
   );
 
   return (

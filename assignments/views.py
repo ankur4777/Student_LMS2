@@ -22,9 +22,11 @@ from django.utils import timezone
 from .models import AssignmentSubmission
 
 import mimetypes
+from decimal import Decimal, InvalidOperation
 
 from django.http import FileResponse
 from notifications.services import (
+    notify_assignment_graded,
     notify_assignment_published,
     notify_assignment_submitted,
 )
@@ -1274,21 +1276,48 @@ class TeacherGradeSubmissionAPIView(APIView):
 
         if marks in [None, ""]:
             return Response(
-                {"detail": "Marks are required."},
+                {"marks_obtained": ["Marks are required."]},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         try:
-            marks_value = float(marks)
-        except (TypeError, ValueError):
+            marks_value = Decimal(str(marks).strip())
+        except (InvalidOperation, AttributeError):
             return Response(
-                {"detail": "Marks must be a valid number."},
+                {"marks_obtained": ["Enter valid marks."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not marks_value.is_finite():
+            return Response(
+                {"marks_obtained": ["Enter valid marks."]},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if marks_value < 0:
             return Response(
-                {"detail": "Marks cannot be negative."},
+                {"marks_obtained": ["Marks cannot be negative."]},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        marks_field = AssignmentSubmission._meta.get_field(
+            "marks_obtained"
+        )
+        max_whole_digits = (
+            marks_field.max_digits - marks_field.decimal_places
+        )
+        max_marks_value = (
+            Decimal("9" * max_whole_digits)
+            + (Decimal(1) - (Decimal(10) ** -marks_field.decimal_places))
+        )
+
+        if marks_value > max_marks_value:
+            return Response(
+                {
+                    "marks_obtained": [
+                        f"Marks cannot exceed {max_marks_value}."
+                    ]
+                },
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -1306,6 +1335,8 @@ class TeacherGradeSubmissionAPIView(APIView):
                 "updated_at",
             ]
         )
+
+        notify_assignment_graded(submission)
 
         return Response({
             "message": "Submission graded successfully.",

@@ -7,6 +7,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from notifications.services import notify_document_published
 
 from accounts.models import StudentProfile, TeacherProfile
 from academics.models import StudentEnrollment, TeacherAssignment
@@ -71,6 +72,63 @@ def serialize_student_document(document):
         "classroom_name": assignment.section.classroom.name,
         "section_name": assignment.section.name,
         "filename": filename,
+    }
+
+
+def college_admin_required(user):
+    return user.role == "college_admin" and user.organization_id
+
+
+def college_admin_documents(user):
+    return Document.objects.filter(
+        organization=user.organization,
+        teacher_assignment__section__organization=user.organization,
+        teacher_assignment__section__classroom__organization=user.organization,
+        teacher_assignment__subject__organization=user.organization,
+        teacher_assignment__teacher__user__organization=user.organization,
+    ).select_related(
+        "uploaded_by",
+        "teacher_assignment",
+        "teacher_assignment__teacher",
+        "teacher_assignment__teacher__user",
+        "teacher_assignment__subject",
+        "teacher_assignment__section",
+        "teacher_assignment__section__classroom",
+        "teacher_assignment__section__classroom__academic_session",
+    )
+
+
+def serialize_college_admin_document(document):
+    assignment = document.teacher_assignment
+    teacher_user = assignment.teacher.user
+    classroom = assignment.section.classroom
+    academic_session = classroom.academic_session
+    filename = Path(document.file.name).name if document.file else ""
+
+    return {
+        "id": document.id,
+        "title": document.title,
+        "description": document.description,
+        "document_type": document.document_type,
+        "filename": filename,
+        "is_published": document.is_published,
+        "status": "published" if document.is_published else "draft",
+        "published_at": document.published_at,
+        "created_at": document.created_at,
+        "updated_at": document.updated_at,
+        "teacher_id": assignment.teacher_id,
+        "teacher_name": (
+            teacher_user.get_full_name().strip()
+            or teacher_user.username
+        ),
+        "subject_id": assignment.subject_id,
+        "subject_name": assignment.subject.name,
+        "class_id": classroom.id,
+        "classroom_name": classroom.name,
+        "section_id": assignment.section_id,
+        "section_name": assignment.section.name,
+        "academic_session_id": academic_session.id,
+        "academic_session_name": academic_session.name,
     }
 
 
@@ -151,6 +209,141 @@ class TeacherDocumentSetupAPIView(APIView):
                 for assignment in assignments
             ]
         })
+
+
+class CollegeAdminDocumentListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if not college_admin_required(request.user):
+            return Response(
+                {"detail": "Only college admins can access documents."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        documents = college_admin_documents(request.user)
+
+        teacher = request.query_params.get("teacher")
+        subject = request.query_params.get("subject")
+        classroom = request.query_params.get("class")
+        section = request.query_params.get("section")
+        academic_session = request.query_params.get("academic_session")
+        published = request.query_params.get("is_published")
+        status_filter = request.query_params.get("status")
+        search = request.query_params.get("search", "").strip()
+
+        if teacher:
+            documents = documents.filter(
+                teacher_assignment__teacher_id=teacher,
+                teacher_assignment__teacher__user__organization=(
+                    request.user.organization
+                ),
+            )
+        if subject:
+            documents = documents.filter(
+                teacher_assignment__subject_id=subject,
+                teacher_assignment__subject__organization=(
+                    request.user.organization
+                ),
+            )
+        if classroom:
+            documents = documents.filter(
+                teacher_assignment__section__classroom_id=classroom,
+                teacher_assignment__section__classroom__organization=(
+                    request.user.organization
+                ),
+            )
+        if section:
+            documents = documents.filter(
+                teacher_assignment__section_id=section,
+                teacher_assignment__section__organization=(
+                    request.user.organization
+                ),
+            )
+        if academic_session:
+            documents = documents.filter(
+                teacher_assignment__section__classroom__academic_session_id=(
+                    academic_session
+                ),
+                teacher_assignment__section__classroom__academic_session__organization=(
+                    request.user.organization
+                ),
+            )
+        if published is not None:
+            documents = documents.filter(
+                is_published=(
+                    str(published).lower() in ["true", "1", "yes"]
+                )
+            )
+        if status_filter in ["published", "draft"]:
+            documents = documents.filter(
+                is_published=status_filter == "published"
+            )
+        if search:
+            documents = documents.filter(title__icontains=search)
+
+        data = [
+            serialize_college_admin_document(document)
+            for document in documents.distinct().order_by("-created_at")
+        ]
+
+        return Response({
+            "count": len(data),
+            "documents": data,
+        })
+
+
+class CollegeAdminDocumentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_document(self, request, document_id):
+        return college_admin_documents(request.user).filter(
+            id=document_id
+        ).first()
+
+    def get(self, request, document_id):
+        if not college_admin_required(request.user):
+            return Response(
+                {"detail": "Only college admins can access documents."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        document = self.get_document(request, document_id)
+
+        if not document:
+            return Response(
+                {"detail": "Document not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response({
+            "document": serialize_college_admin_document(document),
+        })
+
+
+class CollegeAdminDocumentDownloadAPIView(CollegeAdminDocumentDetailAPIView):
+    def get(self, request, document_id):
+        if not college_admin_required(request.user):
+            return Response(
+                {"detail": "Only college admins can download documents."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        document = self.get_document(request, document_id)
+
+        if not document or not document.file:
+            return Response(
+                {"detail": "Document not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        filename = Path(document.file.name).name
+
+        return FileResponse(
+            document.file.open("rb"),
+            as_attachment=True,
+            filename=filename,
+        )
 
 
 class TeacherDocumentListAPIView(APIView):
@@ -263,6 +456,9 @@ class TeacherDocumentUploadAPIView(APIView):
             published_at=timezone.now() if publish else None,
         )
 
+        if document.is_published:
+            notify_document_published(document)
+
         return Response(
             {
                 "message": "Document uploaded successfully.",
@@ -322,6 +518,7 @@ class TeacherDocumentDetailAPIView(APIView):
             document.document_type = document_type
 
         if "is_published" in request.data:
+            was_published = document.is_published
             value = request.data.get("is_published")
 
             if isinstance(value, str):
@@ -337,6 +534,13 @@ class TeacherDocumentDetailAPIView(APIView):
             document.is_published = publish
 
         document.save()
+
+        if (
+            "is_published" in request.data
+            and document.is_published
+            and not was_published
+        ):
+            notify_document_published(document)
 
         return Response({
             "message": "Document updated successfully.",

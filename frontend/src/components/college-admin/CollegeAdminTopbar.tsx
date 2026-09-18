@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import NotificationPopup from "@/components/notifications/NotificationPopup";
+
 interface CollegeAdminTopbarProps {
   name: string;
   organization: string;
@@ -22,33 +24,42 @@ export default function CollegeAdminTopbar({
   };
 
   return (
-    <header className="teacher-topbar">
-      <div>
-        <h4 className="mb-1">
-          College Admin Dashboard
-        </h4>
+    <>
+      <NotificationPopup
+        role="college_admin"
+        tokenKey="college_admin_access_token"
+        userStorageKey="college_admin_user"
+        loginPath="/college-admin/login"
+      />
 
-        <p className="mb-0 text-muted">
-          {organization}
-        </p>
-      </div>
-
-      <div className="d-flex align-items-center gap-3">
+      <header className="teacher-topbar">
         <div>
-          <strong>{name}</strong>
-          <div className="small text-muted">
-            College Admin
-          </div>
+          <h4 className="mb-1">
+            College Admin Dashboard
+          </h4>
+
+          <p className="mb-0 text-muted">
+            {organization}
+          </p>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-outline-danger btn-sm"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
-      </div>
-    </header>
+        <div className="d-flex align-items-center gap-3">
+          <div>
+            <strong>{name}</strong>
+            <div className="small text-muted">
+              College Admin
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-outline-danger btn-sm"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
+      </header>
+    </>
   );
 }

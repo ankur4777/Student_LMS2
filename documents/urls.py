@@ -1,6 +1,9 @@
 from django.urls import path
 
 from .views import (
+    CollegeAdminDocumentDetailAPIView,
+    CollegeAdminDocumentDownloadAPIView,
+    CollegeAdminDocumentListAPIView,
     StudentDocumentDownloadAPIView,
     StudentDocumentListAPIView,
     TeacherDocumentDetailAPIView,
@@ -12,6 +15,21 @@ from .views import (
 
 
 urlpatterns = [
+    path(
+        "college-admin/",
+        CollegeAdminDocumentListAPIView.as_view(),
+        name="college-admin-document-list",
+    ),
+    path(
+        "college-admin/<int:document_id>/",
+        CollegeAdminDocumentDetailAPIView.as_view(),
+        name="college-admin-document-detail",
+    ),
+    path(
+        "college-admin/<int:document_id>/download/",
+        CollegeAdminDocumentDownloadAPIView.as_view(),
+        name="college-admin-document-download",
+    ),
     path(
         "student/",
         StudentDocumentListAPIView.as_view(),

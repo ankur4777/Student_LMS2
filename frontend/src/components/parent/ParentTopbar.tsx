@@ -1,3 +1,7 @@
+"use client";
+
+import NotificationPopup from "@/components/notifications/NotificationPopup";
+
 interface ParentTopbarProps {
   name: string;
   organization?: string;
@@ -8,22 +12,31 @@ export default function ParentTopbar({
   organization,
 }: ParentTopbarProps) {
   return (
-    <header className="student-topbar">
-      <div>
-        <h4 className="mb-1 fw-bold">
-          Parent Dashboard
-        </h4>
+    <>
+      <NotificationPopup
+        role="parent"
+        tokenKey="parent_access_token"
+        userStorageKey="parent_user"
+        loginPath="/parent/login"
+      />
 
-        <p className="text-muted mb-0">
-          Welcome back, {name}
-        </p>
-      </div>
+      <header className="student-topbar">
+        <div>
+          <h4 className="mb-1 fw-bold">
+            Parent Dashboard
+          </h4>
 
-      {organization && (
-        <div className="text-muted">
-          {organization}
+          <p className="text-muted mb-0">
+            Welcome back, {name}
+          </p>
         </div>
-      )}
-    </header>
+
+        {organization && (
+          <div className="text-muted">
+            {organization}
+          </div>
+        )}
+      </header>
+    </>
   );
 }

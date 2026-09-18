@@ -330,3 +330,195 @@ class CollegeAdminAssignmentAPITests(APITestCase):
         self.assertEqual(response.data["assignment"]["graded_count"], 1)
         self.assertEqual(len(response.data["students"]), 1)
         self.assertEqual(response.data["students"][0]["status"], "graded")
+
+
+class TeacherAssignmentGradingValidationTests(APITestCase):
+    def setUp(self):
+        self.org = Organization.objects.create(name="Org One", code="ORG1")
+        self.other_org = Organization.objects.create(
+            name="Org Two",
+            code="ORG2",
+        )
+
+        self.teacher_user = User.objects.create_user(
+            username="teacher-grade",
+            password="pass",
+            role="teacher",
+            organization=self.org,
+        )
+        self.other_teacher_user = User.objects.create_user(
+            username="teacher-other-section",
+            password="pass",
+            role="teacher",
+            organization=self.org,
+        )
+        self.cross_org_teacher_user = User.objects.create_user(
+            username="teacher-cross-org",
+            password="pass",
+            role="teacher",
+            organization=self.other_org,
+        )
+        self.student_user = User.objects.create_user(
+            username="student-grade",
+            password="pass",
+            role="student",
+            organization=self.org,
+        )
+
+        self.teacher = TeacherProfile.objects.create(
+            user=self.teacher_user,
+            employee_id="GT-1",
+        )
+        self.other_teacher = TeacherProfile.objects.create(
+            user=self.other_teacher_user,
+            employee_id="GT-2",
+        )
+        self.cross_org_teacher = TeacherProfile.objects.create(
+            user=self.cross_org_teacher_user,
+            employee_id="GT-3",
+        )
+        self.student = StudentProfile.objects.create(
+            user=self.student_user,
+            admission_number="GS-1",
+        )
+
+        self.session = AcademicSession.objects.create(
+            organization=self.org,
+            name="2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.org,
+            name="Class 8",
+            academic_session=self.session,
+        )
+        self.section = Section.objects.create(
+            organization=self.org,
+            name="A",
+            classroom=self.classroom,
+        )
+        self.subject = Subject.objects.create(
+            organization=self.org,
+            name="English",
+            classroom=self.classroom,
+        )
+        self.teacher_assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher,
+            subject=self.subject,
+            section=self.section,
+        )
+        StudentEnrollment.objects.create(
+            student=self.student,
+            section=self.section,
+            roll_number="11",
+        )
+        self.assignment = Assignment.objects.create(
+            organization=self.org,
+            teacher_assignment=self.teacher_assignment,
+            title="Essay",
+            due_date=date(2026, 9, 30),
+        )
+        self.submission = AssignmentSubmission.objects.create(
+            assignment=self.assignment,
+            student=self.student,
+            submission_text="Essay text",
+        )
+
+        self.url = reverse(
+            "teacher-grade-submission",
+            kwargs={"submission_id": self.submission.id},
+        )
+
+    def authenticate(self, user=None):
+        self.client.force_authenticate(user=user or self.teacher_user)
+
+    def test_valid_marks_success(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "95.50"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.submission.refresh_from_db()
+        self.assertEqual(str(self.submission.marks_obtained), "95.50")
+        self.assertEqual(self.submission.status, "graded")
+
+    def test_negative_marks_return_400(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "-1"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("marks_obtained", response.data)
+
+    def test_non_numeric_marks_return_400(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "abc"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("marks_obtained", response.data)
+
+    def test_extremely_large_marks_return_400_not_500(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "999999999999999999999999"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("marks_obtained", response.data)
+
+    def test_valid_feedback_and_marks_still_save(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {
+                "marks_obtained": "88",
+                "feedback": "Well done",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.submission.refresh_from_db()
+        self.assertEqual(str(self.submission.marks_obtained), "88.00")
+        self.assertEqual(self.submission.feedback, "Well done")
+        self.assertIsNotNone(self.submission.graded_at)
+
+    def test_unauthorized_teacher_cannot_grade(self):
+        self.authenticate(self.other_teacher_user)
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "80"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cross_organization_teacher_cannot_grade(self):
+        self.authenticate(self.cross_org_teacher_user)
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "80"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

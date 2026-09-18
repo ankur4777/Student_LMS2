@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import NotificationPopup from "@/components/notifications/NotificationPopup";
+
 interface StudentTopbarProps {
   name: string;
   organization?: string;
@@ -9,7 +11,6 @@ interface StudentTopbarProps {
 
 export default function StudentTopbar({
   name,
-  organization,
 }: StudentTopbarProps) {
   const router = useRouter();
 
@@ -26,39 +27,48 @@ export default function StudentTopbar({
   }
 
   return (
-    <header className="student-topbar">
-      <div>
-        <h4 className="mb-1">
-          Student Dashboard
-        </h4>
+    <>
+      <NotificationPopup
+        role="student"
+        tokenKey="student_access_token"
+        userStorageKey="student_user"
+        loginPath="/student/login"
+      />
 
-        <p className="mb-0 text-muted">
-          Welcome back, {name}
-        </p>
-      </div>
+      <header className="student-topbar">
+        <div>
+          <h4 className="mb-1">
+            Student Dashboard
+          </h4>
 
-      <div className="d-flex align-items-center gap-3">
-
-        <div className="topbar-profile">
-          <div className="profile-avatar">
-            {initial}
-          </div>
-
-          <div>
-            <strong>{name}</strong>
-            <small>Student</small>
-          </div>
+          <p className="mb-0 text-muted">
+            Welcome back, {name}
+          </p>
         </div>
 
-        <button
-          type="button"
-          className="btn btn-outline-danger btn-sm"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+        <div className="d-flex align-items-center gap-3">
 
-      </div>
-    </header>
+          <div className="topbar-profile">
+            <div className="profile-avatar">
+              {initial}
+            </div>
+
+            <div>
+              <strong>{name}</strong>
+              <small>Student</small>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-outline-danger btn-sm"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+
+        </div>
+      </header>
+    </>
   );
 }
