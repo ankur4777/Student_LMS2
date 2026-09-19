@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "studentresults",
     'notifications',
     'documents',
+    'fees',
 ]
 
 MIDDLEWARE = [

@@ -29,11 +29,15 @@ interface AccountInfo {
 interface OrganizationInfo {
   name: string;
   code: string;
+  primary_color: string;
+  secondary_color: string;
   email: string;
   phone: string;
   address: string;
   website: string;
+  domain: string;
   is_active: boolean;
+  status: string;
   logo: string;
 }
 
@@ -80,8 +84,16 @@ export default function CollegeAdminProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [institutionEmail, setInstitutionEmail] = useState("");
+  const [institutionPhone, setInstitutionPhone] = useState("");
+  const [institutionAddress, setInstitutionAddress] = useState("");
+  const [institutionWebsite, setInstitutionWebsite] = useState("");
+  const [primaryColor, setPrimaryColor] = useState("#0d6efd");
+  const [secondaryColor, setSecondaryColor] = useState("#6c757d");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingInstitution, setSavingInstitution] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -106,6 +118,12 @@ export default function CollegeAdminProfilePage() {
     setFirstName(result.account.first_name || "");
     setLastName(result.account.last_name || "");
     setEmail(result.account.email || "");
+    setInstitutionEmail(result.organization?.email || "");
+    setInstitutionPhone(result.organization?.phone || "");
+    setInstitutionAddress(result.organization?.address || "");
+    setInstitutionWebsite(result.organization?.website || "");
+    setPrimaryColor(result.organization?.primary_color || "#0d6efd");
+    setSecondaryColor(result.organization?.secondary_color || "#6c757d");
 
     setAdmin((currentAdmin) => {
       const nextAdmin = {
@@ -154,6 +172,45 @@ export default function CollegeAdminProfilePage() {
     }
 
     return result as ProfileResponse;
+  }, [clearSession, getToken, router]);
+
+  const fetchInstitutionSettings = useCallback(async (
+    options: RequestInit = {}
+  ) => {
+    const token = getToken();
+    if (!token) {
+      throw new Error("Unauthorized");
+    }
+
+    const response = await fetch(
+      `${API_BASE}/api/accounts/college-admin/institution-settings/`,
+      {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(options.headers || {}),
+        },
+      }
+    );
+
+    if (response.status === 401) {
+      clearSession();
+      router.replace("/college-admin/login");
+      throw new Error("Unauthorized");
+    }
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        result?.detail || "Unable to update institution settings."
+      );
+    }
+
+    return result as {
+      institution?: OrganizationInfo;
+      message?: string;
+    } & OrganizationInfo;
   }, [clearSession, getToken, router]);
 
   useEffect(() => {
@@ -213,6 +270,46 @@ export default function CollegeAdminProfilePage() {
     }
   };
 
+  const handleInstitutionSubmit = async (
+    event: FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    try {
+      setSavingInstitution(true);
+      setError("");
+      setSuccess("");
+
+      const payload = new FormData();
+      payload.append("primary_color", primaryColor);
+      payload.append("secondary_color", secondaryColor);
+      payload.append("email", institutionEmail);
+      payload.append("phone", institutionPhone);
+      payload.append("address", institutionAddress);
+      payload.append("website", institutionWebsite);
+      if (logoFile) {
+        payload.append("logo", logoFile);
+      }
+
+      const result = await fetchInstitutionSettings({
+        method: "PATCH",
+        body: payload,
+      });
+      const updatedInstitution = result.institution || result;
+      setOrganization(updatedInstitution);
+      setLogoFile(null);
+      setSuccess(
+        result.message || "Institution settings updated successfully."
+      );
+    } catch (err) {
+      if (err instanceof Error && err.message !== "Unauthorized") {
+        setError(err.message);
+      }
+    } finally {
+      setSavingInstitution(false);
+    }
+  };
+
   return (
     <div className="teacher-dashboard">
       <CollegeAdminSidebar />
@@ -245,9 +342,7 @@ export default function CollegeAdminProfilePage() {
               <>
                 <div className="card border-0 shadow-sm mb-4">
                   <div className="card-body p-4">
-                    <h5 className="fw-bold mb-4">
-                      Account Information
-                    </h5>
+                    <h5 className="fw-bold mb-4">My Profile</h5>
                     <div className="row g-4">
                       <div className="col-md-4">
                         <div className="text-muted small">Name</div>
@@ -290,7 +385,7 @@ export default function CollegeAdminProfilePage() {
                 <div className="card border-0 shadow-sm mb-4">
                   <div className="card-body p-4">
                     <h5 className="fw-bold mb-4">
-                      Editable Profile
+                      Edit Profile
                     </h5>
                     <form onSubmit={handleSubmit}>
                       <div className="row g-3">
@@ -339,26 +434,26 @@ export default function CollegeAdminProfilePage() {
                   </div>
                 </div>
 
-                <div className="card border-0 shadow-sm">
+                <div className="card border-0 shadow-sm mb-4">
                   <div className="card-body p-4">
                     <h5 className="fw-bold mb-4">
-                      Organization Information
+                      Institution Information
                     </h5>
                     {organization ? (
                       <div className="row g-4">
                         {organization.logo && (
                           <div className="col-12">
-                            <div
-                              aria-label={organization.name}
-                              className="rounded border bg-white"
-                              role="img"
+                            <div className="text-muted small mb-2">
+                              Current Logo
+                            </div>
+                            <img
+                              alt={`${organization.name} logo`}
+                              className="rounded border bg-white p-2"
+                              src={organization.logo}
                               style={{
-                                backgroundImage: `url(${organization.logo})`,
-                                backgroundPosition: "center",
-                                backgroundRepeat: "no-repeat",
-                                backgroundSize: "contain",
                                 height: 90,
                                 maxWidth: 180,
+                                objectFit: "contain",
                               }}
                             />
                           </div>
@@ -394,6 +489,12 @@ export default function CollegeAdminProfilePage() {
                           </div>
                         </div>
                         <div className="col-md-4">
+                          <div className="text-muted small">Domain</div>
+                          <div className="fw-semibold">
+                            {formatValue(organization.domain)}
+                          </div>
+                        </div>
+                        <div className="col-md-4">
                           <div className="text-muted small">Status</div>
                           <span
                             className={
@@ -421,6 +522,130 @@ export default function CollegeAdminProfilePage() {
                     )}
                   </div>
                 </div>
+
+                {organization && (
+                  <div className="card border-0 shadow-sm">
+                    <div className="card-body p-4">
+                      <h5 className="fw-bold mb-4">
+                        Edit Institution Settings
+                      </h5>
+                      <form onSubmit={handleInstitutionSubmit}>
+                        <div className="row g-3">
+                          <div className="col-md-6">
+                            {organization.logo && (
+                              <div className="mb-3">
+                                <div className="text-muted small mb-2">
+                                  Current Logo
+                                </div>
+                                <img
+                                  alt={`${organization.name} logo`}
+                                  className="rounded border bg-white p-2"
+                                  src={organization.logo}
+                                  style={{
+                                    height: 80,
+                                    maxWidth: 160,
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <label className="form-label">Logo</label>
+                            <input
+                              className="form-control"
+                              type="file"
+                              accept="image/*"
+                              onChange={(event) =>
+                                setLogoFile(
+                                  event.target.files?.[0] || null
+                                )
+                              }
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <label className="form-label">
+                              Primary Color
+                            </label>
+                            <input
+                              className="form-control form-control-color"
+                              type="color"
+                              value={primaryColor}
+                              onChange={(event) =>
+                                setPrimaryColor(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <label className="form-label">
+                              Secondary Color
+                            </label>
+                            <input
+                              className="form-control form-control-color"
+                              type="color"
+                              value={secondaryColor}
+                              onChange={(event) =>
+                                setSecondaryColor(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Email</label>
+                            <input
+                              className="form-control"
+                              type="email"
+                              value={institutionEmail}
+                              onChange={(event) =>
+                                setInstitutionEmail(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Phone</label>
+                            <input
+                              className="form-control"
+                              value={institutionPhone}
+                              onChange={(event) =>
+                                setInstitutionPhone(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Website</label>
+                            <input
+                              className="form-control"
+                              type="url"
+                              value={institutionWebsite}
+                              onChange={(event) =>
+                                setInstitutionWebsite(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-12">
+                            <label className="form-label">Address</label>
+                            <textarea
+                              className="form-control"
+                              rows={3}
+                              value={institutionAddress}
+                              onChange={(event) =>
+                                setInstitutionAddress(event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="col-12">
+                            <button
+                              type="submit"
+                              className="btn btn-primary"
+                              disabled={savingInstitution}
+                            >
+                              {savingInstitution
+                                ? "Saving..."
+                                : "Save Institution Settings"}
+                            </button>
+                          </div>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </>
             ) : null}
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
@@ -25,69 +25,61 @@ interface Summary {
   total_students: number;
   total_teachers: number;
   total_parents: number;
-  academic_sessions: number;
-  classrooms: number;
-  sections: number;
-  subjects: number;
-  live_classes: number;
-  assignments: number;
-  exams: number;
-  documents: number;
-  active_student_enrollments: number;
-  active_teacher_assignments: number;
-}
-
-interface AttendanceAnalytics {
-  period_label: string;
-  session_count: number;
-  record_count: number;
-  present: number;
-  absent: number;
-  late: number;
-  excused: number;
+  total_classes: number;
+  total_sections: number;
+  total_subjects: number;
+  active_enrollments: number;
+  total_teacher_assignments: number;
+  total_live_classes: number;
+  upcoming_live_classes: number;
+  total_assignments: number;
+  total_documents: number;
+  total_exams: number;
   attendance_percentage: number;
 }
 
-interface AssignmentAnalytics {
-  total: number;
-  published: number;
-  eligible_submissions: number;
-  submitted: number;
-  pending: number;
-  graded: number;
+interface RecentItemBase {
+  teacher_name?: string;
+  subject_name?: string;
+  classroom_name?: string;
+  section_name?: string;
+  status?: string;
 }
 
-interface ResultAnalytics {
-  total_exams: number;
-  published_exams: number;
-  unpublished_exams: number;
-  results_entered: number;
-}
-
-interface LiveClassAnalytics {
-  today: number;
-  upcoming: number;
-  completed: number;
-  recorded: number;
-}
-
-interface ActivityItem {
-  id: number;
+interface RecentLiveClass extends RecentItemBase {
   title: string;
-  description: string;
-  timestamp: string;
-  related_url: string | null;
-  notification_type: string;
+  class_date: string;
+  start_time: string;
+  end_time: string;
+}
+
+interface RecentAssignment extends RecentItemBase {
+  title: string;
+  due_date: string;
+  due_time: string | null;
+  created_at: string;
+}
+
+interface RecentDocument extends RecentItemBase {
+  title: string;
+  document_type: string;
+  created_at: string;
+  published_at: string | null;
+}
+
+interface RecentExam extends RecentItemBase {
+  name: string;
+  exam_date: string;
+  results_entered: number;
 }
 
 interface DashboardData {
   organization: OrganizationInfo;
   summary: Summary;
-  attendance: AttendanceAnalytics;
-  assignments: AssignmentAnalytics;
-  results: ResultAnalytics;
-  live_classes: LiveClassAnalytics;
-  recent_activity: ActivityItem[];
+  recent_live_classes: RecentLiveClass[];
+  recent_assignments: RecentAssignment[];
+  recent_documents: RecentDocument[];
+  recent_exams: RecentExam[];
 }
 
 function getSavedCollegeAdmin() {
@@ -106,6 +98,49 @@ function getSavedCollegeAdmin() {
   } catch {
     return {};
   }
+}
+
+function formatDate(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return new Date(value).toLocaleDateString();
+}
+
+function formatTime(value?: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return value.slice(0, 5);
+}
+
+function statusBadge(status?: string) {
+  const normalized = status || "";
+  const className = ["published", "completed", "scheduled"].includes(
+    normalized
+  )
+    ? "badge bg-success"
+    : normalized === "draft"
+      ? "badge bg-secondary"
+      : "badge bg-primary";
+
+  return (
+    <span className={className}>
+      {normalized || "active"}
+    </span>
+  );
+}
+
+function contextLine(item: RecentItemBase) {
+  return [
+    item.teacher_name,
+    item.subject_name,
+    item.classroom_name && item.section_name
+      ? `${item.classroom_name} - ${item.section_name}`
+      : item.classroom_name || item.section_name,
+  ].filter(Boolean).join(" - ");
 }
 
 export default function CollegeAdminDashboardPage() {
@@ -180,26 +215,49 @@ export default function CollegeAdminDashboardPage() {
     };
   }, [router]);
 
-  const cards = data
+  const summaryCards = data
     ? [
-        ["Students", data.summary.total_students],
-        ["Teachers", data.summary.total_teachers],
-        ["Parents", data.summary.total_parents],
-        ["Academic Sessions", data.summary.academic_sessions],
-        ["Classes", data.summary.classrooms],
-        ["Sections", data.summary.sections],
-        ["Subjects", data.summary.subjects],
-        ["Live Classes", data.summary.live_classes],
-        ["Assignments", data.summary.assignments],
-        ["Exams / Results", data.summary.exams],
-        ["Documents", data.summary.documents],
+        ["Students", data.summary.total_students, "/college-admin/students"],
+        ["Teachers", data.summary.total_teachers, "/college-admin/teachers"],
+        ["Parents", data.summary.total_parents, "/college-admin/parents"],
+        ["Classes", data.summary.total_classes, "/college-admin/classes"],
+        ["Sections", data.summary.total_sections, "/college-admin/sections"],
+        ["Subjects", data.summary.total_subjects, "/college-admin/subjects"],
         [
           "Active Enrollments",
-          data.summary.active_student_enrollments,
+          data.summary.active_enrollments,
+          "/college-admin/enrollments",
         ],
         [
           "Teacher Assignments",
-          data.summary.active_teacher_assignments,
+          data.summary.total_teacher_assignments,
+          "/college-admin/teacher-assignments",
+        ],
+      ]
+    : [];
+
+  const academicCards = data
+    ? [
+        [
+          "Live Classes",
+          data.summary.total_live_classes,
+          "/college-admin/live-classes",
+        ],
+        [
+          "Assignments",
+          data.summary.total_assignments,
+          "/college-admin/assignments",
+        ],
+        [
+          "Documents",
+          data.summary.total_documents,
+          "/college-admin/documents",
+        ],
+        ["Exams", data.summary.total_exams, "/college-admin/results"],
+        [
+          "Attendance %",
+          `${data.summary.attendance_percentage}%`,
+          "/college-admin/attendance",
         ],
       ]
     : [];
@@ -208,24 +266,60 @@ export default function CollegeAdminDashboardPage() {
     ["Add Student", "/college-admin/students/create"],
     ["Add Teacher", "/college-admin/teachers/create"],
     ["Create Enrollment", "/college-admin/enrollments/create"],
-    ["Create Teacher Assignment", "/college-admin/teacher-assignments/create"],
-    ["View Attendance", "/college-admin/attendance"],
-    ["View Assignments", "/college-admin/assignments"],
-    ["View Results", "/college-admin/results"],
-    ["View Documents", "/college-admin/documents"],
-    ["View Notifications", "/college-admin/notifications"],
+    ["Assign Teacher", "/college-admin/teacher-assignments/create"],
   ];
 
-  const metricCards = (items: [string, string | number][]) => (
+  const renderMetricCards = (
+    items: (string | number)[][]
+  ) => (
     <div className="row g-3">
-      {items.map(([label, value]) => (
-        <div key={label} className="col-6 col-lg-4">
-          <div className="border rounded p-3 h-100">
-            <div className="text-muted small">{label}</div>
-            <div className="fs-4 fw-bold">{value}</div>
-          </div>
+      {items.map(([label, value, href]) => (
+        <div key={String(label)} className="col-6 col-xl-3">
+          <Link
+            href={String(href)}
+            className="text-decoration-none text-reset"
+          >
+            <div className="card border-0 shadow-sm h-100">
+              <div className="card-body p-3 p-md-4">
+                <div className="text-muted small mb-2">
+                  {label}
+                </div>
+                <div className="fs-3 fw-bold">
+                  {value}
+                </div>
+              </div>
+            </div>
+          </Link>
         </div>
       ))}
+    </div>
+  );
+
+  const renderRecentSection = (
+    title: string,
+    href: string,
+    items: ReactNode,
+    isEmpty: boolean
+  ) => (
+    <div className="card border-0 shadow-sm h-100">
+      <div className="card-body p-4">
+        <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
+          <h5 className="fw-bold mb-0">{title}</h5>
+          <Link className="btn btn-outline-primary btn-sm" href={href}>
+            View All
+          </Link>
+        </div>
+
+        {isEmpty ? (
+          <div className="text-muted text-center py-4">
+            No records found.
+          </div>
+        ) : (
+          <div className="d-flex flex-column gap-3">
+            {items}
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -245,14 +339,29 @@ export default function CollegeAdminDashboardPage() {
 
         <div className="teacher-dashboard-content">
           <div className="container-fluid">
-            <div className="mb-4">
-              <h2 className="fw-bold mb-1">
-                College Admin Dashboard
-              </h2>
+            <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+              <div>
+                <h2 className="fw-bold mb-1">
+                  College Admin Dashboard
+                </h2>
+                <p className="text-muted mb-0">
+                  {data?.organization.name ||
+                    admin.organization ||
+                    "Institution overview"}
+                </p>
+              </div>
 
-              <p className="text-muted mb-0">
-                Manage your institution&apos;s users and academic structure.
-              </p>
+              <div className="d-flex flex-wrap gap-2">
+                {quickActions.map(([label, href]) => (
+                  <Link
+                    key={href}
+                    className="btn btn-primary btn-sm"
+                    href={href}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </div>
             </div>
 
             {error && (
@@ -269,214 +378,137 @@ export default function CollegeAdminDashboardPage() {
               </div>
             ) : data ? (
               <>
+                <div className="mb-4">
+                  {renderMetricCards(summaryCards)}
+                </div>
+
                 <div className="card border-0 shadow-sm mb-4">
                   <div className="card-body p-4">
-                    <h5 className="fw-bold mb-3">
-                      College Overview
-                    </h5>
-
-                    <div className="row g-4">
-                      <div className="col-md-4">
-                        <div className="text-muted small">
-                          Organization
-                        </div>
-
-                        <div className="fw-semibold">
-                          {data.organization.name}
-                        </div>
-                      </div>
-
-                      <div className="col-md-4">
-                        <div className="text-muted small">
-                          Code
-                        </div>
-
-                        <div className="fw-semibold">
-                          {data.organization.code || "-"}
-                        </div>
-                      </div>
-
-                      <div className="col-md-4">
-                        <div className="text-muted small">
-                          Status
-                        </div>
-
-                        <div className="fw-semibold">
-                          {data.organization.is_active
-                            ? "Active"
-                            : "Inactive"}
-                        </div>
+                    <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                      <div>
+                        <h5 className="fw-bold mb-1">
+                          Academic Overview
+                        </h5>
+                        <p className="text-muted mb-0">
+                          {data.summary.upcoming_live_classes} upcoming live classes
+                        </p>
                       </div>
                     </div>
+                    {renderMetricCards(academicCards)}
                   </div>
                 </div>
 
                 <div className="row g-4">
-                  {cards.map(([label, value]) => (
-                    <div
-                      className="col-md-6 col-xl-3"
-                      key={label}
-                    >
-                      <div className="card border-0 shadow-sm h-100">
-                        <div className="card-body p-4">
-                          <div className="text-muted small mb-2">
-                            {label}
-                          </div>
-
-                          <h3 className="fw-bold mb-0">
-                            {value}
-                          </h3>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="card border-0 shadow-sm mt-4">
-                  <div className="card-body p-4">
-                    <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-                      <div>
-                        <h5 className="fw-bold mb-1">
-                          Attendance Overview
-                        </h5>
-                        <p className="text-muted mb-0">
-                          {data.attendance.period_label}
-                        </p>
-                      </div>
-                      <div className="fs-4 fw-bold">
-                        {data.attendance.attendance_percentage}%
-                      </div>
-                    </div>
-                    {metricCards([
-                      ["Sessions", data.attendance.session_count],
-                      ["Records", data.attendance.record_count],
-                      ["Present", data.attendance.present],
-                      ["Absent", data.attendance.absent],
-                      ["Late", data.attendance.late],
-                      ["Excused", data.attendance.excused],
-                    ])}
-                  </div>
-                </div>
-
-                <div className="row g-4 mt-1">
                   <div className="col-xl-6">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <h5 className="fw-bold mb-3">Assignments</h5>
-                        {metricCards([
-                          ["Total", data.assignments.total],
-                          ["Published", data.assignments.published],
-                          [
-                            "Eligible",
-                            data.assignments.eligible_submissions,
-                          ],
-                          ["Submitted", data.assignments.submitted],
-                          ["Pending", data.assignments.pending],
-                          ["Graded", data.assignments.graded],
-                        ])}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="col-xl-6">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <h5 className="fw-bold mb-3">Results</h5>
-                        {metricCards([
-                          ["Total Exams", data.results.total_exams],
-                          [
-                            "Published",
-                            data.results.published_exams,
-                          ],
-                          [
-                            "Unpublished",
-                            data.results.unpublished_exams,
-                          ],
-                          [
-                            "Results Entered",
-                            data.results.results_entered,
-                          ],
-                        ])}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="row g-4 mt-1">
-                  <div className="col-xl-6">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <h5 className="fw-bold mb-3">Live Classes</h5>
-                        {metricCards([
-                          ["Today", data.live_classes.today],
-                          ["Upcoming", data.live_classes.upcoming],
-                          ["Completed", data.live_classes.completed],
-                          ["Recorded", data.live_classes.recorded],
-                        ])}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="col-xl-6">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <h5 className="fw-bold mb-3">Quick Actions</h5>
-                        <div className="d-flex flex-wrap gap-2">
-                          {quickActions.map(([label, href]) => (
-                            <Link
-                              key={href}
-                              className="btn btn-outline-primary btn-sm"
-                              href={href}
-                            >
-                              {label}
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="card border-0 shadow-sm mt-4">
-                  <div className="card-body p-4">
-                    <h5 className="fw-bold mb-3">Recent Activity</h5>
-                    {data.recent_activity.length === 0 ? (
-                      <div className="text-muted py-4 text-center">
-                        No recent activity found.
-                      </div>
-                    ) : (
-                      <div className="d-flex flex-column gap-3">
-                        {data.recent_activity.map((activity) => (
-                          <div
-                            key={activity.id}
-                            className="d-flex justify-content-between align-items-start gap-3 flex-wrap border-bottom pb-3"
-                          >
+                    {renderRecentSection(
+                      "Recent Live Classes",
+                      "/college-admin/live-classes",
+                      data.recent_live_classes.map((item) => (
+                        <div
+                          key={`${item.title}-${item.class_date}-${item.start_time}`}
+                          className="border-bottom pb-3"
+                        >
+                          <div className="d-flex justify-content-between gap-3">
                             <div>
-                              <div className="fw-semibold">
-                                {activity.title}
-                              </div>
+                              <div className="fw-semibold">{item.title}</div>
                               <div className="text-muted small">
-                                {activity.description}
+                                {contextLine(item)}
                               </div>
                               <div className="text-muted small mt-1">
-                                {new Date(
-                                  activity.timestamp
-                                ).toLocaleString()}
+                                {formatDate(item.class_date)}{" "}
+                                {formatTime(item.start_time)}-
+                                {formatTime(item.end_time)}
                               </div>
                             </div>
-                            {activity.related_url?.startsWith(
-                              "/college-admin/"
-                            ) && (
-                              <Link
-                                className="btn btn-outline-secondary btn-sm"
-                                href={activity.related_url}
-                              >
-                                View
-                              </Link>
-                            )}
+                            {statusBadge(item.status)}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      )),
+                      data.recent_live_classes.length === 0
+                    )}
+                  </div>
+
+                  <div className="col-xl-6">
+                    {renderRecentSection(
+                      "Recent Assignments",
+                      "/college-admin/assignments",
+                      data.recent_assignments.map((item) => (
+                        <div
+                          key={`${item.title}-${item.created_at}`}
+                          className="border-bottom pb-3"
+                        >
+                          <div className="d-flex justify-content-between gap-3">
+                            <div>
+                              <div className="fw-semibold">{item.title}</div>
+                              <div className="text-muted small">
+                                {contextLine(item)}
+                              </div>
+                              <div className="text-muted small mt-1">
+                                Due {formatDate(item.due_date)}{" "}
+                                {formatTime(item.due_time)}
+                              </div>
+                            </div>
+                            {statusBadge(item.status)}
+                          </div>
+                        </div>
+                      )),
+                      data.recent_assignments.length === 0
+                    )}
+                  </div>
+
+                  <div className="col-xl-6">
+                    {renderRecentSection(
+                      "Recent Documents",
+                      "/college-admin/documents",
+                      data.recent_documents.map((item) => (
+                        <div
+                          key={`${item.title}-${item.created_at}`}
+                          className="border-bottom pb-3"
+                        >
+                          <div className="d-flex justify-content-between gap-3">
+                            <div>
+                              <div className="fw-semibold">{item.title}</div>
+                              <div className="text-muted small">
+                                {contextLine(item)}
+                              </div>
+                              <div className="text-muted small mt-1">
+                                {item.document_type.replace("_", " ")} -{" "}
+                                {formatDate(item.published_at || item.created_at)}
+                              </div>
+                            </div>
+                            {statusBadge(item.status)}
+                          </div>
+                        </div>
+                      )),
+                      data.recent_documents.length === 0
+                    )}
+                  </div>
+
+                  <div className="col-xl-6">
+                    {renderRecentSection(
+                      "Recent Exams / Results",
+                      "/college-admin/results",
+                      data.recent_exams.map((item) => (
+                        <div
+                          key={`${item.name}-${item.exam_date}`}
+                          className="border-bottom pb-3"
+                        >
+                          <div className="d-flex justify-content-between gap-3">
+                            <div>
+                              <div className="fw-semibold">{item.name}</div>
+                              <div className="text-muted small">
+                                {item.classroom_name} - {item.section_name}
+                              </div>
+                              <div className="text-muted small mt-1">
+                                {formatDate(item.exam_date)} -{" "}
+                                {item.results_entered} results entered
+                              </div>
+                            </div>
+                            {statusBadge(item.status)}
+                          </div>
+                        </div>
+                      )),
+                      data.recent_exams.length === 0
                     )}
                   </div>
                 </div>

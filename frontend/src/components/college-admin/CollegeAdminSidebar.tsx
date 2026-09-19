@@ -9,6 +9,7 @@ const links = [
   ["Students", "/college-admin/students"],
   ["Teachers", "/college-admin/teachers"],
   ["Parents", "/college-admin/parents"],
+  ["Parent-Student Links", "/college-admin/parent-student-links"],
   ["Academic Sessions", "/college-admin/academic-sessions"],
   ["Classes", "/college-admin/classes"],
   ["Sections", "/college-admin/sections"],
@@ -33,6 +34,8 @@ export default function CollegeAdminSidebar() {
       pathname.startsWith("/college-admin/results/")) ||
     (href === "/college-admin/documents" &&
       pathname.startsWith("/college-admin/documents/")) ||
+    (href === "/college-admin/parent-student-links" &&
+      pathname.startsWith("/college-admin/parent-student-links/")) ||
     (href === "/college-admin/notifications" &&
       pathname.startsWith("/college-admin/notifications/"))
   );

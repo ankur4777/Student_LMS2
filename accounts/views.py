@@ -7,6 +7,8 @@ from django.db.models import Count, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from django.forms import ImageField, ValidationError
 
 from .models import StudentProfile, User
 
@@ -801,9 +803,15 @@ class CollegeAdminDashboardAPIView(APIView):
 
         assignments = Assignment.objects.filter(
             organization=organization,
+            teacher_assignment__teacher__user__organization=organization,
+            teacher_assignment__subject__organization=organization,
             teacher_assignment__section__organization=organization,
+            teacher_assignment__section__classroom__organization=organization,
         ).select_related(
-            "teacher_assignment__section"
+            "teacher_assignment__teacher__user",
+            "teacher_assignment__subject",
+            "teacher_assignment__section",
+            "teacher_assignment__section__classroom",
         )
         assignment_ids = assignments.values_list("id", flat=True)
         eligible_assignments = 0
@@ -834,6 +842,10 @@ class CollegeAdminDashboardAPIView(APIView):
         exams = Exam.objects.filter(
             organization=organization,
             section__organization=organization,
+            section__classroom__organization=organization,
+        ).select_related(
+            "section",
+            "section__classroom",
         )
         results_entered = StudentResult.objects.filter(
             exam__organization=organization,
@@ -842,11 +854,44 @@ class CollegeAdminDashboardAPIView(APIView):
 
         live_classes = LiveClass.objects.filter(
             organization=organization,
+            teacher_assignment__teacher__user__organization=organization,
+            teacher_assignment__subject__organization=organization,
             teacher_assignment__section__organization=organization,
+            teacher_assignment__section__classroom__organization=organization,
+        ).select_related(
+            "teacher_assignment__teacher__user",
+            "teacher_assignment__subject",
+            "teacher_assignment__section",
+            "teacher_assignment__section__classroom",
         )
         recordings = LiveClassRecording.objects.filter(
             live_class__organization=organization,
             live_class__teacher_assignment__section__organization=organization,
+        )
+        documents = Document.objects.filter(
+            organization=organization,
+            teacher_assignment__teacher__user__organization=organization,
+            teacher_assignment__subject__organization=organization,
+            teacher_assignment__section__organization=organization,
+            teacher_assignment__section__classroom__organization=organization,
+        ).select_related(
+            "teacher_assignment__teacher__user",
+            "teacher_assignment__subject",
+            "teacher_assignment__section",
+            "teacher_assignment__section__classroom",
+        )
+        active_enrollments = StudentEnrollment.objects.filter(
+            is_active=True,
+            student__user__organization=organization,
+            section__organization=organization,
+            section__classroom__organization=organization,
+        )
+        active_teacher_assignments = TeacherAssignment.objects.filter(
+            is_active=True,
+            teacher__user__organization=organization,
+            subject__organization=organization,
+            section__organization=organization,
+            section__classroom__organization=organization,
         )
 
         recent_notifications = Notification.objects.filter(
@@ -906,6 +951,84 @@ class CollegeAdminDashboardAPIView(APIView):
             if len(recent_activity) == 10:
                 break
 
+        def assignment_context(teacher_assignment):
+            teacher_user = teacher_assignment.teacher.user
+            section = teacher_assignment.section
+            classroom = section.classroom
+
+            return {
+                "teacher_name": (
+                    teacher_user.get_full_name().strip()
+                    or teacher_user.username
+                ),
+                "subject_name": teacher_assignment.subject.name,
+                "classroom_name": classroom.name,
+                "section_name": section.name,
+            }
+
+        recent_live_classes = [
+            {
+                "title": live_class.title,
+                "class_date": live_class.class_date,
+                "start_time": live_class.start_time,
+                "end_time": live_class.end_time,
+                "status": live_class.status,
+                **assignment_context(live_class.teacher_assignment),
+            }
+            for live_class in live_classes.order_by(
+                "-class_date",
+                "-start_time",
+            )[:5]
+        ]
+        recent_assignments = [
+            {
+                "title": assignment.title,
+                "due_date": assignment.due_date,
+                "due_time": assignment.due_time,
+                "status": (
+                    "published"
+                    if assignment.is_published
+                    else "draft"
+                ),
+                "created_at": assignment.created_at,
+                **assignment_context(assignment.teacher_assignment),
+            }
+            for assignment in assignments.order_by("-created_at")[:5]
+        ]
+        recent_documents = [
+            {
+                "title": document.title,
+                "document_type": document.document_type,
+                "status": (
+                    "published"
+                    if document.is_published
+                    else "draft"
+                ),
+                "created_at": document.created_at,
+                "published_at": document.published_at,
+                **assignment_context(document.teacher_assignment),
+            }
+            for document in documents.order_by("-created_at")[:5]
+        ]
+        recent_exams = [
+            {
+                "name": exam.name,
+                "exam_date": exam.exam_date,
+                "status": (
+                    "published"
+                    if exam.is_published
+                    else "draft"
+                ),
+                "classroom_name": exam.section.classroom.name,
+                "section_name": exam.section.name,
+                "results_entered": StudentResult.objects.filter(
+                    exam=exam,
+                    student__user__organization=organization,
+                ).count(),
+            }
+            for exam in exams.order_by("-exam_date", "-created_at")[:5]
+        ]
+
         return Response({
             "organization": {
                 "name": organization.name,
@@ -925,6 +1048,15 @@ class CollegeAdminDashboardAPIView(APIView):
                 "academic_sessions": AcademicSession.objects.filter(
                     organization=organization
                 ).count(),
+                "total_classes": ClassRoom.objects.filter(
+                    organization=organization
+                ).count(),
+                "total_sections": Section.objects.filter(
+                    organization=organization
+                ).count(),
+                "total_subjects": Subject.objects.filter(
+                    organization=organization
+                ).count(),
                 "classrooms": ClassRoom.objects.filter(
                     organization=organization
                 ).count(),
@@ -934,24 +1066,25 @@ class CollegeAdminDashboardAPIView(APIView):
                 "subjects": Subject.objects.filter(
                     organization=organization
                 ).count(),
+                "active_enrollments": active_enrollments.count(),
+                "total_teacher_assignments": (
+                    active_teacher_assignments.count()
+                ),
+                "active_student_enrollments": active_enrollments.count(),
+                "active_teacher_assignments": active_teacher_assignments.count(),
+                "total_live_classes": live_classes.count(),
+                "upcoming_live_classes": live_classes.filter(
+                    class_date__gte=today,
+                    status=LiveClass.Status.SCHEDULED,
+                ).count(),
+                "total_assignments": assignments.count(),
+                "total_documents": documents.count(),
+                "total_exams": exams.count(),
+                "attendance_percentage": attendance_percentage,
                 "live_classes": live_classes.count(),
                 "assignments": assignments.count(),
                 "exams": exams.count(),
-                "documents": Document.objects.filter(
-                    organization=organization
-                ).count(),
-                "active_student_enrollments": (
-                    StudentEnrollment.objects.filter(
-                        is_active=True,
-                        section__organization=organization,
-                    ).count()
-                ),
-                "active_teacher_assignments": (
-                    TeacherAssignment.objects.filter(
-                        is_active=True,
-                        section__organization=organization,
-                    ).count()
-                ),
+                "documents": documents.count(),
             },
             "attendance": {
                 "period_label": "Last 30 Days",
@@ -1000,6 +1133,10 @@ class CollegeAdminDashboardAPIView(APIView):
                 "recorded": recordings.count(),
             },
             "recent_activity": recent_activity,
+            "recent_live_classes": recent_live_classes,
+            "recent_assignments": recent_assignments,
+            "recent_documents": recent_documents,
+            "recent_exams": recent_exams,
         })
 
 
@@ -1024,11 +1161,15 @@ def serialize_college_admin_profile(user, request):
             {
                 "name": organization.name,
                 "code": organization.code,
+                "primary_color": organization.primary_color,
+                "secondary_color": organization.secondary_color,
                 "email": organization.email,
                 "phone": organization.phone,
                 "address": organization.address,
                 "website": organization.website,
+                "domain": organization.domain,
                 "is_active": organization.is_active,
+                "status": "active" if organization.is_active else "inactive",
                 "logo": (
                     request.build_absolute_uri(organization.logo.url)
                     if organization.logo
@@ -1109,6 +1250,117 @@ class CollegeAdminProfileAPIView(APIView):
         })
 
 
+def serialize_college_admin_institution(organization, request):
+    return {
+        "name": organization.name,
+        "code": organization.code,
+        "logo": (
+            request.build_absolute_uri(organization.logo.url)
+            if organization.logo
+            else ""
+        ),
+        "primary_color": organization.primary_color,
+        "secondary_color": organization.secondary_color,
+        "email": organization.email,
+        "phone": organization.phone,
+        "address": organization.address,
+        "website": organization.website,
+        "domain": organization.domain,
+        "is_active": organization.is_active,
+        "status": "active" if organization.is_active else "inactive",
+    }
+
+
+class CollegeAdminInstitutionSettingsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_organization(self, user):
+        if user.role != "college_admin" or not user.is_active:
+            return None
+
+        if not user.organization:
+            return None
+
+        return user.organization
+
+    def get(self, request):
+        organization = self.get_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can access institution settings."},
+                status=403
+            )
+
+        return Response(
+            serialize_college_admin_institution(organization, request)
+        )
+
+    def patch(self, request):
+        organization = self.get_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update institution settings."},
+                status=403
+            )
+
+        editable_fields = [
+            "primary_color",
+            "secondary_color",
+            "email",
+            "phone",
+            "address",
+            "website",
+        ]
+        update_fields = []
+
+        for field in editable_fields:
+            if field in request.data:
+                setattr(
+                    organization,
+                    field,
+                    str(request.data.get(field) or "").strip(),
+                )
+                update_fields.append(field)
+
+        if "logo" in request.FILES:
+            logo = request.FILES["logo"]
+            try:
+                ImageField().clean(logo)
+            except ValidationError:
+                return Response(
+                    {"detail": "Upload a valid image file for the logo."},
+                    status=400,
+                )
+
+            logo.seek(0)
+            old_logo_name = organization.logo.name if organization.logo else ""
+            organization.logo = logo
+            update_fields.append("logo")
+        else:
+            old_logo_name = ""
+
+        if update_fields:
+            organization.save(update_fields=update_fields)
+            if (
+                old_logo_name
+                and "logo" in update_fields
+                and old_logo_name != organization.logo.name
+                and organization.logo.storage.exists(old_logo_name)
+            ):
+                organization.logo.storage.delete(old_logo_name)
+
+        return Response({
+            "message": "Institution settings updated successfully.",
+            "institution": serialize_college_admin_institution(
+                organization,
+                request,
+            ),
+        })
+
+
 def college_admin_organization(user):
     if user.role != "college_admin" or not user.is_active:
         return None
@@ -1181,6 +1433,11 @@ def serialize_parent_student_link(link):
         ),
         "username": student_user.username,
         "admission_number": student.admission_number,
+        "roll_number": (
+            enrollment.roll_number
+            if enrollment
+            else ""
+        ),
         "relationship": link.relationship,
         "classroom_name": (
             enrollment.section.classroom.name
@@ -1192,7 +1449,48 @@ def serialize_parent_student_link(link):
             if enrollment
             else ""
         ),
+        "academic_session_name": (
+            enrollment.section.classroom.academic_session.name
+            if enrollment and enrollment.section.classroom.academic_session
+            else ""
+        ),
     }
+
+
+def serialize_college_parent_student_link(link):
+    parent_profile = link.parent
+    parent_user = parent_profile.user
+    student_data = serialize_parent_student_link(link)
+
+    return {
+        "link_id": link.id,
+        "relationship": link.relationship,
+        "parent": {
+            "id": parent_user.id,
+            "parent_profile_id": parent_profile.id,
+            "name": (
+                parent_user.get_full_name().strip()
+                or parent_user.username
+            ),
+            "username": parent_user.username,
+            "email": parent_user.email,
+        },
+        "student": student_data,
+    }
+
+
+def college_parent_student_link_queryset(organization):
+    return ParentStudent.objects.filter(
+        parent__user__role="parent",
+        parent__user__organization=organization,
+        student__user__role="student",
+        student__user__organization=organization,
+    ).select_related(
+        "parent",
+        "parent__user",
+        "student",
+        "student__user",
+    )
 
 
 def serialize_college_parent(user, include_links=False):
@@ -2168,6 +2466,280 @@ class CollegeAdminParentLinkOptionsAPIView(APIView):
                 }
                 for value, label in ParentStudent.Relationship.choices
             ],
+        })
+
+
+class CollegeAdminParentStudentLinkSetupAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage parent links."},
+                status=403
+            )
+
+        parents = ParentProfile.objects.filter(
+            user__role="parent",
+            user__organization=organization,
+            user__is_active=True,
+        ).select_related(
+            "user",
+        ).order_by(
+            "user__first_name",
+            "user__last_name",
+            "user__username",
+        )
+        students = StudentProfile.objects.filter(
+            user__role="student",
+            user__organization=organization,
+            user__is_active=True,
+        ).select_related(
+            "user",
+        ).order_by(
+            "user__first_name",
+            "user__last_name",
+            "user__username",
+        )
+
+        return Response({
+            "parents": [
+                {
+                    "parent_profile_id": parent.id,
+                    "parent_id": parent.user_id,
+                    "name": (
+                        parent.user.get_full_name().strip()
+                        or parent.user.username
+                    ),
+                    "username": parent.user.username,
+                    "email": parent.user.email,
+                }
+                for parent in parents
+            ],
+            "students": [
+                {
+                    "student_profile_id": student.id,
+                    "student_id": student.user_id,
+                    "name": (
+                        student.user.get_full_name().strip()
+                        or student.user.username
+                    ),
+                    "username": student.user.username,
+                    "admission_number": student.admission_number,
+                }
+                for student in students
+            ],
+            "relationships": [
+                {
+                    "value": value,
+                    "label": label,
+                }
+                for value, label in ParentStudent.Relationship.choices
+            ],
+        })
+
+
+class CollegeAdminParentStudentLinkManagementAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can manage parent links."},
+                status=403
+            )
+
+        links = college_parent_student_link_queryset(
+            organization
+        ).order_by(
+            "parent__user__first_name",
+            "parent__user__last_name",
+            "student__user__first_name",
+            "student__user__last_name",
+        )
+        search = request.query_params.get("search", "").strip()
+
+        if search:
+            links = links.filter(
+                Q(parent__user__first_name__icontains=search)
+                | Q(parent__user__last_name__icontains=search)
+                | Q(parent__user__username__icontains=search)
+                | Q(parent__user__email__icontains=search)
+                | Q(student__user__first_name__icontains=search)
+                | Q(student__user__last_name__icontains=search)
+                | Q(student__user__username__icontains=search)
+                | Q(student__admission_number__icontains=search)
+            )
+
+        return Response({
+            "links": [
+                serialize_college_parent_student_link(link)
+                for link in links
+            ]
+        })
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can create parent links."},
+                status=403
+            )
+
+        parent_profile_id = request.data.get(
+            "parent_profile_id"
+        )
+        student_profile_id = request.data.get(
+            "student_profile_id"
+        )
+        relationship = request.data.get(
+            "relationship",
+            ParentStudent.Relationship.GUARDIAN,
+        )
+        valid_relationships = [
+            choice[0]
+            for choice in ParentStudent.Relationship.choices
+        ]
+
+        if relationship not in valid_relationships:
+            return Response(
+                {"detail": "Invalid relationship."},
+                status=400
+            )
+
+        parent = ParentProfile.objects.filter(
+            id=parent_profile_id,
+            user__role="parent",
+            user__organization=organization,
+        ).select_related(
+            "user",
+        ).first()
+
+        if not parent:
+            return Response(
+                {"detail": "Parent not found."},
+                status=404
+            )
+
+        student = StudentProfile.objects.filter(
+            id=student_profile_id,
+            user__role="student",
+            user__organization=organization,
+        ).select_related(
+            "user",
+        ).first()
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404
+            )
+
+        if ParentStudent.objects.filter(
+            parent=parent,
+            student=student,
+        ).exists():
+            return Response(
+                {"detail": "Student is already linked to this parent."},
+                status=400
+            )
+
+        link = ParentStudent.objects.create(
+            parent=parent,
+            student=student,
+            relationship=relationship,
+        )
+
+        return Response(
+            {
+                "message": "Parent-student link created successfully.",
+                "link": serialize_college_parent_student_link(link),
+            },
+            status=201
+        )
+
+
+class CollegeAdminParentStudentLinkManagementDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_link(self, user, link_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None
+
+        return college_parent_student_link_queryset(
+            organization
+        ).filter(
+            id=link_id
+        ).first()
+
+    def patch(self, request, link_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can update parent links."},
+                status=403
+            )
+
+        link = self.get_link(request.user, link_id)
+
+        if not link:
+            return Response(
+                {"detail": "Parent-student link not found."},
+                status=404
+            )
+
+        relationship = request.data.get(
+            "relationship",
+            link.relationship,
+        )
+        valid_relationships = [
+            choice[0]
+            for choice in ParentStudent.Relationship.choices
+        ]
+
+        if relationship not in valid_relationships:
+            return Response(
+                {"detail": "Invalid relationship."},
+                status=400
+            )
+
+        link.relationship = relationship
+        link.save(update_fields=["relationship"])
+
+        return Response({
+            "message": "Parent-student link updated successfully.",
+            "link": serialize_college_parent_student_link(link),
+        })
+
+    def delete(self, request, link_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can unlink students."},
+                status=403
+            )
+
+        link = self.get_link(request.user, link_id)
+
+        if not link:
+            return Response(
+                {"detail": "Parent-student link not found."},
+                status=404
+            )
+
+        link.delete()
+
+        return Response({
+            "message": "Parent-student link removed successfully."
         })
 
 

@@ -29,9 +29,11 @@ interface LinkedStudent {
   name: string;
   username: string;
   admission_number: string;
+  roll_number: string;
   relationship: string;
   classroom_name: string;
   section_name: string;
+  academic_session_name: string;
 }
 
 interface Parent {
@@ -228,6 +230,14 @@ export default function CollegeAdminParentDetailPage() {
   };
 
   const unlinkStudent = async (linkId: number) => {
+    const confirmed = window.confirm(
+      "Unlink this student from the parent?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
       setSaving(true);
       setLinkError("");
@@ -418,7 +428,9 @@ export default function CollegeAdminParentDetailPage() {
                           <thead>
                             <tr>
                               <th>Student</th>
+                              <th>Roll Number</th>
                               <th>Class / Section</th>
+                              <th>Academic Session</th>
                               <th>Relationship</th>
                               <th>Actions</th>
                             </tr>
@@ -434,6 +446,7 @@ export default function CollegeAdminParentDetailPage() {
                                     {student.admission_number}
                                   </div>
                                 </td>
+                                <td>{student.roll_number || "-"}</td>
                                 <td>
                                   {student.classroom_name ? (
                                     <>
@@ -443,6 +456,9 @@ export default function CollegeAdminParentDetailPage() {
                                   ) : (
                                     "-"
                                   )}
+                                </td>
+                                <td>
+                                  {student.academic_session_name || "-"}
                                 </td>
                                 <td>
                                   {formatRelationship(student.relationship)}

@@ -12,10 +12,14 @@ from .views import (
     CollegeAdminEnrollmentsAPIView,
     CollegeAdminEnrollmentSetupAPIView,
     CollegeAdminLoginAPIView,
+    CollegeAdminInstitutionSettingsAPIView,
     CollegeAdminParentDetailAPIView,
     CollegeAdminParentLinkOptionsAPIView,
     CollegeAdminParentsAPIView,
     CollegeAdminParentStudentLinkDetailAPIView,
+    CollegeAdminParentStudentLinkManagementAPIView,
+    CollegeAdminParentStudentLinkManagementDetailAPIView,
+    CollegeAdminParentStudentLinkSetupAPIView,
     CollegeAdminParentStudentLinksAPIView,
     CollegeAdminProfileAPIView,
     CollegeAdminStudentDetailAPIView,
@@ -76,6 +80,11 @@ urlpatterns = [
         "college-admin/profile/",
         CollegeAdminProfileAPIView.as_view(),
         name="college-admin-profile",
+    ),
+    path(
+        "college-admin/institution-settings/",
+        CollegeAdminInstitutionSettingsAPIView.as_view(),
+        name="college-admin-institution-settings",
     ),
     path(
     "college-admin/students/",
@@ -156,6 +165,21 @@ urlpatterns = [
         "college-admin/parents/<int:parent_id>/student-links/<int:link_id>/",
         CollegeAdminParentStudentLinkDetailAPIView.as_view(),
         name="college-admin-parent-student-link-detail",
+    ),
+    path(
+        "college-admin/parent-student-links/setup/",
+        CollegeAdminParentStudentLinkSetupAPIView.as_view(),
+        name="college-admin-parent-student-link-setup",
+    ),
+    path(
+        "college-admin/parent-student-links/",
+        CollegeAdminParentStudentLinkManagementAPIView.as_view(),
+        name="college-admin-parent-student-links",
+    ),
+    path(
+        "college-admin/parent-student-links/<int:link_id>/",
+        CollegeAdminParentStudentLinkManagementDetailAPIView.as_view(),
+        name="college-admin-parent-student-link-management-detail",
     ),
     path(
     "parent/login/",
