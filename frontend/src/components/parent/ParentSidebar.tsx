@@ -73,6 +73,17 @@ export default function ParentSidebar() {
         </Link>
 
         <Link
+          href="/parent/fees"
+          className={
+            pathname === "/parent/fees"
+              ? "active"
+              : ""
+          }
+        >
+          Fees
+        </Link>
+
+        <Link
           href="/parent/notifications"
           className={
             pathname === "/parent/notifications"
