@@ -9,11 +9,13 @@ from .views import (
     CollegeAdminStudentFeePaymentsAPIView,
     CollegeAdminStudentFeesAPIView,
     StudentFeesAPIView,
+    ParentStudentFeesAPIView,
 )
 
 
 urlpatterns = [
     path("student/", StudentFeesAPIView.as_view(), name="student-fees"),
+    path("parent/student/<int:student_id>/", ParentStudentFeesAPIView.as_view(), name="parent-student-fees"),
     path(
         "college-admin/setup/",
         CollegeAdminFeeSetupAPIView.as_view(),
