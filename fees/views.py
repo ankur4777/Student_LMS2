@@ -8,8 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from academics.models import AcademicSession, ClassRoom, Section, StudentEnrollment
-from accounts.models import StudentProfile
+from academics.models import AcademicSession, ClassRoom, ParentStudent, Section, StudentEnrollment
+from accounts.models import ParentProfile, StudentProfile
 
 from .models import (
     FeeComponent,
@@ -955,3 +955,39 @@ class StudentFeesAPIView(APIView):
             return Response({"detail": "Student profile not found."}, status=404)
         fees = student_fee_queryset(request.user.organization).filter(student=student).order_by("-created_at")
         return Response({"student_fees": [serialize_student_fee(fee, True) for fee in fees]})
+
+
+class ParentStudentFeesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        user = request.user
+        if user.role != "parent" or not user.is_active or not user.organization:
+            return Response({"detail": "Only parents can access student fees."}, status=403)
+
+        parent = ParentProfile.objects.filter(
+            user=user,
+            user__organization=user.organization,
+        ).first()
+        if not parent:
+            return Response({"detail": "Parent profile not found."}, status=404)
+
+        link = ParentStudent.objects.filter(
+            parent=parent,
+            student_id=student_id,
+            student__user__organization=user.organization,
+        ).select_related("student", "student__user").first()
+        if not link:
+            return Response({"detail": "Student is not linked to this parent."}, status=403)
+
+        fees = student_fee_queryset(user.organization).filter(
+            student=link.student
+        ).order_by("-created_at")
+        return Response({
+            "student": {
+                "id": link.student_id,
+                "name": link.student.user.get_full_name().strip() or link.student.user.username,
+                "username": link.student.user.username,
+            },
+            "student_fees": [serialize_student_fee(fee, True) for fee in fees],
+        })
