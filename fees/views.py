@@ -942,3 +942,16 @@ class CollegeAdminStudentFeePaymentsAPIView(APIView):
             return validation_error_response(exc)
 
         return Response({"payment": serialize_payment(payment)}, status=201)
+
+
+class StudentFeesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != "student" or not request.user.is_active or not request.user.organization:
+            return Response({"detail": "Only students can access student fees."}, status=403)
+        student = StudentProfile.objects.filter(user=request.user, user__organization=request.user.organization).first()
+        if not student:
+            return Response({"detail": "Student profile not found."}, status=404)
+        fees = student_fee_queryset(request.user.organization).filter(student=student).order_by("-created_at")
+        return Response({"student_fees": [serialize_student_fee(fee, True) for fee in fees]})
