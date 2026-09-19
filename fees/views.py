@@ -1,14 +1,23 @@
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
+from django.db.models import Prefetch, Sum
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from academics.models import AcademicSession, ClassRoom
+from academics.models import AcademicSession, ClassRoom, Section, StudentEnrollment
+from accounts.models import StudentProfile
 
-from .models import FeeComponent, FeeStructure
+from .models import (
+    FeeComponent,
+    FeeInstallment,
+    FeePayment,
+    FeeStructure,
+    StudentFee,
+)
 
 
 def college_admin_organization(user):
@@ -258,6 +267,24 @@ class CollegeAdminFeeSetupAPIView(APIView):
             organization=organization,
             academic_session__organization=organization,
         ).select_related("academic_session").order_by("name")
+        sections = Section.objects.filter(
+            organization=organization,
+            classroom__organization=organization,
+        ).select_related("classroom").order_by("classroom__name", "name")
+        enrollments = StudentEnrollment.objects.filter(
+            is_active=True,
+            student__user__organization=organization,
+            section__organization=organization,
+            section__classroom__organization=organization,
+        ).select_related(
+            "student",
+            "student__user",
+            "section",
+            "section__classroom",
+        ).order_by("student__user__first_name", "student__user__username")
+        structures = fee_structure_queryset(organization).filter(
+            is_active=True
+        ).order_by("name")
 
         return Response({
             "academic_sessions": [
@@ -275,6 +302,44 @@ class CollegeAdminFeeSetupAPIView(APIView):
                     "academic_session_id": classroom.academic_session_id,
                 }
                 for classroom in classes
+            ],
+            "sections": [
+                {
+                    "id": section.id,
+                    "name": section.name,
+                    "class_room_id": section.classroom_id,
+                }
+                for section in sections
+            ],
+            "students": [
+                {
+                    "student_profile_id": enrollment.student_id,
+                    "student_id": enrollment.student.user_id,
+                    "name": (
+                        enrollment.student.user.get_full_name().strip()
+                        or enrollment.student.user.username
+                    ),
+                    "username": enrollment.student.user.username,
+                    "admission_number": enrollment.student.admission_number,
+                    "enrollment_id": enrollment.id,
+                    "section_id": enrollment.section_id,
+                    "class_room_id": enrollment.section.classroom_id,
+                }
+                for enrollment in enrollments
+            ],
+            "enrollments": [
+                {
+                    "id": enrollment.id,
+                    "student_profile_id": enrollment.student_id,
+                    "section_id": enrollment.section_id,
+                    "class_room_id": enrollment.section.classroom_id,
+                    "roll_number": enrollment.roll_number,
+                }
+                for enrollment in enrollments
+            ],
+            "fee_structures": [
+                serialize_fee_structure(structure)
+                for structure in structures
             ],
         })
 
@@ -451,3 +516,429 @@ class CollegeAdminFeeStructureDetailAPIView(APIView):
                 include_components=True,
             ),
         })
+
+
+def paid_amount_for(obj):
+    return obj.payments.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+
+
+def calculated_installment_status(installment):
+    outstanding = installment.amount - paid_amount_for(installment)
+    if outstanding <= Decimal("0.00"):
+        return FeeInstallment.Status.PAID
+    if timezone.localdate() > installment.due_date:
+        return FeeInstallment.Status.OVERDUE
+    return FeeInstallment.Status.PENDING
+
+
+def sync_student_fee_status(student_fee):
+    status = student_fee.calculated_status()
+    if student_fee.status != status:
+        student_fee.status = status
+        student_fee.save(update_fields=["status", "updated_at"])
+    return status
+
+
+def student_fee_queryset(organization):
+    return StudentFee.objects.filter(
+        organization=organization,
+        student__user__organization=organization,
+        academic_session__organization=organization,
+        fee_structure__organization=organization,
+    ).select_related(
+        "student",
+        "student__user",
+        "academic_session",
+        "fee_structure",
+        "fee_structure__class_room",
+    ).prefetch_related(
+        "installments",
+        "payments",
+        "payments__recorded_by",
+        "payments__installment",
+    )
+
+
+def serialize_installment(installment):
+    paid_amount = paid_amount_for(installment)
+    outstanding = installment.amount - paid_amount
+
+    return {
+        "id": installment.id,
+        "name": installment.name,
+        "amount": installment.amount,
+        "due_date": installment.due_date,
+        "sequence": installment.sequence,
+        "paid_amount": paid_amount,
+        "outstanding_amount": outstanding,
+        "status": calculated_installment_status(installment),
+    }
+
+
+def serialize_payment(payment):
+    recorded_by = payment.recorded_by
+    return {
+        "id": payment.id,
+        "amount": payment.amount,
+        "payment_date": payment.payment_date,
+        "payment_method": payment.payment_method,
+        "reference_number": payment.reference_number,
+        "notes": payment.notes,
+        "installment": (
+            {
+                "id": payment.installment_id,
+                "name": payment.installment.name,
+            }
+            if payment.installment_id
+            else None
+        ),
+        "recorded_by": (
+            recorded_by.get_full_name().strip()
+            or recorded_by.username
+        ),
+        "created_at": payment.created_at,
+    }
+
+
+def active_enrollment_for(student, academic_session, organization):
+    return StudentEnrollment.objects.filter(
+        student=student,
+        is_active=True,
+        section__organization=organization,
+        section__classroom__organization=organization,
+        section__classroom__academic_session=academic_session,
+    ).select_related(
+        "section",
+        "section__classroom",
+    ).first()
+
+
+def serialize_student_fee(student_fee, include_details=False):
+    sync_student_fee_status(student_fee)
+    student_user = student_fee.student.user
+    enrollment = active_enrollment_for(
+        student_fee.student,
+        student_fee.academic_session,
+        student_fee.organization,
+    )
+    paid_amount = student_fee.paid_amount
+    data = {
+        "id": student_fee.id,
+        "student": {
+            "id": student_user.id,
+            "student_profile_id": student_fee.student_id,
+            "name": student_user.get_full_name().strip() or student_user.username,
+            "username": student_user.username,
+            "admission_number": student_fee.student.admission_number,
+        },
+        "academic_session": {
+            "id": student_fee.academic_session_id,
+            "name": student_fee.academic_session.name,
+        },
+        "fee_structure": {
+            "id": student_fee.fee_structure_id,
+            "name": student_fee.fee_structure.name,
+        },
+        "enrollment": (
+            {
+                "id": enrollment.id,
+                "roll_number": enrollment.roll_number,
+                "class_room": enrollment.section.classroom.name,
+                "section": enrollment.section.name,
+            }
+            if enrollment
+            else None
+        ),
+        "original_amount": student_fee.original_amount,
+        "discount_amount": student_fee.discount_amount,
+        "fine_amount": student_fee.fine_amount,
+        "payable_amount": student_fee.payable_amount,
+        "paid_amount": paid_amount,
+        "outstanding_amount": student_fee.payable_amount - paid_amount,
+        "due_date": student_fee.due_date,
+        "status": student_fee.status,
+        "created_at": student_fee.created_at,
+        "updated_at": student_fee.updated_at,
+    }
+
+    if include_details:
+        data["installments"] = [
+            serialize_installment(installment)
+            for installment in student_fee.installments.all()
+        ]
+        data["payments"] = [
+            serialize_payment(payment)
+            for payment in student_fee.payments.all()
+        ]
+
+    return data
+
+
+def validate_student_fee_payload(data, organization, instance=None):
+    is_create = instance is None
+    values = {}
+
+    if is_create:
+        student = StudentProfile.objects.filter(
+            id=data.get("student_profile_id"),
+            user__organization=organization,
+            user__role="student",
+        ).select_related("user").first()
+        if not student:
+            return None, {"detail": "Student not found."}, 404
+        values["student"] = student
+
+        academic_session = AcademicSession.objects.filter(
+            id=data.get("academic_session_id"),
+            organization=organization,
+        ).first()
+        if not academic_session:
+            return None, {"detail": "Academic session not found."}, 404
+        values["academic_session"] = academic_session
+
+        fee_structure = fee_structure_queryset(organization).filter(
+            id=data.get("fee_structure_id"),
+            is_active=True,
+        ).first()
+        if not fee_structure:
+            return None, {"detail": "Fee structure not found."}, 404
+        values["fee_structure"] = fee_structure
+
+        enrollment_id = data.get("enrollment_id")
+        enrollment = StudentEnrollment.objects.filter(
+            id=enrollment_id,
+            student=student,
+            is_active=True,
+            section__organization=organization,
+            section__classroom__academic_session=academic_session,
+        ).first()
+        if not enrollment:
+            return None, {"detail": "Enrollment not found."}, 404
+
+        if fee_structure.academic_session_id != academic_session.id:
+            return None, {"detail": "Fee structure session mismatch."}, 400
+
+        if enrollment.section.classroom_id != fee_structure.class_room_id:
+            return None, {"detail": "Fee structure class mismatch."}, 400
+
+    original_amount = (
+        instance.original_amount
+        if instance
+        else values["fee_structure"].total_amount
+    )
+    if "original_amount" in data:
+        original_amount, error = parse_money(data.get("original_amount"), "original_amount")
+        if error:
+            return None, error, 400
+
+    discount_amount = instance.discount_amount if instance else Decimal("0.00")
+    if "discount_amount" in data or is_create:
+        discount_amount, error = parse_money(
+            data.get("discount_amount", discount_amount),
+            "discount_amount",
+        )
+        if error:
+            return None, error, 400
+
+    fine_amount = instance.fine_amount if instance else Decimal("0.00")
+    if "fine_amount" in data or is_create:
+        fine_amount, error = parse_money(
+            data.get("fine_amount", fine_amount),
+            "fine_amount",
+        )
+        if error:
+            return None, error, 400
+
+    payable_amount = original_amount - discount_amount + fine_amount
+    if payable_amount < Decimal("0.00"):
+        return None, {"discount_amount": "Discount cannot exceed fee plus fine."}, 400
+
+    if instance and instance.paid_amount > payable_amount:
+        return None, {"detail": "Existing payments exceed new payable amount."}, 400
+
+    if "due_date" in data or is_create:
+        values["due_date"] = data.get("due_date") or (
+            values["fee_structure"].due_date if is_create else instance.due_date
+        )
+        if not values["due_date"]:
+            return None, {"detail": "Due date is required."}, 400
+
+    values.update({
+        "original_amount": original_amount,
+        "discount_amount": discount_amount,
+        "fine_amount": fine_amount,
+        "payable_amount": payable_amount,
+    })
+    return values, None, None
+
+
+class CollegeAdminStudentFeesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response({"detail": "Only college admins can access student fees."}, status=403)
+
+        fees = student_fee_queryset(organization).order_by("-created_at")
+        return Response({"student_fees": [serialize_student_fee(fee) for fee in fees]})
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response({"detail": "Only college admins can assign fees."}, status=403)
+
+        values, error, status_code = validate_student_fee_payload(request.data, organization)
+        if error:
+            return Response(error, status=status_code)
+
+        try:
+            student_fee = StudentFee(organization=organization, **values)
+            student_fee.full_clean()
+            student_fee.save()
+            sync_student_fee_status(student_fee)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except IntegrityError:
+            return Response({"detail": "Fee already assigned to this student."}, status=400)
+
+        return Response({"student_fee": serialize_student_fee(student_fee, True)}, status=201)
+
+
+class CollegeAdminStudentFeeDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_student_fee(self, user, student_fee_id):
+        organization = college_admin_organization(user)
+        if not organization:
+            return None
+        return student_fee_queryset(organization).filter(id=student_fee_id).first()
+
+    def get(self, request, student_fee_id):
+        student_fee = self.get_student_fee(request.user, student_fee_id)
+        if not student_fee:
+            return Response({"detail": "Student fee not found."}, status=404)
+        return Response({"student_fee": serialize_student_fee(student_fee, True)})
+
+    def patch(self, request, student_fee_id):
+        student_fee = self.get_student_fee(request.user, student_fee_id)
+        if not student_fee:
+            return Response({"detail": "Student fee not found."}, status=404)
+
+        values, error, status_code = validate_student_fee_payload(
+            request.data,
+            student_fee.organization,
+            instance=student_fee,
+        )
+        if error:
+            return Response(error, status=status_code)
+
+        try:
+            for field, value in values.items():
+                setattr(student_fee, field, value)
+            student_fee.full_clean()
+            student_fee.save()
+            sync_student_fee_status(student_fee)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+        return Response({"student_fee": serialize_student_fee(student_fee, True)})
+
+
+class CollegeAdminStudentFeeInstallmentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, student_fee_id):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response({"detail": "Only college admins can manage installments."}, status=403)
+
+        student_fee = student_fee_queryset(organization).filter(id=student_fee_id).first()
+        if not student_fee:
+            return Response({"detail": "Student fee not found."}, status=404)
+
+        amount, error = parse_money(request.data.get("amount"), "amount")
+        if error:
+            return Response(error, status=400)
+        if amount <= Decimal("0.00"):
+            return Response({"amount": "Installment amount must be greater than zero."}, status=400)
+
+        current_total = student_fee.installments.aggregate(total=Sum("amount"))["total"] or Decimal("0.00")
+        if current_total + amount > student_fee.payable_amount:
+            return Response({"detail": "Installment total cannot exceed payable amount."}, status=400)
+
+        installment = FeeInstallment(
+            student_fee=student_fee,
+            name=str(request.data.get("name", "")).strip(),
+            amount=amount,
+            due_date=request.data.get("due_date"),
+            sequence=request.data.get("sequence") or 1,
+        )
+        if not installment.name:
+            return Response({"detail": "Installment name is required."}, status=400)
+
+        try:
+            installment.full_clean()
+            installment.save()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except IntegrityError:
+            return Response({"detail": "Installment sequence already exists."}, status=400)
+
+        return Response({"installment": serialize_installment(installment)}, status=201)
+
+
+class CollegeAdminStudentFeePaymentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, student_fee_id):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response({"detail": "Only college admins can record payments."}, status=403)
+
+        amount, error = parse_money(request.data.get("amount"), "amount")
+        if error:
+            return Response(error, status=400)
+        if amount <= Decimal("0.00"):
+            return Response({"amount": "Payment amount must be greater than zero."}, status=400)
+
+        try:
+            with transaction.atomic():
+                student_fee = student_fee_queryset(organization).select_for_update().filter(
+                    id=student_fee_id
+                ).first()
+                if not student_fee:
+                    return Response({"detail": "Student fee not found."}, status=404)
+
+                installment = None
+                installment_id = request.data.get("installment_id")
+                if installment_id:
+                    installment = FeeInstallment.objects.select_for_update().filter(
+                        id=installment_id,
+                        student_fee=student_fee,
+                    ).first()
+                    if not installment:
+                        return Response({"detail": "Installment not found."}, status=404)
+
+                payment = FeePayment(
+                    organization=organization,
+                    student_fee=student_fee,
+                    installment=installment,
+                    amount=amount,
+                    payment_date=request.data.get("payment_date") or timezone.localdate(),
+                    payment_method=request.data.get("payment_method", FeePayment.Method.CASH),
+                    reference_number=str(request.data.get("reference_number", "") or "").strip(),
+                    notes=str(request.data.get("notes", "") or "").strip(),
+                    recorded_by=request.user,
+                )
+                payment.full_clean()
+                payment.save()
+                sync_student_fee_status(student_fee)
+
+                if installment:
+                    installment.status = calculated_installment_status(installment)
+                    installment.save(update_fields=["status"])
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+        return Response({"payment": serialize_payment(payment)}, status=201)

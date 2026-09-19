@@ -63,6 +63,7 @@ class FeePaymentAdmin(admin.ModelAdmin):
         "amount",
         "payment_date",
         "payment_method",
+        "installment",
         "recorded_by",
     )
     list_filter = ("organization", "payment_method", "payment_date")

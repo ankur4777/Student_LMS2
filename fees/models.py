@@ -303,6 +303,13 @@ class FeePayment(models.Model):
         on_delete=models.PROTECT,
         related_name="payments",
     )
+    installment = models.ForeignKey(
+        "FeeInstallment",
+        on_delete=models.PROTECT,
+        related_name="payments",
+        null=True,
+        blank=True,
+    )
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -334,6 +341,13 @@ class FeePayment(models.Model):
                 {"student_fee": "Student fee must belong to organization."}
             )
 
+        if self.installment_id and (
+            self.installment.student_fee_id != self.student_fee_id
+        ):
+            raise ValidationError(
+                {"installment": "Installment must belong to student fee."}
+            )
+
         if self.recorded_by_id and (
             self.recorded_by.organization_id != self.organization_id
         ):
@@ -356,6 +370,22 @@ class FeePayment(models.Model):
             if self.amount > outstanding:
                 raise ValidationError(
                     {"amount": "Payment cannot exceed outstanding balance."}
+                )
+
+        if self.installment_id:
+            installment_outstanding = (
+                self.installment.amount
+                - (
+                    self.installment.payments.exclude(
+                        pk=self.pk
+                    ).aggregate(total=Sum("amount"))["total"]
+                    or ZERO
+                )
+            )
+
+            if self.amount > installment_outstanding:
+                raise ValidationError(
+                    {"amount": "Payment cannot exceed installment balance."}
                 )
 
     def __str__(self):
