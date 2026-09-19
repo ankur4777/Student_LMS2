@@ -8,10 +8,12 @@ from .views import (
     CollegeAdminStudentFeeInstallmentsAPIView,
     CollegeAdminStudentFeePaymentsAPIView,
     CollegeAdminStudentFeesAPIView,
+    StudentFeesAPIView,
 )
 
 
 urlpatterns = [
+    path("student/", StudentFeesAPIView.as_view(), name="student-fees"),
     path(
         "college-admin/setup/",
         CollegeAdminFeeSetupAPIView.as_view(),
