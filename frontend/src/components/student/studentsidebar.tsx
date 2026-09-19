@@ -14,6 +14,7 @@ export default function StudentSidebar() {
     { href: "/student/assignments", label: "Assignments" },
     { href: "/student/results", label: "Results" },
     { href: "/student/documents", label: "Documents" },
+    { href: "/student/fees", label: "Fees" },
     { href: "/student/notifications", label: "Notifications" },
     { href: "/student/profile", label: "Profile" },
   ];
@@ -34,7 +35,7 @@ export default function StudentSidebar() {
           <Link
             key={link.href}
             href={link.href}
-            className={pathname === link.href ? "active" : ""}
+            className={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "active" : ""}
           >
             {link.label}
           </Link>
