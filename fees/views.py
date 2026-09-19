@@ -1,12 +1,18 @@
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
+from django.http import HttpResponse
 from django.db.models import Prefetch, Sum
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
 from academics.models import AcademicSession, ClassRoom, ParentStudent, Section, StudentEnrollment
 from accounts.models import ParentProfile, StudentProfile
@@ -991,3 +997,108 @@ class ParentStudentFeesAPIView(APIView):
             },
             "student_fees": [serialize_student_fee(fee, True) for fee in fees],
         })
+
+
+def fee_document_access(user, student_fee_id):
+    if not user.is_authenticated or not user.is_active or not user.organization:
+        return None
+    qs = student_fee_queryset(user.organization).filter(id=student_fee_id)
+    if user.role == "college_admin":
+        return qs.first()
+    if user.role == "student":
+        student = StudentProfile.objects.filter(user=user, user__organization=user.organization).first()
+        return qs.filter(student=student).first() if student else None
+    if user.role == "parent":
+        parent = ParentProfile.objects.filter(user=user, user__organization=user.organization).first()
+        if not parent:
+            return None
+        linked_ids = ParentStudent.objects.filter(
+            parent=parent, student__user__organization=user.organization
+        ).values_list("student_id", flat=True)
+        return qs.filter(student_id__in=linked_ids).first()
+    return None
+
+
+def pdf_response(filename, title, organization, rows, payments=None):
+    response = HttpResponse(content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    doc = SimpleDocTemplate(response, pagesize=A4, rightMargin=18*mm, leftMargin=18*mm, topMargin=18*mm, bottomMargin=18*mm)
+    styles = getSampleStyleSheet()
+    story = [
+        Paragraph(organization.name, styles["Title"]),
+        Paragraph(title, styles["Heading2"]),
+        Paragraph(" | ".join(filter(None, [organization.address, organization.phone, organization.email])), styles["Normal"]),
+        Spacer(1, 8*mm),
+    ]
+    table = Table(rows, colWidths=[55*mm, 100*mm])
+    table.setStyle(TableStyle([
+        ("GRID",(0,0),(-1,-1),0.5,colors.grey),
+        ("BACKGROUND",(0,0),(0,-1),colors.whitesmoke),
+        ("FONTNAME",(0,0),(0,-1),"Helvetica-Bold"),
+        ("VALIGN",(0,0),(-1,-1),"TOP"),
+        ("PADDING",(0,0),(-1,-1),6),
+    ]))
+    story += [table]
+    if payments:
+        story += [Spacer(1, 8*mm), Paragraph("Payment History", styles["Heading3"])]
+        pdata = [["Date","Amount","Method","Reference"]]
+        for p in payments:
+            pdata.append([str(p.payment_date), str(p.amount), p.get_payment_method_display(), p.reference_number or "-"])
+        pt = Table(pdata, repeatRows=1)
+        pt.setStyle(TableStyle([("GRID",(0,0),(-1,-1),0.5,colors.grey),("BACKGROUND",(0,0),(-1,0),colors.whitesmoke),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("PADDING",(0,0),(-1,-1),5)]))
+        story.append(pt)
+    doc.build(story)
+    return response
+
+
+class FeeInvoicePDFAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_fee_id):
+        fee = fee_document_access(request.user, student_fee_id)
+        if not fee:
+            return Response({"detail": "Fee not found or access denied."}, status=404)
+        user = fee.student.user
+        enrollment = active_enrollment_for(fee.student, fee.academic_session, fee.organization)
+        rows = [
+            ["Invoice Number", f"FEE-{fee.id:06d}"],
+            ["Student", user.get_full_name().strip() or user.username],
+            ["Admission Number", fee.student.admission_number or "-"],
+            ["Class / Section", f"{enrollment.section.classroom.name} / {enrollment.section.name}" if enrollment else "-"],
+            ["Academic Session", fee.academic_session.name],
+            ["Fee Structure", fee.fee_structure.name],
+            ["Original Amount", str(fee.original_amount)],
+            ["Discount", str(fee.discount_amount)],
+            ["Fine", str(fee.fine_amount)],
+            ["Payable", str(fee.payable_amount)],
+            ["Paid", str(fee.paid_amount)],
+            ["Outstanding", str(fee.outstanding_amount)],
+            ["Due Date", str(fee.due_date)],
+            ["Status", fee.get_status_display()],
+        ]
+        return pdf_response(f"fee-invoice-{fee.id}.pdf", "Fee Invoice", fee.organization, rows, fee.payments.all())
+
+
+class FeeReceiptPDFAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, payment_id):
+        payment = FeePayment.objects.filter(
+            id=payment_id,
+            organization=request.user.organization,
+        ).select_related("student_fee", "student_fee__student__user", "organization", "installment").first()
+        if not payment or not fee_document_access(request.user, payment.student_fee_id):
+            return Response({"detail": "Payment not found or access denied."}, status=404)
+        fee = payment.student_fee
+        user = fee.student.user
+        rows = [
+            ["Receipt Number", f"PAY-{payment.id:06d}"],
+            ["Student", user.get_full_name().strip() or user.username],
+            ["Fee Structure", fee.fee_structure.name],
+            ["Payment Date", str(payment.payment_date)],
+            ["Amount Paid", str(payment.amount)],
+            ["Payment Method", payment.get_payment_method_display()],
+            ["Installment", payment.installment.name if payment.installment else "General"],
+            ["Reference", payment.reference_number or "-"],
+        ]
+        return pdf_response(f"fee-receipt-{payment.id}.pdf", "Payment Receipt", fee.organization, rows)
