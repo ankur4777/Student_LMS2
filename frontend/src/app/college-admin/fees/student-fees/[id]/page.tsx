@@ -48,6 +48,24 @@ export default function StudentFeeDetailPage() {
     await load();
   }
 
+  const downloadPdf = async (path: string, filename: string) => {
+    const token = localStorage.getItem("college_admin_access_token");
+    if (!token) { router.replace("/college-admin/login"); return; }
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Unable to download document.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to download document."); }
+  };
+
   const addInstallment = async (e: FormEvent) => {
     e.preventDefault();
     await submit("installments", { ...installment, sequence: Number(installment.sequence) });
@@ -64,7 +82,7 @@ export default function StudentFeeDetailPage() {
   return <div className="teacher-dashboard"><CollegeAdminSidebar/><main className="teacher-dashboard-main">
     <CollegeAdminTopbar name={admin.name || admin.username || "College Admin"} organization={admin.organization || ""}/>
     <div className="teacher-dashboard-content"><div className="container-fluid">
-      <div className="d-flex justify-content-between flex-wrap gap-2 mb-4"><div><h2 className="fw-bold">Student Fee Detail</h2><p className="text-muted mb-0">{fee?.student?.name} • {fee?.enrollment?.class_room} / {fee?.enrollment?.section}</p></div><button className="btn btn-outline-secondary" onClick={() => router.push("/college-admin/fees")}>Back to Fees</button></div>
+      <div className="d-flex justify-content-between flex-wrap gap-2 mb-4"><div><h2 className="fw-bold">Student Fee Detail</h2><p className="text-muted mb-0">{fee?.student?.name} • {fee?.enrollment?.class_room} / {fee?.enrollment?.section}</p></div><div className="d-flex gap-2"><button className="btn btn-outline-primary" onClick={() => downloadPdf(`/api/fees/documents/invoice/${id}/`, `fee-invoice-${id}.pdf`)}>Download Invoice</button><button className="btn btn-outline-secondary" onClick={() => router.push("/college-admin/fees")}>Back to Fees</button></div></div>
       {error && <div className="alert alert-danger">{error}</div>}
       {fee && <>
         <div className="row g-3 mb-4">{[["Original",fee.original_amount],["Discount",fee.discount_amount],["Fine",fee.fine_amount],["Payable",fee.payable_amount],["Paid",fee.paid_amount],["Pending",fee.outstanding_amount]].map(([label,value]) => <div className="col-6 col-md-4 col-xl-2" key={label}><div className="card border-0 shadow-sm h-100"><div className="card-body"><small className="text-muted">{label}</small><div className="fw-bold fs-5">{money(value)}</div></div></div></div>)}</div>
@@ -92,7 +110,7 @@ export default function StudentFeeDetailPage() {
         </form></div></div>
 
         <h4 className="fw-bold">Payment History</h4>
-        <div className="card border-0 shadow-sm"><div className="table-responsive"><table className="table mb-0"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th><th>Recorded By</th></tr></thead><tbody>{fee.payments?.length ? fee.payments.map((p:any)=><tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td className="text-capitalize">{String(p.payment_method).replace("_"," ")}</td><td>{p.installment?.name || "-"}</td><td>{p.reference_number || "-"}</td><td>{p.recorded_by}</td></tr>) : <tr><td colSpan={6} className="text-center text-muted py-3">No payments recorded.</td></tr>}</tbody></table></div></div>
+        <div className="card border-0 shadow-sm"><div className="table-responsive"><table className="table mb-0"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th><th>Recorded By</th><th>Receipt</th></tr></thead><tbody>{fee.payments?.length ? fee.payments.map((p:any)=><tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td className="text-capitalize">{String(p.payment_method).replace("_"," ")}</td><td>{p.installment?.name || "-"}</td><td>{p.reference_number || "-"}</td><td>{p.recorded_by}</td><td><button className="btn btn-outline-secondary btn-sm" onClick={() => downloadPdf(`/api/fees/documents/receipt/${p.id}/`, `fee-receipt-${p.id}.pdf`)}>Download</button></td></tr>) : <tr><td colSpan={7} className="text-center text-muted py-3">No payments recorded.</td></tr>}</tbody></table></div></div>
       </>}
     </div></div>
   </main></div>;
