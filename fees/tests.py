@@ -129,7 +129,7 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             "name": "Annual Fee",
             "description": "Annual class fee",
             "total_amount": "1500.00",
-            "due_date": "2026-06-30",
+            "due_date": "2027-06-30",
             "is_active": True,
             "components": [
                 {
@@ -170,7 +170,7 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             class_room=classroom,
             name=f"{organization.code} Fee",
             total_amount=Decimal("1500.00"),
-            due_date=date(2026, 6, 30),
+            due_date=date(2027, 6, 30),
         )
 
     def student_fee_payload(self, structure=None, **overrides):
@@ -182,7 +182,7 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             "fee_structure_id": structure.id,
             "discount_amount": "0.00",
             "fine_amount": "0.00",
-            "due_date": "2026-06-30",
+            "due_date": "2027-06-30",
         }
         payload.update(overrides)
         return payload
@@ -462,7 +462,7 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             discount_amount=Decimal("0.00"),
             fine_amount=Decimal("0.00"),
             payable_amount=Decimal("1500.00"),
-            due_date=date(2026, 6, 30),
+            due_date=date(2027, 6, 30),
         )
         self.authenticate()
 
@@ -623,7 +623,7 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             discount_amount=Decimal("0.00"),
             fine_amount=Decimal("0.00"),
             payable_amount=Decimal("1500.00"),
-            due_date=date(2026, 6, 30),
+            due_date=date(2027, 6, 30),
         )
         foreign_installment = FeeInstallment.objects.create(
             student_fee=foreign_fee,
@@ -666,3 +666,199 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
 
         self.assertEqual(patch.status_code, 400)
         self.assertEqual(FeePayment.objects.count(), 1)
+
+
+class StudentFeesAPITests(APITestCase):
+    setUp = CollegeAdminFeeStructureAPITests.setUp
+    authenticate = CollegeAdminFeeStructureAPITests.authenticate
+    make_structure = CollegeAdminFeeStructureAPITests.make_structure
+
+    def make_student_fee(self, student=None, organization=None, **overrides):
+        organization = organization or self.org
+        student = student or self.student
+        if organization == self.org:
+            session = self.session
+            classroom = self.classroom
+        else:
+            session = self.other_session
+            classroom = self.other_classroom
+        structure = FeeStructure.objects.create(
+            organization=organization,
+            academic_session=session,
+            class_room=classroom,
+            name=f"{organization.code} Fee {FeeStructure.objects.count() + 1}",
+            total_amount=Decimal("1500.00"),
+            due_date=date(2027, 6, 30),
+        )
+        values = {
+            "organization": organization,
+            "student": student,
+            "academic_session": session,
+            "fee_structure": structure,
+            "original_amount": Decimal("1500.00"),
+            "discount_amount": Decimal("100.00"),
+            "fine_amount": Decimal("25.00"),
+            "payable_amount": Decimal("1425.00"),
+            "due_date": date(2027, 6, 30),
+        }
+        values.update(overrides)
+        return StudentFee.objects.create(**values)
+
+    def test_student_fees_authentication_required(self):
+        response = self.client.get("/api/fees/student/")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_student_fees_role_required(self):
+        for user in [self.teacher_user, self.parent_user, self.admin]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.get("/api/fees/student/")
+                self.assertEqual(response.status_code, 403)
+
+    def test_student_can_retrieve_own_fees_with_details_and_totals(self):
+        student_fee = self.make_student_fee()
+        installment = FeeInstallment.objects.create(
+            student_fee=student_fee,
+            name="First Term",
+            amount=Decimal("500.00"),
+            due_date=date(2026, 4, 30),
+            sequence=1,
+        )
+        FeePayment.objects.create(
+            organization=self.org,
+            student_fee=student_fee,
+            installment=installment,
+            amount=Decimal("300.00"),
+            payment_date=date(2026, 4, 1),
+            payment_method=FeePayment.Method.CASH,
+            reference_number="R1",
+            recorded_by=self.admin,
+        )
+        self.authenticate(self.student_user)
+
+        response = self.client.get("/api/fees/student/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["student_fees"]), 1)
+        fee = response.data["student_fees"][0]
+        self.assertEqual(fee["id"], student_fee.id)
+        self.assertEqual(fee["original_amount"], Decimal("1500.00"))
+        self.assertEqual(fee["discount_amount"], Decimal("100.00"))
+        self.assertEqual(fee["fine_amount"], Decimal("25.00"))
+        self.assertEqual(fee["payable_amount"], Decimal("1425.00"))
+        self.assertEqual(fee["paid_amount"], Decimal("300.00"))
+        self.assertEqual(fee["outstanding_amount"], Decimal("1125.00"))
+        self.assertEqual(fee["installments"][0]["id"], installment.id)
+        self.assertEqual(fee["installments"][0]["paid_amount"], Decimal("300.00"))
+        self.assertEqual(fee["installments"][0]["outstanding_amount"], Decimal("200.00"))
+        self.assertEqual(fee["payments"][0]["amount"], Decimal("300.00"))
+        self.assertEqual(fee["payments"][0]["installment"]["id"], installment.id)
+        self.assertEqual(fee["payments"][0]["reference_number"], "R1")
+
+    def test_student_fees_ignore_supplied_student_and_organization_ids(self):
+        own_fee = self.make_student_fee()
+        other_same_org_user = User.objects.create_user(
+            username="same-org-student",
+            password="pass",
+            role="student",
+            organization=self.org,
+        )
+        other_same_org_student = StudentProfile.objects.create(
+            user=other_same_org_user,
+            admission_number="S-2",
+        )
+        other_same_org_fee = self.make_student_fee(
+            student=other_same_org_student,
+            due_date=date(2027, 7, 30),
+        )
+        foreign_fee = self.make_student_fee(
+            student=self.other_student,
+            organization=self.other_org,
+        )
+        self.authenticate(self.student_user)
+
+        response = self.client.get(
+            "/api/fees/student/",
+            {
+                "student_id": other_same_org_student.id,
+                "student_fee_id": other_same_org_fee.id,
+                "organization_id": self.other_org.id,
+                "user_id": self.other_student_user.id,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [fee["id"] for fee in response.data["student_fees"]],
+            [own_fee.id],
+        )
+        returned = response.data["student_fees"][0]
+        self.assertNotEqual(returned["id"], other_same_org_fee.id)
+        self.assertNotEqual(returned["id"], foreign_fee.id)
+
+    def test_student_fees_nested_details_are_scoped_to_returned_fee(self):
+        own_fee = self.make_student_fee()
+        foreign_fee = self.make_student_fee(
+            student=self.other_student,
+            organization=self.other_org,
+        )
+        own_installment = FeeInstallment.objects.create(
+            student_fee=own_fee,
+            name="Own",
+            amount=Decimal("500.00"),
+            due_date=date(2026, 4, 30),
+            sequence=1,
+        )
+        foreign_installment = FeeInstallment.objects.create(
+            student_fee=foreign_fee,
+            name="Foreign",
+            amount=Decimal("500.00"),
+            due_date=date(2026, 4, 30),
+            sequence=1,
+        )
+        own_payment = FeePayment.objects.create(
+            organization=self.org,
+            student_fee=own_fee,
+            installment=own_installment,
+            amount=Decimal("100.00"),
+            payment_method=FeePayment.Method.CASH,
+            reference_number="OWN",
+            recorded_by=self.admin,
+        )
+        foreign_payment = FeePayment.objects.create(
+            organization=self.other_org,
+            student_fee=foreign_fee,
+            installment=foreign_installment,
+            amount=Decimal("200.00"),
+            payment_method=FeePayment.Method.CASH,
+            reference_number="FOREIGN",
+            recorded_by=self.other_admin,
+        )
+        self.authenticate(self.student_user)
+
+        response = self.client.get("/api/fees/student/")
+
+        fee = response.data["student_fees"][0]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in fee["installments"]], [own_installment.id])
+        self.assertEqual([item["id"] for item in fee["payments"]], [own_payment.id])
+        self.assertNotIn(
+            foreign_payment.id,
+            [item["id"] for item in fee["payments"]],
+        )
+        self.assertNotIn(
+            foreign_installment.id,
+            [item["id"] for item in fee["installments"]],
+        )
+
+    def test_student_fees_endpoint_is_read_only(self):
+        self.authenticate(self.student_user)
+
+        response = self.client.post(
+            "/api/fees/student/",
+            {"payable_amount": "1.00"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 405)
