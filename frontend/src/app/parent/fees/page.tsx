@@ -29,6 +29,18 @@ export default function ParentFeesPage() {
   const money=(v:number|string)=>`₹${Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const label=(v:string)=>v.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 
+  const downloadPdf=async(path:string,filename:string)=>{
+    const token=localStorage.getItem("parent_access_token");
+    if(!token){router.replace("/parent/login");return;}
+    setError("");
+    try{
+      const r=await fetch(`${API_BASE}${path}`,{headers:{Authorization:`Bearer ${token}`}});
+      if(!r.ok){const data=await r.json().catch(()=>({}));throw new Error(data.detail||"Unable to download document.");}
+      const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement("a");
+      a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+    }catch(e){setError(e instanceof Error?e.message:"Unable to download document.");}
+  };
+
   const loadFees=async(token:string,id:string)=>{
     setLoading(true); setError("");
     try {
@@ -79,7 +91,7 @@ export default function ParentFeesPage() {
 
       {!loading&&!error&&selected&&fees.length===0&&<div className="dashboard-panel"><div className="empty-state">No fees assigned to this child.</div></div>}
       {fees.map(f=><div className="dashboard-panel mb-4" key={f.id}>
-        <div className="panel-heading"><h5>{f.fee_structure?.name||"Fee"}</h5><span className="badge bg-light text-dark border">{label(f.status)}</span></div>
+        <div className="panel-heading"><h5>{f.fee_structure?.name||"Fee"}</h5><div className="d-flex gap-2 align-items-center"><button className="btn btn-outline-primary btn-sm" onClick={()=>downloadPdf(`/api/fees/documents/invoice/${f.id}/`,`fee-invoice-${f.id}.pdf`)}>Download Invoice</button><span className="badge bg-light text-dark border">{label(f.status)}</span></div></div>
         <div className="row g-3 mb-4">
           <div className="col-md-3"><strong>Session</strong><div>{f.academic_session?.name||"-"}</div></div>
           <div className="col-md-3"><strong>Due Date</strong><div>{f.due_date}</div></div>
@@ -90,8 +102,8 @@ export default function ParentFeesPage() {
         <h6>Installments</h6><div className="table-responsive mb-4"><table className="table align-middle"><thead><tr><th>Name</th><th>Amount</th><th>Paid</th><th>Pending</th><th>Due Date</th><th>Status</th></tr></thead><tbody>
           {f.installments?.length?f.installments.map(i=><tr key={i.id}><td>{i.name}</td><td>{money(i.amount)}</td><td>{money(i.paid_amount)}</td><td>{money(i.outstanding_amount)}</td><td>{i.due_date}</td><td>{label(i.status)}</td></tr>):<tr><td colSpan={6} className="text-muted">No installments.</td></tr>}
         </tbody></table></div>
-        <h6>Payment History</h6><div className="table-responsive"><table className="table align-middle"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th></tr></thead><tbody>
-          {f.payments?.length?f.payments.map(p=><tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td>{label(p.payment_method)}</td><td>{p.installment?.name||"General"}</td><td>{p.reference_number||"-"}</td></tr>):<tr><td colSpan={5} className="text-muted">No payments recorded.</td></tr>}
+        <h6>Payment History</h6><div className="table-responsive"><table className="table align-middle"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th><th>Receipt</th></tr></thead><tbody>
+          {f.payments?.length?f.payments.map(p=><tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td>{label(p.payment_method)}</td><td>{p.installment?.name||"General"}</td><td>{p.reference_number||"-"}</td><td><button className="btn btn-outline-secondary btn-sm" onClick={()=>downloadPdf(`/api/fees/documents/receipt/${p.id}/`,`fee-receipt-${p.id}.pdf`)}>Download</button></td></tr>):<tr><td colSpan={6} className="text-muted">No payments recorded.</td></tr>}
         </tbody></table></div>
       </div>)}
     </div></div>
