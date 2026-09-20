@@ -59,6 +59,24 @@ export default function StudentFeesPage() {
   const money = (v:number|string) => `₹${Number(v || 0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
   const label = (v:string) => v.replaceAll("_"," ").replace(/\b\w/g, c => c.toUpperCase());
 
+  const downloadPdf = async (path:string, filename:string) => {
+    const token = localStorage.getItem("student_access_token");
+    if (!token) { router.replace("/student/login"); return; }
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE}${path}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.detail || "Unable to download document.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; anchor.download = filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError(e instanceof Error ? e.message : "Unable to download document."); }
+  };
+
   return <div className="student-dashboard">
     <StudentSidebar />
     <main className="student-dashboard-main">
@@ -77,7 +95,7 @@ export default function StudentFeesPage() {
 
         {!loading && !error && fees.length === 0 && <div className="dashboard-panel"><div className="empty-state">No fees assigned yet.</div></div>}
         {fees.map(fee => <div className="dashboard-panel mb-4" key={fee.id}>
-          <div className="panel-heading"><h5>{fee.fee_structure?.name || "Fee"}</h5><span className="badge bg-light text-dark border">{label(fee.status)}</span></div>
+          <div className="panel-heading"><h5>{fee.fee_structure?.name || "Fee"}</h5><div className="d-flex gap-2 align-items-center"><button className="btn btn-outline-primary btn-sm" onClick={() => downloadPdf(`/api/fees/documents/invoice/${fee.id}/`, `fee-invoice-${fee.id}.pdf`)}>Download Invoice</button><span className="badge bg-light text-dark border">{label(fee.status)}</span></div></div>
           <div className="row g-3 mb-4">
             <div className="col-md-3"><strong>Session</strong><div>{fee.academic_session?.name || "-"}</div></div>
             <div className="col-md-3"><strong>Due Date</strong><div>{fee.due_date}</div></div>
@@ -89,8 +107,8 @@ export default function StudentFeesPage() {
           <div className="table-responsive mb-4"><table className="table align-middle"><thead><tr><th>Name</th><th>Amount</th><th>Paid</th><th>Pending</th><th>Due Date</th><th>Status</th></tr></thead>
           <tbody>{fee.installments?.length ? fee.installments.map(i => <tr key={i.id}><td>{i.name}</td><td>{money(i.amount)}</td><td>{money(i.paid_amount)}</td><td>{money(i.outstanding_amount)}</td><td>{i.due_date}</td><td>{label(i.status)}</td></tr>) : <tr><td colSpan={6} className="text-muted">No installments.</td></tr>}</tbody></table></div>
           <h6>Payment History</h6>
-          <div className="table-responsive"><table className="table align-middle"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th></tr></thead>
-          <tbody>{fee.payments?.length ? fee.payments.map(p => <tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td>{label(p.payment_method)}</td><td>{p.installment?.name || "General"}</td><td>{p.reference_number || "-"}</td></tr>) : <tr><td colSpan={5} className="text-muted">No payments recorded.</td></tr>}</tbody></table></div>
+          <div className="table-responsive"><table className="table align-middle"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th><th>Receipt</th></tr></thead>
+          <tbody>{fee.payments?.length ? fee.payments.map(p => <tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td>{label(p.payment_method)}</td><td>{p.installment?.name || "General"}</td><td>{p.reference_number || "-"}</td><td><button className="btn btn-outline-secondary btn-sm" onClick={() => downloadPdf(`/api/fees/documents/receipt/${p.id}/`, `fee-receipt-${p.id}.pdf`)}>Download</button></td></tr>) : <tr><td colSpan={6} className="text-muted">No payments recorded.</td></tr>}</tbody></table></div>
         </div>)}
       </div></div>
     </main>
