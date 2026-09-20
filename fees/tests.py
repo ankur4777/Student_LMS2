@@ -4,7 +4,13 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
-from academics.models import AcademicSession, ClassRoom, Section, StudentEnrollment
+from academics.models import (
+    AcademicSession,
+    ClassRoom,
+    ParentStudent,
+    Section,
+    StudentEnrollment,
+)
 from accounts.models import ParentProfile, StudentProfile, TeacherProfile
 from institutions.models import Organization
 
@@ -862,3 +868,254 @@ class StudentFeesAPITests(APITestCase):
         )
 
         self.assertEqual(response.status_code, 405)
+
+
+class ParentFeesAndDocumentsSecurityTests(APITestCase):
+    setUp = CollegeAdminFeeStructureAPITests.setUp
+    authenticate = CollegeAdminFeeStructureAPITests.authenticate
+
+    def setUp(self):
+        CollegeAdminFeeStructureAPITests.setUp(self)
+        self.parent = ParentProfile.objects.get(user=self.parent_user)
+        self.link = ParentStudent.objects.create(
+            parent=self.parent,
+            student=self.student,
+            relationship=ParentStudent.Relationship.FATHER,
+        )
+        self.same_org_unlinked_user = User.objects.create_user(
+            username="same-org-unlinked",
+            password="pass",
+            role="student",
+            organization=self.org,
+        )
+        self.same_org_unlinked_student = StudentProfile.objects.create(
+            user=self.same_org_unlinked_user,
+            admission_number="S-3",
+        )
+        self.other_parent_user = User.objects.create_user(
+            username="other-parent",
+            password="pass",
+            role="parent",
+            organization=self.other_org,
+        )
+        self.other_parent = ParentProfile.objects.create(user=self.other_parent_user)
+        ParentStudent.objects.create(
+            parent=self.other_parent,
+            student=self.other_student,
+            relationship=ParentStudent.Relationship.MOTHER,
+        )
+
+    def make_fee(self, student=None, organization=None, **overrides):
+        organization = organization or self.org
+        student = student or self.student
+        if organization == self.org:
+            session = self.session
+            classroom = self.classroom
+        else:
+            session = self.other_session
+            classroom = self.other_classroom
+        structure = FeeStructure.objects.create(
+            organization=organization,
+            academic_session=session,
+            class_room=classroom,
+            name=f"{organization.code} Secure Fee {FeeStructure.objects.count() + 1}",
+            total_amount=Decimal("1500.00"),
+            due_date=date(2027, 6, 30),
+        )
+        values = {
+            "organization": organization,
+            "student": student,
+            "academic_session": session,
+            "fee_structure": structure,
+            "original_amount": Decimal("1500.00"),
+            "discount_amount": Decimal("0.00"),
+            "fine_amount": Decimal("0.00"),
+            "payable_amount": Decimal("1500.00"),
+            "due_date": date(2027, 6, 30),
+        }
+        values.update(overrides)
+        return StudentFee.objects.create(**values)
+
+    def add_payment(self, fee, organization=None, recorded_by=None, reference="SECURE"):
+        organization = organization or fee.organization
+        recorded_by = recorded_by or (
+            self.admin if organization == self.org else self.other_admin
+        )
+        installment = FeeInstallment.objects.create(
+            student_fee=fee,
+            name=f"Installment {fee.id}",
+            amount=Decimal("500.00"),
+            due_date=date(2027, 4, 30),
+            sequence=1,
+        )
+        payment = FeePayment.objects.create(
+            organization=organization,
+            student_fee=fee,
+            installment=installment,
+            amount=Decimal("200.00"),
+            payment_date=date(2027, 4, 1),
+            payment_method=FeePayment.Method.CASH,
+            reference_number=reference,
+            recorded_by=recorded_by,
+        )
+        return installment, payment
+
+    def assert_pdf_response(self, response):
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertGreater(len(response.content), 0)
+
+    def assert_denied(self, response):
+        self.assertIn(response.status_code, [401, 403, 404])
+        self.assertNotEqual(response.get("Content-Type"), "application/pdf")
+
+    def test_parent_fees_authentication_and_role_required(self):
+        response = self.client.get(f"/api/fees/parent/student/{self.student.id}/")
+        self.assertEqual(response.status_code, 401)
+
+        for user in [self.teacher_user, self.student_user, self.admin]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.get(f"/api/fees/parent/student/{self.student.id}/")
+                self.assertEqual(response.status_code, 403)
+
+    def test_linked_parent_can_view_only_child_fees_with_scoped_details(self):
+        child_fee = self.make_fee()
+        child_installment, child_payment = self.add_payment(child_fee, reference="CHILD")
+        unlinked_fee = self.make_fee(student=self.same_org_unlinked_student)
+        unlinked_installment, unlinked_payment = self.add_payment(
+            unlinked_fee,
+            reference="UNLINKED",
+        )
+        foreign_fee = self.make_fee(
+            student=self.other_student,
+            organization=self.other_org,
+        )
+        foreign_installment, foreign_payment = self.add_payment(
+            foreign_fee,
+            organization=self.other_org,
+            reference="FOREIGN",
+        )
+        self.authenticate(self.parent_user)
+
+        response = self.client.get(f"/api/fees/parent/student/{self.student.id}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["student"]["id"], self.student.id)
+        self.assertEqual([fee["id"] for fee in response.data["student_fees"]], [child_fee.id])
+        fee = response.data["student_fees"][0]
+        self.assertEqual([item["id"] for item in fee["installments"]], [child_installment.id])
+        self.assertEqual([item["id"] for item in fee["payments"]], [child_payment.id])
+        self.assertNotIn(unlinked_fee.id, [item["id"] for item in response.data["student_fees"]])
+        self.assertNotIn(foreign_fee.id, [item["id"] for item in response.data["student_fees"]])
+        self.assertNotIn(unlinked_installment.id, [item["id"] for item in fee["installments"]])
+        self.assertNotIn(foreign_installment.id, [item["id"] for item in fee["installments"]])
+        self.assertNotIn(unlinked_payment.id, [item["id"] for item in fee["payments"]])
+        self.assertNotIn(foreign_payment.id, [item["id"] for item in fee["payments"]])
+
+    def test_parent_cannot_view_unlinked_or_cross_org_student_fees_by_url_id(self):
+        self.make_fee(student=self.same_org_unlinked_student)
+        self.make_fee(student=self.other_student, organization=self.other_org)
+        self.authenticate(self.parent_user)
+
+        same_org_response = self.client.get(
+            f"/api/fees/parent/student/{self.same_org_unlinked_student.id}/"
+        )
+        cross_org_response = self.client.get(
+            f"/api/fees/parent/student/{self.other_student.id}/"
+        )
+
+        self.assertEqual(same_org_response.status_code, 403)
+        self.assertEqual(cross_org_response.status_code, 403)
+        self.assertNotIn("student_fees", same_org_response.data)
+        self.assertNotIn("student_fees", cross_org_response.data)
+
+    def test_invoice_pdf_authorized_users(self):
+        fee = self.make_fee()
+        self.add_payment(fee)
+
+        for user in [self.student_user, self.parent_user, self.admin]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.get(f"/api/fees/documents/invoice/{fee.id}/")
+                self.assert_pdf_response(response)
+
+    def test_invoice_pdf_blocks_student_parent_admin_teacher_and_anonymous_misuse(self):
+        own_fee = self.make_fee()
+        same_org_fee = self.make_fee(student=self.same_org_unlinked_student)
+        foreign_fee = self.make_fee(student=self.other_student, organization=self.other_org)
+
+        self.authenticate(self.student_user)
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{same_org_fee.id}/"))
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{foreign_fee.id}/"))
+
+        self.authenticate(self.parent_user)
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{same_org_fee.id}/"))
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{foreign_fee.id}/"))
+
+        self.authenticate(self.admin)
+        self.assert_pdf_response(self.client.get(f"/api/fees/documents/invoice/{own_fee.id}/"))
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{foreign_fee.id}/"))
+
+        self.authenticate(self.teacher_user)
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{own_fee.id}/"))
+
+        self.client.force_authenticate(user=None)
+        self.assert_denied(self.client.get(f"/api/fees/documents/invoice/{own_fee.id}/"))
+
+    def test_cross_org_parent_cannot_download_invoice_for_other_org_child(self):
+        own_org_fee = self.make_fee()
+        self.authenticate(self.other_parent_user)
+
+        response = self.client.get(f"/api/fees/documents/invoice/{own_org_fee.id}/")
+
+        self.assert_denied(response)
+
+    def test_receipt_pdf_authorized_users(self):
+        fee = self.make_fee()
+        _, payment = self.add_payment(fee)
+
+        for user in [self.student_user, self.parent_user, self.admin]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.get(f"/api/fees/documents/receipt/{payment.id}/")
+                self.assert_pdf_response(response)
+
+    def test_receipt_pdf_blocks_student_parent_admin_teacher_and_anonymous_misuse(self):
+        own_fee = self.make_fee()
+        _, own_payment = self.add_payment(own_fee, reference="OWN")
+        same_org_fee = self.make_fee(student=self.same_org_unlinked_student)
+        _, same_org_payment = self.add_payment(same_org_fee, reference="SAMEORG")
+        foreign_fee = self.make_fee(student=self.other_student, organization=self.other_org)
+        _, foreign_payment = self.add_payment(
+            foreign_fee,
+            organization=self.other_org,
+            reference="FOREIGN",
+        )
+
+        self.authenticate(self.student_user)
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{same_org_payment.id}/"))
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{foreign_payment.id}/"))
+
+        self.authenticate(self.parent_user)
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{same_org_payment.id}/"))
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{foreign_payment.id}/"))
+
+        self.authenticate(self.admin)
+        self.assert_pdf_response(self.client.get(f"/api/fees/documents/receipt/{own_payment.id}/"))
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{foreign_payment.id}/"))
+
+        self.authenticate(self.teacher_user)
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{own_payment.id}/"))
+
+        self.client.force_authenticate(user=None)
+        self.assert_denied(self.client.get(f"/api/fees/documents/receipt/{own_payment.id}/"))
+
+    def test_cross_org_parent_cannot_download_receipt_for_other_org_child(self):
+        fee = self.make_fee()
+        _, payment = self.add_payment(fee)
+        self.authenticate(self.other_parent_user)
+
+        response = self.client.get(f"/api/fees/documents/receipt/{payment.id}/")
+
+        self.assert_denied(response)
