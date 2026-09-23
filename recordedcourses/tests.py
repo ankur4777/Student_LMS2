@@ -1,3 +1,4 @@
+from decimal import Decimal
 import tempfile
 from pathlib import Path
 
@@ -239,7 +240,7 @@ class RecordedCoursePurchaseAccessSecurityTests(APITestCase):
         purchase = RecordedCoursePurchase.objects.get(id=response.data["purchase"]["id"])
         self.assertEqual(purchase.student, self.student_a)
         self.assertEqual(purchase.purchased_by_student, self.student_a)
-        self.assertEqual(purchase.amount, self.course_a.price)
+        self.assertEqual(purchase.amount, Decimal("2500.00"))
         self.assertEqual(purchase.status, RecordedCoursePurchase.Status.PENDING)
         self.assertFalse(RecordedCourseAccess.objects.filter(purchase=purchase).exists())
 
