@@ -73,6 +73,13 @@ export default function ParentSidebar() {
         </Link>
 
         <Link
+          href="/parent/recorded-courses"
+          className={pathname === "/parent/recorded-courses" || pathname.startsWith("/parent/recorded-courses/") ? "active" : ""}
+        >
+          Recorded Courses
+        </Link>
+
+        <Link
           href="/parent/fees"
           className={
             pathname === "/parent/fees"
