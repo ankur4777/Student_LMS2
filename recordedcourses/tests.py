@@ -1,9 +1,11 @@
+from datetime import timedelta
 from decimal import Decimal
 import tempfile
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from accounts.models import ParentProfile, StudentProfile, User
@@ -390,3 +392,130 @@ class RecordedCoursePurchaseAccessSecurityTests(APITestCase):
         self.assertEqual(response.status_code, 403)
         purchase.refresh_from_db()
         self.assertEqual(purchase.status, RecordedCoursePurchase.Status.PENDING)
+
+
+
+class RecordedCoursePlaybackSecurityTests(RecordedCoursePurchaseAccessSecurityTests):
+    def setUp(self):
+        super().setUp()
+        self.lesson_a = RecordedLesson.objects.create(
+            course=self.course_a,
+            title="Secure Lesson A",
+            position=1,
+            video=SimpleUploadedFile("secure-a.mp4", b"secure-video-a", content_type="video/mp4"),
+        )
+        self.lesson_b = RecordedLesson.objects.create(
+            course=self.course_b,
+            title="Secure Lesson B",
+            position=1,
+            video=SimpleUploadedFile("secure-b.mp4", b"secure-video-b", content_type="video/mp4"),
+        )
+
+    def grant_access(self, student=None, course=None, **overrides):
+        student = student or self.student_a
+        course = course or self.course_a
+        defaults = {
+            "organization": course.organization,
+            "course": course,
+            "student": student,
+            "starts_at": timezone.now() - timedelta(minutes=1),
+            "expires_at": timezone.now() + timedelta(days=30),
+            "is_active": True,
+        }
+        defaults.update(overrides)
+        return RecordedCourseAccess.objects.create(**defaults)
+
+    def test_valid_student_can_list_purchased_course_without_private_video_path(self):
+        self.grant_access()
+        self.client.force_authenticate(user=self.student_user_a)
+        response = self.client.get("/api/recorded-courses/student/my-courses/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["courses"]), 1)
+        payload = response.data["courses"][0]
+        self.assertEqual(payload["id"], self.course_a.id)
+        self.assertEqual(payload["lessons"][0]["id"], self.lesson_a.id)
+        self.assertNotIn("video", payload["lessons"][0])
+        self.assertNotIn("video_url", payload["lessons"][0])
+        self.assertNotIn("purchased_recorded_courses", str(response.data))
+
+    def test_valid_student_can_open_course_and_stream_lesson(self):
+        self.grant_access()
+        self.client.force_authenticate(user=self.student_user_a)
+        detail = self.client.get(f"/api/recorded-courses/student/my-courses/{self.course_a.id}/")
+        self.assertEqual(detail.status_code, 200)
+        playback = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(playback.status_code, 200)
+        self.assertEqual(playback["Content-Type"], "video/mp4")
+        self.assertEqual(playback["Cache-Control"], "private, no-store")
+        self.assertNotIn("purchased_recorded_courses", playback.get("Content-Disposition", ""))
+
+    def test_student_without_access_is_blocked(self):
+        self.client.force_authenticate(user=self.student_user_a)
+        detail = self.client.get(f"/api/recorded-courses/student/my-courses/{self.course_a.id}/")
+        playback = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(detail.status_code, 403)
+        self.assertEqual(playback.status_code, 403)
+
+    def test_pending_purchase_does_not_grant_playback(self):
+        RecordedCoursePurchase.objects.create(
+            organization=self.org_a,
+            course=self.course_a,
+            student=self.student_a,
+            buyer_type=RecordedCoursePurchase.BuyerType.STUDENT,
+            purchased_by_student=self.student_a,
+            amount=self.course_a.price,
+            status=RecordedCoursePurchase.Status.PENDING,
+        )
+        self.client.force_authenticate(user=self.student_user_a)
+        response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_expired_access_is_blocked(self):
+        self.grant_access(expires_at=timezone.now() - timedelta(seconds=1))
+        self.client.force_authenticate(user=self.student_user_a)
+        response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_revoked_access_is_blocked(self):
+        self.grant_access(revoked_at=timezone.now())
+        self.client.force_authenticate(user=self.student_user_a)
+        response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_other_same_org_student_cannot_use_another_students_access(self):
+        self.grant_access()
+        self.client.force_authenticate(user=self.other_student_user_a)
+        response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(response.status_code, 403)
+
+    def test_cross_org_lesson_id_tampering_is_blocked(self):
+        self.grant_access()
+        self.client.force_authenticate(user=self.student_user_a)
+        response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_b.id}/play/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_inactive_lesson_and_inactive_course_are_blocked(self):
+        self.grant_access()
+        self.lesson_a.is_active = False
+        self.lesson_a.save(update_fields=["is_active"])
+        self.client.force_authenticate(user=self.student_user_a)
+        lesson_response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(lesson_response.status_code, 404)
+
+        self.lesson_a.is_active = True
+        self.lesson_a.save(update_fields=["is_active"])
+        self.course_a.is_active = False
+        self.course_a.save(update_fields=["is_active"])
+        course_response = self.client.get(f"/api/recorded-courses/student/my-courses/{self.course_a.id}/")
+        playback_response = self.client.get(f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/")
+        self.assertEqual(course_response.status_code, 403)
+        self.assertEqual(playback_response.status_code, 404)
+
+    def test_parent_teacher_admin_and_anonymous_cannot_use_student_playback(self):
+        url = f"/api/recorded-courses/student/lessons/{self.lesson_a.id}/play/"
+        self.grant_access()
+        for user in (self.parent_user_a, self.teacher_a, self.admin_a):
+            self.client.force_authenticate(user=user)
+            self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.force_authenticate(user=None)
+        self.assertEqual(self.client.get(url).status_code, 401)
