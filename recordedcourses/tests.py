@@ -276,7 +276,7 @@ class RecordedCoursePurchaseAccessSecurityTests(APITestCase):
         purchase = RecordedCoursePurchase.objects.get(id=allowed.data["purchase"]["id"])
         self.assertEqual(purchase.student, self.student_a)
         self.assertEqual(purchase.purchased_by_parent, self.parent_a)
-        self.assertEqual(purchase.amount, self.course_a.price)
+        self.assertEqual(purchase.amount, Decimal("2500.00"))
         self.assertEqual(purchase.status, RecordedCoursePurchase.Status.PENDING)
 
         blocked = self.client.post(
