@@ -11,6 +11,9 @@ from .views import (
     ParentRecordedCoursePurchasesAPIView,
     StudentRecordedCourseCatalogAPIView,
     StudentRecordedCoursePurchasesAPIView,
+    StudentPurchasedRecordedCoursesAPIView,
+    StudentPurchasedRecordedCourseDetailAPIView,
+    StudentRecordedLessonPlaybackAPIView,
 )
 
 urlpatterns = [
@@ -22,6 +25,9 @@ urlpatterns = [
     path("college-admin/purchases/<int:purchase_id>/verify/", CollegeAdminVerifyRecordedCoursePurchaseAPIView.as_view(), name="college-admin-verify-recorded-purchase"),
     path("student/catalog/", StudentRecordedCourseCatalogAPIView.as_view(), name="student-recorded-course-catalog"),
     path("student/purchases/", StudentRecordedCoursePurchasesAPIView.as_view(), name="student-recorded-course-purchases"),
+    path("student/my-courses/", StudentPurchasedRecordedCoursesAPIView.as_view(), name="student-purchased-recorded-courses"),
+    path("student/my-courses/<int:course_id>/", StudentPurchasedRecordedCourseDetailAPIView.as_view(), name="student-purchased-recorded-course-detail"),
+    path("student/lessons/<int:lesson_id>/play/", StudentRecordedLessonPlaybackAPIView.as_view(), name="student-recorded-lesson-playback"),
     path("parent/catalog/", ParentRecordedCourseCatalogAPIView.as_view(), name="parent-recorded-course-catalog"),
     path("parent/purchases/", ParentRecordedCoursePurchasesAPIView.as_view(), name="parent-recorded-course-purchases"),
 ]
