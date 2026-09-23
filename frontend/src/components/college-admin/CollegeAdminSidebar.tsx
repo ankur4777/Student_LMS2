@@ -22,6 +22,7 @@ const links = [
   ["Results", "/college-admin/results"],
   ["Documents", "/college-admin/documents"],
   ["Fees", "/college-admin/fees"],
+  ["Recorded Courses", "/college-admin/recorded-courses"],
   ["Notifications", "/college-admin/notifications"],
   ["Profile", "/college-admin/profile"],
 ];
@@ -40,7 +41,9 @@ export default function CollegeAdminSidebar() {
     (href === "/college-admin/notifications" &&
       pathname.startsWith("/college-admin/notifications/")) ||
     (href === "/college-admin/fees" &&
-      pathname.startsWith("/college-admin/fees/"))
+      pathname.startsWith("/college-admin/fees/")) ||
+    (href === "/college-admin/recorded-courses" &&
+      pathname.startsWith("/college-admin/recorded-courses/"))
   );
   const loadUnreadCount = useCallback(async () => {
     const token = localStorage.getItem("college_admin_access_token");
