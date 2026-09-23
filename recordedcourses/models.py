@@ -43,6 +43,7 @@ class RecordedLesson(models.Model):
     description = models.TextField(blank=True)
     position = models.PositiveIntegerField(default=1)
     video = models.FileField(
+        max_length=500,
         upload_to=recorded_lesson_upload_path,
         storage=private_recorded_course_storage,
         validators=[FileExtensionValidator(allowed_extensions=["mp4", "webm", "mov"])],
