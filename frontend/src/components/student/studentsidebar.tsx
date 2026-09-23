@@ -10,6 +10,7 @@ export default function StudentSidebar() {
     { href: "/student/dashboard", label: "Dashboard" },
     { href: "/student/classes", label: "My Classes" },
     { href: "/student/recorded-classes", label: "Recorded Classes" },
+    { href: "/student/recorded-courses", label: "Buy Recorded Courses" },
     { href: "/student/attendance", label: "Attendance" },
     { href: "/student/assignments", label: "Assignments" },
     { href: "/student/results", label: "Results" },
