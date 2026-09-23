@@ -2,6 +2,8 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
+from django.http import FileResponse
+import mimetypes
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
@@ -503,3 +505,117 @@ class CollegeAdminVerifyRecordedCoursePurchaseAPIView(APIView):
             "purchase": serialize_purchase(purchase),
             "access": {"id": access.id, "expires_at": access.expires_at, "is_active": access.has_access},
         })
+
+
+
+def active_recorded_course_access(user, course_id):
+    student = student_profile_for_user(user)
+    if not student:
+        return None, None
+    access = RecordedCourseAccess.objects.select_related("course").filter(
+        organization=user.organization,
+        course_id=course_id,
+        course__organization=user.organization,
+        course__is_active=True,
+        student=student,
+        is_active=True,
+        revoked_at__isnull=True,
+        starts_at__lte=timezone.now(),
+    ).first()
+    if not access or not access.has_access:
+        return student, None
+    return student, access
+
+
+class StudentPurchasedRecordedCoursesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        student = student_profile_for_user(request.user)
+        if not student:
+            return Response({"detail": "Only students can access purchased recorded courses."}, status=403)
+        accesses = RecordedCourseAccess.objects.select_related("course").filter(
+            organization=request.user.organization,
+            student=student,
+            course__organization=request.user.organization,
+            course__is_active=True,
+            is_active=True,
+            revoked_at__isnull=True,
+            starts_at__lte=timezone.now(),
+        ).prefetch_related("course__lessons")
+        courses = []
+        for access in accesses:
+            if not access.has_access:
+                continue
+            courses.append({
+                "id": access.course_id,
+                "title": access.course.title,
+                "description": access.course.description,
+                "access_expires_at": access.expires_at,
+                "lessons": [
+                    serialize_lesson(lesson)
+                    for lesson in access.course.lessons.all()
+                    if lesson.is_active
+                ],
+            })
+        return Response({"courses": courses})
+
+
+class StudentPurchasedRecordedCourseDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, course_id):
+        student, access = active_recorded_course_access(request.user, course_id)
+        if not student:
+            return Response({"detail": "Only students can access purchased recorded courses."}, status=403)
+        if not access:
+            return Response({"detail": "You do not have active access to this recorded course."}, status=403)
+        lessons = access.course.lessons.filter(is_active=True)
+        return Response({
+            "course": {
+                "id": access.course_id,
+                "title": access.course.title,
+                "description": access.course.description,
+                "access_expires_at": access.expires_at,
+                "lessons": [serialize_lesson(lesson) for lesson in lessons],
+            }
+        })
+
+
+class StudentRecordedLessonPlaybackAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, lesson_id):
+        student = student_profile_for_user(request.user)
+        if not student:
+            return Response({"detail": "Only students can play purchased recorded lessons."}, status=403)
+        lesson = RecordedLesson.objects.select_related("course").filter(
+            id=lesson_id,
+            is_active=True,
+            course__organization=request.user.organization,
+            course__is_active=True,
+        ).first()
+        if not lesson:
+            return Response({"detail": "Recorded lesson not found."}, status=404)
+        access = RecordedCourseAccess.objects.filter(
+            organization=request.user.organization,
+            course=lesson.course,
+            student=student,
+            is_active=True,
+            revoked_at__isnull=True,
+            starts_at__lte=timezone.now(),
+        ).first()
+        if not access or not access.has_access:
+            return Response({"detail": "You do not have active access to this recorded lesson."}, status=403)
+        if not lesson.video:
+            return Response({"detail": "Recorded lesson video is unavailable."}, status=404)
+        try:
+            file_handle = lesson.video.open("rb")
+        except (FileNotFoundError, OSError):
+            return Response({"detail": "Recorded lesson video is unavailable."}, status=404)
+        content_type = mimetypes.guess_type(lesson.video.name)[0] or "application/octet-stream"
+        response = FileResponse(file_handle, content_type=content_type)
+        response["Content-Disposition"] = 'inline; filename="recorded-lesson"'
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
