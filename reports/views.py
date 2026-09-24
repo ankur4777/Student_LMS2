@@ -1,6 +1,9 @@
 from decimal import Decimal
+import csv
+
 
 from django.db.models import Count, Q, Sum
+from django.http import HttpResponse
 from django.utils.dateparse import parse_date
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -300,3 +303,132 @@ class CollegeAdminDetailedAnalyticsAPIView(APIView):
         return Response({"classes": class_rows, "sections": section_rows, "subjects": subject_rows,
             "low_attendance_students": low_students[:50], "outstanding_fees": outstanding[:50],
             "teacher_activity": teacher_rows})
+
+
+class CollegeAdminCSVExportAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        org = college_admin_organization(request.user)
+        if not org:
+            return Response({"detail": "College admin access required."}, status=403)
+
+        filters, error = parse_filters(request, org)
+        if error:
+            return Response({"detail": error}, status=400)
+
+        attendance, assignments, submissions, live, fees, payments, exams, results = scoped_data(
+            org, filters
+        )
+        att = attendance_summary(attendance)
+        expected = decimal_or_zero(fees.aggregate(total=Sum("payable_amount"))["total"])
+        collected = decimal_or_zero(payments.aggregate(total=Sum("amount"))["total"])
+
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="college-admin-report.csv"'
+        response.write("\ufeff")
+        writer = csv.writer(response)
+
+        writer.writerow(["College Admin Reports & Analytics"])
+        writer.writerow(["Organization", org.name])
+        writer.writerow([])
+
+        writer.writerow(["Applied Filters"])
+        writer.writerow(["Academic Session", filters["session"].name if filters["session"] else "All"])
+        writer.writerow(["Class", filters["classroom"].name if filters["classroom"] else "All"])
+        writer.writerow(["Section", filters["section"].name if filters["section"] else "All"])
+        writer.writerow(["Subject", filters["subject"].name if filters["subject"] else "All"])
+        writer.writerow(["Date From", filters["date_from"] or "All"])
+        writer.writerow(["Date To", filters["date_to"] or "All"])
+        writer.writerow([])
+
+        writer.writerow(["Overview"])
+        writer.writerow(["Metric", "Value"])
+        writer.writerow(["Overall Attendance %", att["overall_percentage"]])
+        writer.writerow(["Present", att["present"]])
+        writer.writerow(["Absent", att["absent"]])
+        writer.writerow(["Late", att["late"]])
+        writer.writerow(["Excused", att["excused"]])
+        writer.writerow(["Total Assignments", assignments.count()])
+        writer.writerow(["Total Submissions", submissions.count()])
+        writer.writerow(["Total Live Classes", live.count()])
+        writer.writerow(["Published Exams", exams.count()])
+        writer.writerow(["Published Results", results.count()])
+        writer.writerow(["Expected Fees", expected])
+        writer.writerow(["Collected Fees", collected])
+        writer.writerow(["Pending Fees", max(expected - collected, ZERO)])
+        writer.writerow([])
+
+        writer.writerow(["Class-wise Performance"])
+        writer.writerow([
+            "Class", "Session", "Students", "Sections", "Attendance %",
+            "Assignments", "Published Results", "Expected Fees",
+            "Collected Fees", "Pending Fees",
+        ])
+
+        class_qs = ClassRoom.objects.filter(organization=org).select_related("academic_session")
+        if filters["session"]:
+            class_qs = class_qs.filter(academic_session=filters["session"])
+        if filters["classroom"]:
+            class_qs = class_qs.filter(pk=filters["classroom"].pk)
+
+        for classroom in class_qs:
+            enrollments = StudentEnrollment.objects.filter(
+                section__classroom=classroom,
+                is_active=True,
+            )
+            class_attendance = attendance.filter(
+                attendance_session__section__classroom=classroom
+            )
+            class_fees = fees.filter(student_id__in=enrollments.values("student_id"))
+            class_payments = payments.filter(
+                student_fee__student_id__in=enrollments.values("student_id")
+            )
+            class_expected = decimal_or_zero(
+                class_fees.aggregate(total=Sum("payable_amount"))["total"]
+            )
+            class_collected = decimal_or_zero(
+                class_payments.aggregate(total=Sum("amount"))["total"]
+            )
+            writer.writerow([
+                classroom.name,
+                classroom.academic_session.name,
+                enrollments.count(),
+                Section.objects.filter(classroom=classroom).count(),
+                attendance_summary(class_attendance)["overall_percentage"],
+                assignments.filter(
+                    teacher_assignment__section__classroom=classroom
+                ).count(),
+                results.filter(exam__section__classroom=classroom).count(),
+                class_expected,
+                class_collected,
+                max(class_expected - class_collected, ZERO),
+            ])
+
+        writer.writerow([])
+        writer.writerow(["Outstanding Fees"])
+        writer.writerow([
+            "Student", "Roll Number", "Class", "Section",
+            "Expected", "Paid", "Pending", "Status",
+        ])
+        for fee in fees.select_related("student__user").prefetch_related("payments"):
+            paid = fee.paid_amount
+            pending = max(fee.payable_amount - paid, ZERO)
+            if pending <= ZERO:
+                continue
+            enrollment = StudentEnrollment.objects.filter(
+                student=fee.student,
+                is_active=True,
+            ).select_related("section__classroom").first()
+            writer.writerow([
+                fee.student.user.get_full_name() or fee.student.user.username,
+                enrollment.roll_number if enrollment else "",
+                enrollment.section.classroom.name if enrollment else "",
+                enrollment.section.name if enrollment else "",
+                fee.payable_amount,
+                paid,
+                pending,
+                fee.calculated_status(),
+            ])
+
+        return response
