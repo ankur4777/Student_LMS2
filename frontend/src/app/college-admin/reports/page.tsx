@@ -104,6 +104,7 @@ export default function CollegeAdminReportsPage() {
   const [details, setDetails] = useState<any>(null);
   const [exportingCsv, setExportingCsv] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -297,6 +298,51 @@ export default function CollegeAdminReportsPage() {
     }
   };
 
+  const exportPdf = async () => {
+    const token = localStorage.getItem("college_admin_access_token");
+    if (!token) {
+      router.replace("/college-admin/login");
+      return;
+    }
+
+    try {
+      setExportingPdf(true);
+      setError("");
+      const query = new URLSearchParams(
+        Object.entries(appliedFilters).filter(([, value]) => value)
+      ).toString();
+      const response = await fetch(
+        `${API_BASE}/api/reports/college-admin/export/pdf/${query ? `?${query}` : ""}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.status === 401) {
+        clearSession();
+        router.replace("/college-admin/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result?.detail || "Unable to export PDF report.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "college-admin-report.pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const metricSection = (
     title: string,
     subtitle: string,
@@ -365,6 +411,9 @@ export default function CollegeAdminReportsPage() {
                   </button>
                   <button className="btn btn-outline-primary" onClick={exportExcel} disabled={exportingExcel || loading}>
                     {exportingExcel ? "Exporting Excel..." : "Download Excel"}
+                  </button>
+                  <button className="btn btn-outline-danger" onClick={exportPdf} disabled={exportingPdf || loading}>
+                    {exportingPdf ? "Exporting PDF..." : "Download PDF"}
                   </button>
                 </div>
               </div>
