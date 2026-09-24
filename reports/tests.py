@@ -545,3 +545,50 @@ class CollegeAdminOverviewReportAPITests(TestCase):
                     self.authenticate(user)
                     response = self.client.get(endpoint)
                     self.assertEqual(response.status_code, 403)
+
+
+    def test_csv_export_downloads_filtered_report(self):
+        self.add_org_a_metrics()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/export/csv/",
+            {"classroom": self.classroom.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        self.assertIn(
+            'attachment; filename="college-admin-report.csv"',
+            response["Content-Disposition"],
+        )
+        content = response.content.decode("utf-8-sig")
+        self.assertIn("College Admin Reports & Analytics", content)
+        self.assertIn("Class 10", content)
+        self.assertIn("1000.00", content)
+        self.assertIn("250.00", content)
+
+    def test_csv_export_does_not_include_other_organization(self):
+        self.add_org_a_metrics()
+        self.add_other_org_data()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get("/api/reports/college-admin/export/csv/")
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8-sig")
+        self.assertIn("Class 10", content)
+        self.assertNotIn("Class 11", content)
+        self.assertNotIn("Foreign Assignment", content)
+
+    def test_csv_export_rejects_cross_organization_filter(self):
+        self.add_other_org_data()
+        foreign_class = ClassRoom.objects.get(organization=self.org_b)
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/export/csv/",
+            {"classroom": foreign_class.id},
+        )
+
+        self.assertEqual(response.status_code, 400)
