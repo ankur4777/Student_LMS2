@@ -338,3 +338,210 @@ class CollegeAdminOverviewReportAPITests(TestCase):
         self.assertEqual(response.data["attendance"]["overall_percentage"], 66.67)
         self.assertEqual(response.data["fees"]["total_collected_amount"], Decimal("250.00"))
         self.assertEqual(response.data["fees"]["total_pending_amount"], Decimal("750.00"))
+
+
+    def test_filter_options_are_organization_isolated(self):
+        self.add_other_org_data()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get("/api/reports/college-admin/filters/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [item["name"] for item in response.data["classes"]],
+            ["Class 10"],
+        )
+        self.assertEqual(
+            [item["name"] for item in response.data["sections"]],
+            ["A"],
+        )
+        self.assertEqual(
+            [item["name"] for item in response.data["subjects"]],
+            ["Math"],
+        )
+
+    def test_cross_organization_class_filter_is_rejected(self):
+        self.add_other_org_data()
+        foreign_class = ClassRoom.objects.get(organization=self.org_b)
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"classroom": foreign_class.id},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_cross_organization_section_filter_is_rejected(self):
+        self.add_other_org_data()
+        foreign_section = Section.objects.get(organization=self.org_b)
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"section": foreign_section.id},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_cross_organization_subject_filter_is_rejected(self):
+        self.add_other_org_data()
+        foreign_subject = Subject.objects.get(organization=self.org_b)
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"subject": foreign_subject.id},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_date_range_is_rejected(self):
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"date_from": "2026-10-01", "date_to": "2026-09-01"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_academic_session_filter_scopes_overview(self):
+        other_session = AcademicSession.objects.create(
+            organization=self.org_a,
+            name="2027",
+            start_date=date(2027, 1, 1),
+            end_date=date(2027, 12, 31),
+        )
+        ClassRoom.objects.create(
+            organization=self.org_a,
+            name="Class 12",
+            academic_session=other_session,
+        )
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"academic_session": self.session.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["academic"]["total_classes"], 1)
+
+    def test_class_filter_scopes_overview(self):
+        second_class = ClassRoom.objects.create(
+            organization=self.org_a,
+            name="Class 9",
+            academic_session=self.session,
+        )
+        Section.objects.create(
+            organization=self.org_a,
+            name="B",
+            classroom=second_class,
+        )
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"classroom": self.classroom.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["academic"]["total_classes"], 1)
+        self.assertEqual(response.data["academic"]["total_sections"], 1)
+
+    def test_date_filter_scopes_activity_metrics(self):
+        self.add_org_a_metrics()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            self.endpoint,
+            {"date_from": "2026-09-21", "date_to": "2026-09-21"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["live_classes"]["total_live_classes"], 1)
+        self.assertEqual(response.data["attendance"]["present"], 0)
+
+    def test_details_endpoint_returns_class_section_subject_and_fee_data(self):
+        self.add_org_a_metrics()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get("/api/reports/college-admin/details/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["classes"]), 1)
+        self.assertEqual(response.data["classes"][0]["name"], "Class 10")
+        self.assertEqual(response.data["classes"][0]["attendance_percentage"], 66.67)
+        self.assertEqual(response.data["classes"][0]["expected_fees"], Decimal("1000.00"))
+        self.assertEqual(response.data["classes"][0]["collected_fees"], Decimal("250.00"))
+        self.assertEqual(len(response.data["sections"]), 1)
+        self.assertEqual(response.data["sections"][0]["section"], "A")
+        self.assertEqual(len(response.data["subjects"]), 1)
+        self.assertEqual(response.data["subjects"][0]["subject"], "Math")
+        self.assertEqual(response.data["subjects"][0]["average_percentage"], 80.0)
+        self.assertEqual(len(response.data["outstanding_fees"]), 1)
+        self.assertEqual(response.data["outstanding_fees"][0]["pending"], Decimal("750.00"))
+
+    def test_details_endpoint_is_organization_isolated(self):
+        self.add_other_org_data()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get("/api/reports/college-admin/details/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["name"] for row in response.data["classes"]], ["Class 10"])
+        self.assertEqual([row["section"] for row in response.data["sections"]], ["A"])
+        self.assertEqual([row["subject"] for row in response.data["subjects"]], ["Math"])
+
+    def test_details_class_filter_returns_only_selected_class(self):
+        second_class = ClassRoom.objects.create(
+            organization=self.org_a,
+            name="Class 9",
+            academic_session=self.session,
+        )
+        Section.objects.create(
+            organization=self.org_a,
+            name="B",
+            classroom=second_class,
+        )
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/details/",
+            {"classroom": self.classroom.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["classes"]), 1)
+        self.assertEqual(response.data["classes"][0]["name"], "Class 10")
+        self.assertEqual(
+            [row["class"] for row in response.data["sections"]],
+            ["Class 10"],
+        )
+
+    def test_details_empty_dataset_returns_empty_lists(self):
+        empty_org = Organization.objects.create(name="Reports Empty", code="R-EMPTY")
+        empty_admin = self.make_user("reports-empty-admin", "college_admin", empty_org)
+        self.authenticate(empty_admin)
+
+        response = self.client.get("/api/reports/college-admin/details/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["classes"], [])
+        self.assertEqual(response.data["sections"], [])
+        self.assertEqual(response.data["subjects"], [])
+        self.assertEqual(response.data["low_attendance_students"], [])
+        self.assertEqual(response.data["outstanding_fees"], [])
+        self.assertEqual(response.data["teacher_activity"], [])
+
+    def test_non_admin_roles_cannot_access_new_report_endpoints(self):
+        for endpoint in [
+            "/api/reports/college-admin/filters/",
+            "/api/reports/college-admin/details/",
+        ]:
+            for user in [self.student_user, self.teacher_user, self.parent_user]:
+                with self.subTest(endpoint=endpoint, role=user.role):
+                    self.authenticate(user)
+                    response = self.client.get(endpoint)
+                    self.assertEqual(response.status_code, 403)
