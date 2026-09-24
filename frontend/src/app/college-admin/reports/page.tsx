@@ -102,6 +102,7 @@ export default function CollegeAdminReportsPage() {
   const [filters, setFilters] = useState({ academic_session: "", classroom: "", section: "", subject: "", date_from: "", date_to: "" });
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [details, setDetails] = useState<any>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -205,6 +206,51 @@ export default function CollegeAdminReportsPage() {
     </table></div>
   );
 
+  const exportCsv = async () => {
+    const token = localStorage.getItem("college_admin_access_token");
+    if (!token) {
+      router.replace("/college-admin/login");
+      return;
+    }
+
+    try {
+      setExportingCsv(true);
+      setError("");
+      const query = new URLSearchParams(
+        Object.entries(appliedFilters).filter(([, value]) => value)
+      ).toString();
+      const response = await fetch(
+        `${API_BASE}/api/reports/college-admin/export/csv/${query ? `?${query}` : ""}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.status === 401) {
+        clearSession();
+        router.replace("/college-admin/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result?.detail || "Unable to export CSV report.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "college-admin-report.csv";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err instanceof Error) setError(err.message);
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
   const metricSection = (
     title: string,
     subtitle: string,
@@ -265,7 +311,13 @@ export default function CollegeAdminReportsPage() {
                   <div className="col-6 col-xl-2"><label className="form-label">From</label><input type="date" className="form-control" value={filters.date_from} onChange={e=>setFilter("date_from",e.target.value)}/></div>
                   <div className="col-6 col-xl-2"><label className="form-label">To</label><input type="date" className="form-control" value={filters.date_to} onChange={e=>setFilter("date_to",e.target.value)}/></div>
                 </div>
-                <div className="d-flex gap-2 mt-3"><button className="btn btn-primary" onClick={()=>setAppliedFilters({...filters})}>Apply Filters</button><button className="btn btn-outline-secondary" onClick={()=>{const empty={academic_session:"",classroom:"",section:"",subject:"",date_from:"",date_to:""};setFilters(empty);setAppliedFilters(empty)}}>Reset</button></div>
+                <div className="d-flex gap-2 mt-3 flex-wrap">
+                  <button className="btn btn-primary" onClick={()=>setAppliedFilters({...filters})}>Apply Filters</button>
+                  <button className="btn btn-outline-secondary" onClick={()=>{const empty={academic_session:"",classroom:"",section:"",subject:"",date_from:"",date_to:""};setFilters(empty);setAppliedFilters(empty)}}>Reset</button>
+                  <button className="btn btn-outline-success" onClick={exportCsv} disabled={exportingCsv || loading}>
+                    {exportingCsv ? "Exporting CSV..." : "Download CSV"}
+                  </button>
+                </div>
               </div>
             </div>
 
