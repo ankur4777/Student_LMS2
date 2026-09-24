@@ -68,6 +68,10 @@ path(
     "api/reports/",
     include("reports.urls"),
 ),
+path(
+    "api/notices/",
+    include("notices.urls"),
+),
 ]
 
 if settings.DEBUG:
