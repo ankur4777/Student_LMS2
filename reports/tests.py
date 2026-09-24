@@ -634,3 +634,43 @@ class CollegeAdminOverviewReportAPITests(TestCase):
                     "/api/reports/college-admin/export/excel/"
                 )
                 self.assertEqual(response.status_code, 403)
+
+
+    def test_pdf_export_downloads_filtered_report(self):
+        self.add_org_a_metrics()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/export/pdf/",
+            {"classroom": self.classroom.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn(
+            'attachment; filename="college-admin-report.pdf"',
+            response["Content-Disposition"],
+        )
+        self.assertTrue(response.content.startswith(b"%PDF"))
+        self.assertGreater(len(response.content), 1000)
+
+    def test_pdf_export_rejects_cross_organization_filter(self):
+        self.add_other_org_data()
+        foreign_class = ClassRoom.objects.get(organization=self.org_b)
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/export/pdf/",
+            {"classroom": foreign_class.id},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_non_admin_roles_cannot_export_pdf(self):
+        for user in [self.student_user, self.teacher_user, self.parent_user]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.get(
+                    "/api/reports/college-admin/export/pdf/"
+                )
+                self.assertEqual(response.status_code, 403)
