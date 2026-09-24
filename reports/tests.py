@@ -592,3 +592,45 @@ class CollegeAdminOverviewReportAPITests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
+
+
+    def test_excel_export_downloads_filtered_workbook(self):
+        self.add_org_a_metrics()
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/export/excel/",
+            {"classroom": self.classroom.id},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn(
+            'attachment; filename="college-admin-report.xlsx"',
+            response["Content-Disposition"],
+        )
+        self.assertGreater(len(response.content), 1000)
+
+    def test_excel_export_rejects_cross_organization_filter(self):
+        self.add_other_org_data()
+        foreign_class = ClassRoom.objects.get(organization=self.org_b)
+        self.authenticate(self.admin_a)
+
+        response = self.client.get(
+            "/api/reports/college-admin/export/excel/",
+            {"classroom": foreign_class.id},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_non_admin_roles_cannot_export_excel(self):
+        for user in [self.student_user, self.teacher_user, self.parent_user]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.get(
+                    "/api/reports/college-admin/export/excel/"
+                )
+                self.assertEqual(response.status_code, 403)
