@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
@@ -98,11 +98,23 @@ export default function CollegeAdminReportsPage() {
   const [data, setData] = useState<OverviewData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [options, setOptions] = useState<any>({ academic_sessions: [], classes: [], sections: [], subjects: [] });
+  const [filters, setFilters] = useState({ academic_session: "", classroom: "", section: "", subject: "", date_from: "", date_to: "" });
+  const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [details, setDetails] = useState<any>(null);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
     localStorage.removeItem("college_admin_refresh_token");
     localStorage.removeItem("college_admin_user");
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem("college_admin_access_token");
+    if (!token) return;
+    fetch(`${API_BASE}/api/reports/college-admin/filters/`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j?.detail || "Unable to load report filters."); return j; })
+      .then(setOptions).catch((e) => setError(e.message));
   }, []);
 
   useEffect(() => {
@@ -117,7 +129,7 @@ export default function CollegeAdminReportsPage() {
     const loadReports = async () => {
       try {
         const response = await fetch(
-          `${API_BASE}/api/reports/college-admin/overview/`,
+          `${API_BASE}/api/reports/college-admin/overview/?${new URLSearchParams(Object.entries(appliedFilters).filter(([,v]) => v))}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -141,6 +153,10 @@ export default function CollegeAdminReportsPage() {
 
         if (isMounted) {
           setData(result);
+          const detailResponse = await fetch(`${API_BASE}/api/reports/college-admin/details/?${new URLSearchParams(Object.entries(appliedFilters).filter(([,v]) => v))}`, { headers: { Authorization: `Bearer ${token}` } });
+          const detailResult = await detailResponse.json();
+          if (!detailResponse.ok) throw new Error(detailResult?.detail || "Unable to load detailed analytics.");
+          if (isMounted) setDetails(detailResult);
         }
       } catch (err) {
         if (isMounted && err instanceof Error) {
@@ -158,7 +174,7 @@ export default function CollegeAdminReportsPage() {
     return () => {
       isMounted = false;
     };
-  }, [clearSession, router]);
+  }, [clearSession, router, appliedFilters]);
 
   const cards = [
     ["Total Students", numberValue(data?.academic.total_students)],
@@ -172,6 +188,22 @@ export default function CollegeAdminReportsPage() {
   ];
 
   const resultEntries = Object.entries(data?.results || {});
+  const filteredClasses = useMemo(() => options.classes.filter((x:any) => !filters.academic_session || String(x.academic_session_id) === filters.academic_session), [options, filters.academic_session]);
+  const filteredSections = useMemo(() => options.sections.filter((x:any) => !filters.classroom || String(x.classroom_id) === filters.classroom), [options, filters.classroom]);
+  const filteredSubjects = useMemo(() => options.subjects.filter((x:any) => !filters.classroom || String(x.classroom_id) === filters.classroom), [options, filters.classroom]);
+  const setFilter = (key:string, value:string) => setFilters((prev:any) => {
+    const next = {...prev, [key]: value};
+    if (key === "academic_session") { next.classroom=""; next.section=""; next.subject=""; }
+    if (key === "classroom") { next.section=""; next.subject=""; }
+    return next;
+  });
+  const reportTable = (headers:string[], rows:any[][]) => (
+    <div className="table-responsive"><table className="table table-hover align-middle mb-0">
+      <thead className="table-light"><tr>{headers.map(h => <th key={h} className="text-nowrap">{h}</th>)}</tr></thead>
+      <tbody>{rows.length ? rows.map((row,i) => <tr key={i}>{row.map((cell,j) => <td key={j} className="text-nowrap">{cell}</td>)}</tr>) :
+        <tr><td colSpan={headers.length} className="text-center text-muted py-4">No data available for selected filters.</td></tr>}</tbody>
+    </table></div>
+  );
 
   const metricSection = (
     title: string,
@@ -222,6 +254,21 @@ export default function CollegeAdminReportsPage() {
               </div>
             </div>
 
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-body">
+                <h5 className="fw-bold mb-3">Report Filters</h5>
+                <div className="row g-3">
+                  <div className="col-12 col-md-6 col-xl-2"><label className="form-label">Academic Session</label><select className="form-select" value={filters.academic_session} onChange={e=>setFilter("academic_session",e.target.value)}><option value="">All Sessions</option>{options.academic_sessions.map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+                  <div className="col-12 col-md-6 col-xl-2"><label className="form-label">Class</label><select className="form-select" value={filters.classroom} onChange={e=>setFilter("classroom",e.target.value)}><option value="">All Classes</option>{filteredClasses.map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+                  <div className="col-12 col-md-6 col-xl-2"><label className="form-label">Section</label><select className="form-select" value={filters.section} onChange={e=>setFilter("section",e.target.value)}><option value="">All Sections</option>{filteredSections.map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+                  <div className="col-12 col-md-6 col-xl-2"><label className="form-label">Subject</label><select className="form-select" value={filters.subject} onChange={e=>setFilter("subject",e.target.value)}><option value="">All Subjects</option>{filteredSubjects.map((x:any)=><option key={x.id} value={x.id}>{x.name}</option>)}</select></div>
+                  <div className="col-6 col-xl-2"><label className="form-label">From</label><input type="date" className="form-control" value={filters.date_from} onChange={e=>setFilter("date_from",e.target.value)}/></div>
+                  <div className="col-6 col-xl-2"><label className="form-label">To</label><input type="date" className="form-control" value={filters.date_to} onChange={e=>setFilter("date_to",e.target.value)}/></div>
+                </div>
+                <div className="d-flex gap-2 mt-3"><button className="btn btn-primary" onClick={()=>setAppliedFilters({...filters})}>Apply Filters</button><button className="btn btn-outline-secondary" onClick={()=>{const empty={academic_session:"",classroom:"",section:"",subject:"",date_from:"",date_to:""};setFilters(empty);setAppliedFilters(empty)}}>Reset</button></div>
+              </div>
+            </div>
+
             {error && (
               <div className="alert alert-danger">
                 {error}
@@ -248,6 +295,17 @@ export default function CollegeAdminReportsPage() {
                     </div>
                   ))}
                 </div>
+
+                {details && (
+                  <>
+                    <div className="card border-0 shadow-sm mb-4"><div className="card-body p-4"><h5 className="fw-bold mb-1">Class-wise Performance</h5><p className="text-muted small">Academic, attendance, results and fee position by class.</p>{reportTable(["Class","Session","Students","Sections","Attendance","Assignments","Results","Expected Fees","Collected","Pending"], details.classes.map((x:any)=>[x.name,x.academic_session,x.students,x.sections,percentValue(x.attendance_percentage),x.assignments,x.published_results,money(x.expected_fees),money(x.collected_fees),money(x.pending_fees)]))}</div></div>
+                    <div className="card border-0 shadow-sm mb-4"><div className="card-body p-4"><h5 className="fw-bold mb-3">Section-wise Attendance</h5>{reportTable(["Class","Section","Students","Attendance"],details.sections.map((x:any)=>[x.class,x.section,x.students,percentValue(x.attendance_percentage)]))}</div></div>
+                    <div className="card border-0 shadow-sm mb-4"><div className="card-body p-4"><h5 className="fw-bold mb-3">Subject-wise Academic Analytics</h5>{reportTable(["Subject","Attendance","Assignments","Published Results","Average Marks"],details.subjects.map((x:any)=>[x.subject,percentValue(x.attendance_percentage),x.assignments,x.published_results,percentValue(x.average_percentage)]))}</div></div>
+                    <div className="card border-0 shadow-sm mb-4"><div className="card-body p-4"><h5 className="fw-bold mb-3">Low Attendance Students <span className="badge bg-warning text-dark">&lt; 75%</span></h5>{reportTable(["Student","Roll No.","Class","Section","Present","Absent","Late","Attendance"],details.low_attendance_students.map((x:any)=>[x.student,x.roll_number||"-",x.class,x.section,x.present,x.absent,x.late,percentValue(x.attendance_percentage)]))}</div></div>
+                    <div className="card border-0 shadow-sm mb-4"><div className="card-body p-4"><h5 className="fw-bold mb-3">Teacher / Live Class Activity</h5>{reportTable(["Teacher","Scheduled","Completed","Cancelled"],details.teacher_activity.map((x:any)=>[x.teacher,x.scheduled,x.completed,x.cancelled]))}</div></div>
+                    <div className="card border-0 shadow-sm mb-4"><div className="card-body p-4"><h5 className="fw-bold mb-1">Outstanding Fees</h5><p className="text-muted small">Student-level pending fee position.</p>{reportTable(["Student","Roll No.","Class","Section","Expected","Paid","Pending","Status"],details.outstanding_fees.map((x:any)=>[x.student,x.roll_number||"-",x.class||"-",x.section||"-",money(x.expected),money(x.paid),money(x.pending),String(x.status).replaceAll("_"," ")]))}</div></div>
+                  </>
+                )}
 
                 <div className="row g-4 mb-4">
                   <div className="col-xl-6">
