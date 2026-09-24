@@ -1,24 +1,42 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import ProductCredit from "@/components/common/ProductCredit";
+
 export default function ParentSidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   return (
-    <aside className="student-sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-logo">LMS</div>
+    <>
+      <button
+        type="button"
+        className="dashboard-menu-toggle"
+        aria-label="Open navigation"
+        onClick={() => setOpen(true)}
+      >
+        Menu
+      </button>
+      <div
+        className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
+        onClick={() => setOpen(false)}
+      />
+      <aside className={`student-sidebar ${open ? "sidebar-open" : ""}`}>
+        <div className="sidebar-brand">
+          <div className="brand-logo">SI</div>
 
-        <div>
-          <h5>Parent LMS</h5>
-          <small>Learning Portal</small>
+          <div>
+            <h5>Shabdd LMS</h5>
+            <small>Parent Portal</small>
+          </div>
         </div>
-      </div>
 
-      <nav className="sidebar-nav">
+        <nav className="sidebar-nav">
         <Link
           href="/parent/dashboard"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/dashboard"
               ? "active"
@@ -30,6 +48,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/children"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/children"
               ? "active"
@@ -41,6 +60,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/attendance"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/attendance"
               ? "active"
@@ -52,6 +72,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/assignments"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/assignments"
               ? "active"
@@ -63,6 +84,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/results"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/results"
               ? "active"
@@ -74,6 +96,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/recorded-courses"
+          onClick={() => setOpen(false)}
           className={pathname === "/parent/recorded-courses" || pathname.startsWith("/parent/recorded-courses/") ? "active" : ""}
         >
           Recorded Courses
@@ -81,6 +104,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/fees"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/fees"
               ? "active"
@@ -92,6 +116,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/notifications"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/notifications"
               ? "active"
@@ -103,6 +128,7 @@ export default function ParentSidebar() {
 
         <Link
           href="/parent/profile"
+          onClick={() => setOpen(false)}
           className={
             pathname === "/parent/profile"
               ? "active"
@@ -111,7 +137,12 @@ export default function ParentSidebar() {
         >
           Profile
         </Link>
-      </nav>
-    </aside>
+        </nav>
+
+        <div className="sidebar-product-credit">
+          <ProductCredit />
+        </div>
+      </aside>
+    </>
   );
 }

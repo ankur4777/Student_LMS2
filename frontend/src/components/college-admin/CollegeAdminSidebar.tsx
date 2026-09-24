@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import ProductCredit from "@/components/common/ProductCredit";
+
 const links = [
   ["Dashboard", "/college-admin/dashboard"],
   ["Students", "/college-admin/students"],
@@ -31,6 +33,7 @@ const links = [
 
 export default function CollegeAdminSidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const isActive = (href: string) => (
     pathname === href ||
@@ -86,35 +89,57 @@ export default function CollegeAdminSidebar() {
   }, [loadUnreadCount]);
 
   return (
-    <aside
-      className="teacher-sidebar"
-      style={{
-        height: "100vh",
-        overflowY: "auto",
-        boxSizing: "border-box",
-      }}
-    >
-      <div className="teacher-sidebar-brand">
-        College Admin LMS
-      </div>
+    <>
+      <button
+        type="button"
+        className="dashboard-menu-toggle"
+        aria-label="Open navigation"
+        onClick={() => setOpen(true)}
+      >
+        Menu
+      </button>
+      <div
+        className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
+        onClick={() => setOpen(false)}
+      />
+      <aside
+        className={`teacher-sidebar ${open ? "sidebar-open" : ""}`}
+        style={{
+          height: "100vh",
+          overflowY: "auto",
+          boxSizing: "border-box",
+        }}
+      >
+        <div className="teacher-sidebar-brand">
+          Shabdd LMS
+          <div className="small text-muted fw-normal mt-1">
+            College Admin
+          </div>
+        </div>
 
-      <nav className="teacher-sidebar-nav">
-        {links.map(([label, href]) => (
-          <Link
-            key={href}
-            href={href}
-            className={isActive(href) ? "active" : ""}
-          >
-            <span>{label}</span>
-            {href === "/college-admin/notifications" &&
-              unreadCount > 0 && (
-                <span className="badge bg-primary ms-2">
-                  {unreadCount}
-                </span>
-              )}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+        <nav className="teacher-sidebar-nav">
+          {links.map(([label, href]) => (
+            <Link
+              key={href}
+              href={href}
+              className={isActive(href) ? "active" : ""}
+              onClick={() => setOpen(false)}
+            >
+              <span>{label}</span>
+              {href === "/college-admin/notifications" &&
+                unreadCount > 0 && (
+                  <span className="badge bg-primary ms-2">
+                    {unreadCount}
+                  </span>
+                )}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="sidebar-product-credit">
+          <ProductCredit />
+        </div>
+      </aside>
+    </>
   );
 }

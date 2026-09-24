@@ -778,6 +778,142 @@ def validate_student_fee_payload(data, organization, instance=None):
     return values, None, None
 
 
+def validate_class_fee_payload(data, organization, require_fee=False):
+    academic_session = AcademicSession.objects.filter(
+        id=data.get("academic_session_id"),
+        organization=organization,
+    ).first()
+    if not academic_session:
+        return None, {"detail": "Academic session not found."}, 404
+
+    classroom = ClassRoom.objects.filter(
+        id=data.get("classroom_id"),
+        organization=organization,
+        academic_session=academic_session,
+    ).first()
+    if not classroom:
+        return None, {"detail": "Class not found."}, 404
+
+    section = None
+    section_id = data.get("section_id")
+    if section_id not in [None, "", "all"]:
+        section = Section.objects.filter(
+            id=section_id,
+            organization=organization,
+            classroom=classroom,
+        ).first()
+        if not section:
+            return None, {"detail": "Section not found."}, 404
+
+    values = {
+        "academic_session": academic_session,
+        "classroom": classroom,
+        "section": section,
+    }
+
+    if not require_fee:
+        return values, None, None
+
+    fee_structure = fee_structure_queryset(organization).filter(
+        id=data.get("fee_structure_id"),
+        is_active=True,
+    ).first()
+    if not fee_structure:
+        return None, {"detail": "Fee structure not found."}, 404
+
+    if fee_structure.academic_session_id != academic_session.id:
+        return None, {"detail": "Fee structure session mismatch."}, 400
+
+    if fee_structure.class_room_id != classroom.id:
+        return None, {"detail": "Fee structure class mismatch."}, 400
+
+    original_amount = fee_structure.total_amount
+    if "original_amount" in data:
+        original_amount, error = parse_money(
+            data.get("original_amount"),
+            "original_amount",
+        )
+        if error:
+            return None, error, 400
+
+    discount_amount, error = parse_money(
+        data.get("discount_amount", Decimal("0.00")),
+        "discount_amount",
+    )
+    if error:
+        return None, error, 400
+
+    fine_amount, error = parse_money(
+        data.get("fine_amount", Decimal("0.00")),
+        "fine_amount",
+    )
+    if error:
+        return None, error, 400
+
+    payable_amount = original_amount - discount_amount + fine_amount
+    if payable_amount < Decimal("0.00"):
+        return None, {"discount_amount": "Discount cannot exceed fee plus fine."}, 400
+
+    due_date = data.get("due_date") or fee_structure.due_date
+    if not due_date:
+        return None, {"detail": "Due date is required."}, 400
+
+    values.update({
+        "fee_structure": fee_structure,
+        "original_amount": original_amount,
+        "discount_amount": discount_amount,
+        "fine_amount": fine_amount,
+        "payable_amount": payable_amount,
+        "due_date": due_date,
+    })
+    return values, None, None
+
+
+def eligible_class_enrollments(organization, academic_session, classroom, section=None):
+    enrollments = StudentEnrollment.objects.filter(
+        is_active=True,
+        student__user__organization=organization,
+        student__user__role="student",
+        section__organization=organization,
+        section__classroom=classroom,
+        section__classroom__organization=organization,
+        section__classroom__academic_session=academic_session,
+    ).select_related(
+        "student",
+        "student__user",
+        "section",
+        "section__classroom",
+    ).order_by(
+        "section__name",
+        "roll_number",
+        "student__user__first_name",
+        "student__user__username",
+    )
+
+    if section:
+        enrollments = enrollments.filter(section=section)
+
+    return enrollments
+
+
+def serialize_class_fee_student(enrollment):
+    user = enrollment.student.user
+    return {
+        "student_profile_id": enrollment.student_id,
+        "student_id": user.id,
+        "name": user.get_full_name().strip() or user.username,
+        "username": user.username,
+        "admission_number": enrollment.student.admission_number,
+        "enrollment_id": enrollment.id,
+        "roll_number": enrollment.roll_number,
+        "section_id": enrollment.section_id,
+        "section_name": enrollment.section.name,
+        "class_room_id": enrollment.section.classroom_id,
+        "class_room_name": enrollment.section.classroom.name,
+        "status": "Eligible",
+    }
+
+
 class CollegeAdminStudentFeesAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -809,6 +945,129 @@ class CollegeAdminStudentFeesAPIView(APIView):
             return Response({"detail": "Fee already assigned to this student."}, status=400)
 
         return Response({"student_fee": serialize_student_fee(student_fee, True)}, status=201)
+
+
+class CollegeAdminClassStudentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response({"detail": "Only college admins can preview class fees."}, status=403)
+
+        values, error, status_code = validate_class_fee_payload(
+            request.query_params,
+            organization,
+        )
+        if error:
+            return Response(error, status=status_code)
+
+        enrollments = eligible_class_enrollments(
+            organization,
+            values["academic_session"],
+            values["classroom"],
+            values["section"],
+        )
+        students = [
+            serialize_class_fee_student(enrollment)
+            for enrollment in enrollments
+        ]
+
+        return Response({
+            "academic_session": {
+                "id": values["academic_session"].id,
+                "name": values["academic_session"].name,
+            },
+            "class_room": {
+                "id": values["classroom"].id,
+                "name": values["classroom"].name,
+            },
+            "section": (
+                {
+                    "id": values["section"].id,
+                    "name": values["section"].name,
+                }
+                if values["section"]
+                else None
+            ),
+            "eligible_students": len(students),
+            "students": students,
+        })
+
+
+class CollegeAdminAssignClassFeesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response({"detail": "Only college admins can assign class fees."}, status=403)
+
+        values, error, status_code = validate_class_fee_payload(
+            request.data,
+            organization,
+            require_fee=True,
+        )
+        if error:
+            return Response(error, status=status_code)
+
+        enrollments = list(eligible_class_enrollments(
+            organization,
+            values["academic_session"],
+            values["classroom"],
+            values["section"],
+        ))
+        eligible_student_ids = [enrollment.student_id for enrollment in enrollments]
+
+        existing_student_ids = set(StudentFee.objects.filter(
+            organization=organization,
+            academic_session=values["academic_session"],
+            fee_structure=values["fee_structure"],
+            student_id__in=eligible_student_ids,
+        ).values_list("student_id", flat=True))
+
+        assigned = 0
+        skipped = len(existing_student_ids)
+
+        try:
+            with transaction.atomic():
+                for enrollment in enrollments:
+                    if enrollment.student_id in existing_student_ids:
+                        continue
+
+                    student_fee = StudentFee(
+                        organization=organization,
+                        student=enrollment.student,
+                        academic_session=values["academic_session"],
+                        fee_structure=values["fee_structure"],
+                        original_amount=values["original_amount"],
+                        discount_amount=values["discount_amount"],
+                        fine_amount=values["fine_amount"],
+                        payable_amount=values["payable_amount"],
+                        due_date=values["due_date"],
+                    )
+                    student_fee.full_clean()
+                    student_fee.save()
+                    sync_student_fee_status(student_fee)
+                    assigned += 1
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except IntegrityError:
+            return Response(
+                {"detail": "Duplicate fee assignment detected. No class fees were assigned."},
+                status=400,
+            )
+
+        return Response({
+            "eligible_students": len(enrollments),
+            "assigned": assigned,
+            "skipped_existing": skipped,
+            "failed": 0,
+            "message": (
+                f"Fees successfully assigned to {assigned} students. "
+                f"{skipped} students already had this fee and were skipped."
+            ),
+        }, status=201)
 
 
 class CollegeAdminStudentFeeDetailAPIView(APIView):

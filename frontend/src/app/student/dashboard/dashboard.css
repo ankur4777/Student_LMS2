@@ -1,6 +1,6 @@
 .student-dashboard {
   min-height: 100vh;
-  background: #f5f7fb;
+  background: var(--page-bg);
 }
 
 .student-sidebar {
@@ -8,14 +8,18 @@
   top: 0;
   left: 0;
 
-  width: 255px;
+  width: var(--sidebar-width);
   height: 100vh;
 
-  background: #ffffff;
-  border-right: 1px solid #e8edf3;
+  background: var(--card-bg);
+  border-right: 1px solid var(--border-color);
 
-  padding: 24px 16px;
-  z-index: 100;
+  padding: 22px 16px;
+  z-index: 1030;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  transition: transform 0.2s ease;
 }
 
 .sidebar-brand {
@@ -32,7 +36,7 @@
 }
 
 .sidebar-brand small {
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 .brand-logo {
@@ -43,8 +47,8 @@
   align-items: center;
   justify-content: center;
 
-  border-radius: 12px;
-  background: #0d6efd;
+  border-radius: var(--radius-md);
+  background: var(--brand-primary);
 
   color: #ffffff;
   font-weight: 700;
@@ -53,28 +57,30 @@
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .sidebar-nav a {
-  padding: 12px 14px;
-  border-radius: 9px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
 
-  color: #5e6673;
-  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 600;
 
   transition: 0.2s;
 }
 
 .sidebar-nav a:hover {
-  background: #f1f5fb;
-  color: #0d6efd;
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
 }
 
 .sidebar-nav a.active {
-  background: #eaf2ff;
-  color: #0d6efd;
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--brand-primary);
 }
 
 .dashboard-main {
@@ -91,8 +97,13 @@
   align-items: center;
   justify-content: space-between;
 
-  background: #ffffff;
-  border-bottom: 1px solid #e8edf3;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid var(--border-color);
+  gap: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 900;
+  backdrop-filter: blur(10px);
 }
 
 .topbar-profile {
@@ -107,7 +118,7 @@
 }
 
 .topbar-profile small {
-  color: #8a94a6;
+  color: var(--text-muted);
 }
 
 .profile-avatar {
@@ -120,7 +131,7 @@
 
   border-radius: 50%;
 
-  background: #0d6efd;
+  background: var(--brand-primary);
   color: #ffffff;
 
   font-weight: 700;
@@ -132,12 +143,12 @@
 
 .summary-card,
 .dashboard-panel {
-  background: #ffffff;
+  background: var(--card-bg);
 
-  border: 1px solid #e8edf3;
-  border-radius: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
 
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
+  box-shadow: var(--shadow-sm);
 }
 
 .summary-card {
@@ -145,7 +156,7 @@
 }
 
 .summary-card span {
-  color: #7c8595;
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -155,7 +166,7 @@
 }
 
 .summary-card small {
-  color: #9aa3af;
+  color: var(--text-muted);
 }
 
 .dashboard-panel {
@@ -212,7 +223,7 @@
   text-align: center;
 
   border-radius: 10px;
-  background: #f6f8fb;
+  background: #fafbfc;
 }
 
 .attendance-stats strong,
@@ -223,13 +234,18 @@
 .attendance-stats span {
   margin-top: 3px;
 
-  color: #929aaa;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 @media (max-width: 991px) {
   .student-sidebar {
-    display: none;
+    transform: translateX(-100%);
+    width: min(86vw, var(--sidebar-width));
+  }
+
+  .student-sidebar.sidebar-open {
+    transform: translateX(0);
   }
 
   .dashboard-main {
@@ -239,7 +255,9 @@
 
 @media (max-width: 576px) {
   .student-topbar {
-    padding: 14px 18px;
+    padding: 14px 76px 14px 18px;
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 
   .dashboard-content {
@@ -420,19 +438,22 @@
 
 .student-dashboard {
   min-height: 100vh;
-  background: #f5f7fb;
+  background: var(--page-bg);
 }
 
 .student-dashboard-main {
-  margin-left: 250px;
+  margin-left: var(--sidebar-width);
   min-height: 100vh;
-  width: calc(100% - 250px);
+  width: calc(100% - var(--sidebar-width));
+  display: flex;
+  flex-direction: column;
 }
 
 .student-dashboard-content {
   padding: 30px;
   width: 100%;
   box-sizing: border-box;
+  flex: 1;
 }
 
 /* Prevent Bootstrap/container content from
@@ -444,6 +465,33 @@
   padding-right: 0;
 }
 
+.dashboard-menu-toggle {
+  display: none;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1100;
+  width: 52px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--brand-primary);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.dashboard-menu-backdrop {
+  display: none;
+}
+
+.sidebar-product-credit {
+  margin-top: auto;
+  padding: 18px 8px 2px;
+  border-top: 1px solid var(--border-color);
+}
+
 /* Tablet / Mobile */
 @media (max-width: 991px) {
   .student-dashboard-main {
@@ -453,6 +501,21 @@
 
   .student-dashboard-content {
     padding: 20px;
+  }
+
+  .dashboard-menu-toggle {
+    display: block;
+  }
+
+  .dashboard-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1020;
+    background: rgba(32, 36, 44, 0.34);
+  }
+
+  .dashboard-menu-backdrop.show {
+    display: block;
   }
 }
 

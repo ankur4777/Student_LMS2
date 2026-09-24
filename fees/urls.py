@@ -4,6 +4,8 @@ from .views import (
     CollegeAdminFeeSetupAPIView,
     CollegeAdminFeeStructureDetailAPIView,
     CollegeAdminFeeStructuresAPIView,
+    CollegeAdminAssignClassFeesAPIView,
+    CollegeAdminClassStudentsAPIView,
     CollegeAdminStudentFeeDetailAPIView,
     CollegeAdminStudentFeeInstallmentsAPIView,
     CollegeAdminStudentFeePaymentsAPIView,
@@ -39,6 +41,16 @@ urlpatterns = [
         "college-admin/student-fees/",
         CollegeAdminStudentFeesAPIView.as_view(),
         name="college-admin-student-fees",
+    ),
+    path(
+        "college-admin/class-students/",
+        CollegeAdminClassStudentsAPIView.as_view(),
+        name="college-admin-class-students",
+    ),
+    path(
+        "college-admin/assign-class/",
+        CollegeAdminAssignClassFeesAPIView.as_view(),
+        name="college-admin-assign-class-fees",
     ),
     path(
         "college-admin/student-fees/<int:student_fee_id>/",

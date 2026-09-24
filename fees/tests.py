@@ -201,6 +201,49 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             format="json",
         )
 
+    def class_fee_payload(self, structure=None, **overrides):
+        structure = structure or self.make_structure()
+        payload = {
+            "academic_session_id": self.session.id,
+            "classroom_id": self.classroom.id,
+            "section_id": "",
+            "fee_structure_id": structure.id,
+            "discount_amount": "0.00",
+            "fine_amount": "0.00",
+            "due_date": "2027-06-30",
+        }
+        payload.update(overrides)
+        return payload
+
+    def assign_class_fee(self, structure=None, **overrides):
+        self.authenticate()
+        return self.client.post(
+            "/api/fees/college-admin/assign-class/",
+            self.class_fee_payload(structure, **overrides),
+            format="json",
+        )
+
+    def make_student(self, username, admission_number, organization=None):
+        organization = organization or self.org
+        user = User.objects.create_user(
+            username=username,
+            password="pass",
+            role="student",
+            organization=organization,
+        )
+        return StudentProfile.objects.create(
+            user=user,
+            admission_number=admission_number,
+        )
+
+    def enroll(self, student, section=None, is_active=True, roll_number="9"):
+        return StudentEnrollment.objects.create(
+            student=student,
+            section=section or self.section,
+            roll_number=roll_number,
+            is_active=is_active,
+        )
+
     def test_authentication_required(self):
         response = self.client.get(
             "/api/fees/college-admin/structures/"
@@ -456,6 +499,253 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 400)
         self.assertEqual(StudentFee.objects.count(), 1)
+
+    def test_college_admin_can_assign_fee_to_entire_class(self):
+        structure = self.make_structure()
+        second_student = self.make_student("student-2", "S-2")
+        self.enroll(second_student, roll_number="2")
+
+        response = self.assign_class_fee(structure)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["eligible_students"], 2)
+        self.assertEqual(response.data["assigned"], 2)
+        self.assertEqual(
+            StudentFee.objects.filter(
+                organization=self.org,
+                academic_session=self.session,
+                fee_structure=structure,
+            ).count(),
+            2,
+        )
+
+    def test_bulk_assignment_excludes_other_class_and_inactive_enrollment(self):
+        structure = self.make_structure()
+        other_classroom = ClassRoom.objects.create(
+            organization=self.org,
+            name="Class 11",
+            academic_session=self.session,
+        )
+        other_section = Section.objects.create(
+            organization=self.org,
+            name="C",
+            classroom=other_classroom,
+        )
+        other_class_student = self.make_student("same-org-other-class", "S-3")
+        self.enroll(other_class_student, other_section)
+        inactive_student = self.make_student("inactive-enrollment", "S-4")
+        self.enroll(inactive_student, is_active=False)
+
+        response = self.assign_class_fee(structure)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["assigned"], 1)
+        self.assertTrue(StudentFee.objects.filter(student=self.student).exists())
+        self.assertFalse(StudentFee.objects.filter(student=other_class_student).exists())
+        self.assertFalse(StudentFee.objects.filter(student=inactive_student).exists())
+
+    def test_specific_section_excludes_other_sections(self):
+        structure = self.make_structure()
+        section_b = Section.objects.create(
+            organization=self.org,
+            name="B",
+            classroom=self.classroom,
+        )
+        section_b_student = self.make_student("section-b-student", "S-5")
+        self.enroll(section_b_student, section_b)
+
+        response = self.assign_class_fee(
+            structure,
+            section_id=self.section.id,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["eligible_students"], 1)
+        self.assertTrue(StudentFee.objects.filter(student=self.student).exists())
+        self.assertFalse(StudentFee.objects.filter(student=section_b_student).exists())
+
+    def test_all_sections_assigns_to_all_active_students_in_class(self):
+        structure = self.make_structure()
+        section_b = Section.objects.create(
+            organization=self.org,
+            name="B",
+            classroom=self.classroom,
+        )
+        section_b_student = self.make_student("section-b-all", "S-6")
+        self.enroll(section_b_student, section_b)
+
+        response = self.assign_class_fee(structure, section_id="")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["assigned"], 2)
+        self.assertTrue(StudentFee.objects.filter(student=self.student).exists())
+        self.assertTrue(StudentFee.objects.filter(student=section_b_student).exists())
+
+    def test_bulk_assignment_blocks_cross_org_classroom_and_section_tampering(self):
+        structure = self.make_structure()
+
+        classroom_response = self.assign_class_fee(
+            structure,
+            classroom_id=self.other_classroom.id,
+        )
+        section_response = self.assign_class_fee(
+            structure,
+            section_id=self.other_section.id,
+        )
+
+        self.assertEqual(classroom_response.status_code, 404)
+        self.assertEqual(section_response.status_code, 404)
+        self.assertEqual(StudentFee.objects.count(), 0)
+
+    def test_college_a_admin_cannot_assign_fee_to_college_b_students(self):
+        structure = self.make_structure()
+        self.authenticate(self.admin)
+
+        response = self.client.post(
+            "/api/fees/college-admin/assign-class/",
+            {
+                "academic_session_id": self.other_session.id,
+                "classroom_id": self.other_classroom.id,
+                "section_id": "",
+                "fee_structure_id": structure.id,
+                "due_date": "2027-06-30",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(StudentFee.objects.filter(student=self.other_student).exists())
+
+    def test_duplicate_bulk_assignment_skips_existing_fees(self):
+        structure = self.make_structure()
+        second_student = self.make_student("student-duplicate", "S-7")
+        self.enroll(second_student)
+
+        first = self.assign_class_fee(structure)
+        second = self.assign_class_fee(structure)
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(first.data["assigned"], 2)
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(second.data["assigned"], 0)
+        self.assertEqual(second.data["skipped_existing"], 2)
+        self.assertEqual(StudentFee.objects.count(), 2)
+
+    def test_bulk_assignment_parent_and_student_visibility_without_parent_duplicate(self):
+        structure = self.make_structure()
+        parent = ParentProfile.objects.get(user=self.parent_user)
+        ParentStudent.objects.create(
+            parent=parent,
+            student=self.student,
+            relationship=ParentStudent.Relationship.FATHER,
+        )
+
+        response = self.assign_class_fee(structure)
+        self.authenticate(self.parent_user)
+        parent_response = self.client.get(
+            f"/api/fees/parent/student/{self.student.id}/"
+        )
+        self.authenticate(self.student_user)
+        student_response = self.client.get("/api/fees/student/")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(parent_response.status_code, 200)
+        self.assertEqual(len(parent_response.data["student_fees"]), 1)
+        self.assertEqual(student_response.status_code, 200)
+        self.assertEqual(len(student_response.data["student_fees"]), 1)
+        self.assertEqual(StudentFee.objects.count(), 1)
+
+    def test_parent_with_multiple_children_sees_fee_under_correct_child_only(self):
+        structure = self.make_structure()
+        parent = ParentProfile.objects.get(user=self.parent_user)
+        ParentStudent.objects.create(parent=parent, student=self.student)
+        other_classroom = ClassRoom.objects.create(
+            organization=self.org,
+            name="Class 12",
+            academic_session=self.session,
+        )
+        other_section = Section.objects.create(
+            organization=self.org,
+            name="D",
+            classroom=other_classroom,
+        )
+        other_child = self.make_student("other-child", "S-8")
+        self.enroll(other_child, other_section)
+        ParentStudent.objects.create(parent=parent, student=other_child)
+
+        self.assign_class_fee(structure)
+        self.authenticate(self.parent_user)
+        child_a_response = self.client.get(
+            f"/api/fees/parent/student/{self.student.id}/"
+        )
+        child_b_response = self.client.get(
+            f"/api/fees/parent/student/{other_child.id}/"
+        )
+
+        self.assertEqual(len(child_a_response.data["student_fees"]), 1)
+        self.assertEqual(len(child_b_response.data["student_fees"]), 0)
+
+    def test_non_admin_roles_cannot_use_bulk_assignment_endpoint(self):
+        structure = self.make_structure()
+
+        for user in [self.teacher_user, self.student_user, self.parent_user]:
+            with self.subTest(role=user.role):
+                self.authenticate(user)
+                response = self.client.post(
+                    "/api/fees/college-admin/assign-class/",
+                    self.class_fee_payload(structure),
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 403)
+
+    def test_preview_endpoint_returns_only_eligible_students(self):
+        self.make_structure()
+        inactive_student = self.make_student("preview-inactive", "S-9")
+        self.enroll(inactive_student, is_active=False)
+        self.authenticate()
+
+        response = self.client.get(
+            "/api/fees/college-admin/class-students/",
+            {
+                "academic_session_id": self.session.id,
+                "classroom_id": self.classroom.id,
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["eligible_students"], 1)
+        self.assertEqual(
+            response.data["students"][0]["student_profile_id"],
+            self.student.id,
+        )
+
+    def test_final_post_ignores_tampered_frontend_student_ids(self):
+        structure = self.make_structure()
+        same_org_other_classroom = ClassRoom.objects.create(
+            organization=self.org,
+            name="Class 13",
+            academic_session=self.session,
+        )
+        same_org_other_section = Section.objects.create(
+            organization=self.org,
+            name="E",
+            classroom=same_org_other_classroom,
+        )
+        same_org_other_student = self.make_student("tampered-student", "S-10")
+        self.enroll(same_org_other_student, same_org_other_section)
+
+        response = self.assign_class_fee(
+            structure,
+            student_ids=[
+                self.other_student.id,
+                same_org_other_student.id,
+            ],
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(StudentFee.objects.filter(student=self.student).exists())
+        self.assertFalse(StudentFee.objects.filter(student=self.other_student).exists())
+        self.assertFalse(StudentFee.objects.filter(student=same_org_other_student).exists())
 
     def test_student_fee_detail_cross_tenant_blocked(self):
         foreign_structure = self.make_structure(self.other_org)

@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import ProductCredit from "@/components/common/ProductCredit";
+
 export default function StudentSidebar() {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
 
   const links = [
     { href: "/student/dashboard", label: "Dashboard" },
@@ -21,27 +25,46 @@ export default function StudentSidebar() {
   ];
 
   return (
-    <aside className="student-sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-logo">LMS</div>
+    <>
+      <button
+        type="button"
+        className="dashboard-menu-toggle"
+        aria-label="Open navigation"
+        onClick={() => setOpen(true)}
+      >
+        Menu
+      </button>
+      <div
+        className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
+        onClick={() => setOpen(false)}
+      />
+      <aside className={`student-sidebar ${open ? "sidebar-open" : ""}`}>
+        <div className="sidebar-brand">
+          <div className="brand-logo">SI</div>
 
-        <div>
-          <h5>Student LMS</h5>
-          <small>Learning Portal</small>
+          <div>
+            <h5>Shabdd LMS</h5>
+            <small>Student Portal</small>
+          </div>
         </div>
-      </div>
 
-      <nav className="sidebar-nav">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "active" : ""}
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+        <nav className="sidebar-nav">
+          {links.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "active" : ""}
+              onClick={() => setOpen(false)}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="sidebar-product-credit">
+          <ProductCredit />
+        </div>
+      </aside>
+    </>
   );
 }
