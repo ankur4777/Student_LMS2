@@ -26,7 +26,6 @@ from studentresults.models import Exam, StudentResult
 
 from .models import ParentProfile, StudentProfile, TeacherProfile, User
 
-
 class CollegeAdminParentManagementTests(TestCase):
     def setUp(self):
         self.client = APIClient()

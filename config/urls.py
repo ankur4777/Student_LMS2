@@ -64,6 +64,10 @@ path(
     "api/recorded-courses/",
     include("recordedcourses.urls"),
 ),
+path(
+    "api/reports/",
+    include("reports.urls"),
+),
 ]
 
 if settings.DEBUG:
