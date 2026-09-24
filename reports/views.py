@@ -8,6 +8,11 @@ from django.http import HttpResponse
 from django.utils.dateparse import parse_date
 from openpyxl import Workbook
 from openpyxl.styles import Font
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -660,4 +665,193 @@ class CollegeAdminExcelExportAPIView(APIView):
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
         response["Content-Disposition"] = 'attachment; filename="college-admin-report.xlsx"'
+        return response
+
+
+class CollegeAdminPDFExportAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        org = college_admin_organization(request.user)
+        if not org:
+            return Response({"detail": "College admin access required."}, status=403)
+
+        filters, error = parse_filters(request, org)
+        if error:
+            return Response({"detail": error}, status=400)
+
+        attendance, assignments, submissions, live, fees, payments, exams, results = scoped_data(
+            org, filters
+        )
+
+        buffer = BytesIO()
+        document = SimpleDocTemplate(
+            buffer,
+            pagesize=landscape(A4),
+            rightMargin=12 * mm,
+            leftMargin=12 * mm,
+            topMargin=12 * mm,
+            bottomMargin=12 * mm,
+            title="College Admin Reports & Analytics",
+            author=org.name,
+        )
+        styles = getSampleStyleSheet()
+        story = []
+
+        story.append(Paragraph("College Admin Reports & Analytics", styles["Title"]))
+        story.append(Paragraph(f"Organization: {org.name}", styles["Heading3"]))
+        story.append(Spacer(1, 5 * mm))
+
+        filter_rows = [
+            ["Academic Session", filters["session"].name if filters["session"] else "All"],
+            ["Class", filters["classroom"].name if filters["classroom"] else "All"],
+            ["Section", filters["section"].name if filters["section"] else "All"],
+            ["Subject", filters["subject"].name if filters["subject"] else "All"],
+            ["Date From", str(filters["date_from"] or "All")],
+            ["Date To", str(filters["date_to"] or "All")],
+        ]
+        filter_table = Table([["Applied Filter", "Value"]] + filter_rows, colWidths=[55 * mm, 80 * mm])
+        filter_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e9ecef")),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cfd4da")),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("PADDING", (0, 0), (-1, -1), 5),
+        ]))
+        story.append(filter_table)
+        story.append(Spacer(1, 6 * mm))
+
+        att = attendance_summary(attendance)
+        expected = decimal_or_zero(fees.aggregate(total=Sum("payable_amount"))["total"])
+        collected = decimal_or_zero(payments.aggregate(total=Sum("amount"))["total"])
+        overview_rows = [
+            ["Overall Attendance %", att["overall_percentage"]],
+            ["Present", att["present"]],
+            ["Absent", att["absent"]],
+            ["Late", att["late"]],
+            ["Excused", att["excused"]],
+            ["Assignments", assignments.count()],
+            ["Submissions", submissions.count()],
+            ["Live Classes", live.count()],
+            ["Published Exams", exams.count()],
+            ["Published Results", results.count()],
+            ["Expected Fees", str(expected)],
+            ["Collected Fees", str(collected)],
+            ["Pending Fees", str(max(expected - collected, ZERO))],
+        ]
+        story.append(Paragraph("Overview", styles["Heading2"]))
+        overview_table = Table([["Metric", "Value"]] + overview_rows, colWidths=[70 * mm, 55 * mm])
+        overview_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#f1f3f5")),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d7dce1")),
+            ("PADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(overview_table)
+        story.append(Spacer(1, 6 * mm))
+
+        class_rows = []
+        class_qs = ClassRoom.objects.filter(organization=org).select_related("academic_session")
+        if filters["session"]:
+            class_qs = class_qs.filter(academic_session=filters["session"])
+        if filters["classroom"]:
+            class_qs = class_qs.filter(pk=filters["classroom"].pk)
+
+        for classroom in class_qs:
+            enrollments = StudentEnrollment.objects.filter(
+                section__classroom=classroom,
+                is_active=True,
+            )
+            class_attendance = attendance.filter(
+                attendance_session__section__classroom=classroom
+            )
+            class_fees = fees.filter(student_id__in=enrollments.values("student_id"))
+            class_payments = payments.filter(
+                student_fee__student_id__in=enrollments.values("student_id")
+            )
+            class_expected = decimal_or_zero(
+                class_fees.aggregate(total=Sum("payable_amount"))["total"]
+            )
+            class_collected = decimal_or_zero(
+                class_payments.aggregate(total=Sum("amount"))["total"]
+            )
+            class_rows.append([
+                classroom.name,
+                classroom.academic_session.name,
+                enrollments.count(),
+                Section.objects.filter(classroom=classroom).count(),
+                f'{attendance_summary(class_attendance)["overall_percentage"]}%',
+                assignments.filter(
+                    teacher_assignment__section__classroom=classroom
+                ).count(),
+                results.filter(exam__section__classroom=classroom).count(),
+                str(class_expected),
+                str(class_collected),
+                str(max(class_expected - class_collected, ZERO)),
+            ])
+
+        story.append(Paragraph("Class-wise Performance", styles["Heading2"]))
+        class_table = Table(
+            [[
+                "Class", "Session", "Students", "Sections", "Attendance",
+                "Assignments", "Results", "Expected", "Collected", "Pending",
+            ]] + class_rows,
+            repeatRows=1,
+            colWidths=[27*mm, 27*mm, 16*mm, 16*mm, 22*mm, 22*mm, 18*mm, 27*mm, 27*mm, 27*mm],
+        )
+        class_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e9ecef")),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cfd4da")),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("PADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(class_table)
+        story.append(Spacer(1, 6 * mm))
+
+        outstanding_rows = []
+        for fee in fees.select_related("student__user").prefetch_related("payments"):
+            paid = fee.paid_amount
+            pending = max(fee.payable_amount - paid, ZERO)
+            if pending <= ZERO:
+                continue
+
+            enrollment = StudentEnrollment.objects.filter(
+                student=fee.student,
+                is_active=True,
+            ).select_related("section__classroom").first()
+
+            outstanding_rows.append([
+                fee.student.user.get_full_name() or fee.student.user.username,
+                enrollment.roll_number if enrollment else "",
+                enrollment.section.classroom.name if enrollment else "",
+                enrollment.section.name if enrollment else "",
+                str(fee.payable_amount),
+                str(paid),
+                str(pending),
+                fee.calculated_status().replace("_", " ").title(),
+            ])
+
+        story.append(Paragraph("Outstanding Fees", styles["Heading2"]))
+        outstanding_table = Table(
+            [["Student", "Roll No.", "Class", "Section", "Expected", "Paid", "Pending", "Status"]]
+            + outstanding_rows,
+            repeatRows=1,
+            colWidths=[42*mm, 22*mm, 35*mm, 22*mm, 30*mm, 30*mm, 30*mm, 32*mm],
+        )
+        outstanding_table.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#e9ecef")),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#cfd4da")),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("PADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(outstanding_table)
+
+        document.build(story)
+
+        response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+        response["Content-Disposition"] = 'attachment; filename="college-admin-report.pdf"'
         return response
