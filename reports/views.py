@@ -1,10 +1,13 @@
 from decimal import Decimal
 import csv
+from io import BytesIO
 
 
 from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.utils.dateparse import parse_date
+from openpyxl import Workbook
+from openpyxl.styles import Font
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -431,4 +434,230 @@ class CollegeAdminCSVExportAPIView(APIView):
                 fee.calculated_status(),
             ])
 
+        return response
+
+
+class CollegeAdminExcelExportAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        org = college_admin_organization(request.user)
+        if not org:
+            return Response({"detail": "College admin access required."}, status=403)
+
+        filters, error = parse_filters(request, org)
+        if error:
+            return Response({"detail": error}, status=400)
+
+        attendance, assignments, submissions, live, fees, payments, exams, results = scoped_data(
+            org, filters
+        )
+
+        workbook = Workbook()
+        workbook.remove(workbook.active)
+
+        def add_sheet(title, headers, rows):
+            ws = workbook.create_sheet(title=title[:31])
+            ws.append(headers)
+            for cell in ws[1]:
+                cell.font = Font(bold=True)
+            for row in rows:
+                ws.append(list(row))
+            for column_cells in ws.columns:
+                length = max(len(str(cell.value or "")) for cell in column_cells)
+                ws.column_dimensions[column_cells[0].column_letter].width = min(length + 2, 35)
+            return ws
+
+        overview_rows = [
+            ("Organization", org.name),
+            ("Academic Session", filters["session"].name if filters["session"] else "All"),
+            ("Class", filters["classroom"].name if filters["classroom"] else "All"),
+            ("Section", filters["section"].name if filters["section"] else "All"),
+            ("Subject", filters["subject"].name if filters["subject"] else "All"),
+            ("Date From", str(filters["date_from"] or "All")),
+            ("Date To", str(filters["date_to"] or "All")),
+        ]
+        att = attendance_summary(attendance)
+        expected = decimal_or_zero(fees.aggregate(total=Sum("payable_amount"))["total"])
+        collected = decimal_or_zero(payments.aggregate(total=Sum("amount"))["total"])
+        overview_rows.extend([
+            ("Overall Attendance %", att["overall_percentage"]),
+            ("Present", att["present"]),
+            ("Absent", att["absent"]),
+            ("Late", att["late"]),
+            ("Excused", att["excused"]),
+            ("Assignments", assignments.count()),
+            ("Submissions", submissions.count()),
+            ("Live Classes", live.count()),
+            ("Published Exams", exams.count()),
+            ("Published Results", results.count()),
+            ("Expected Fees", float(expected)),
+            ("Collected Fees", float(collected)),
+            ("Pending Fees", float(max(expected - collected, ZERO))),
+        ])
+        add_sheet("Overview", ["Metric", "Value"], overview_rows)
+
+        class_rows = []
+        class_qs = ClassRoom.objects.filter(organization=org).select_related("academic_session")
+        if filters["session"]:
+            class_qs = class_qs.filter(academic_session=filters["session"])
+        if filters["classroom"]:
+            class_qs = class_qs.filter(pk=filters["classroom"].pk)
+
+        for classroom in class_qs:
+            enrollments = StudentEnrollment.objects.filter(
+                section__classroom=classroom,
+                is_active=True,
+            )
+            class_attendance = attendance.filter(
+                attendance_session__section__classroom=classroom
+            )
+            class_fees = fees.filter(student_id__in=enrollments.values("student_id"))
+            class_payments = payments.filter(
+                student_fee__student_id__in=enrollments.values("student_id")
+            )
+            class_expected = decimal_or_zero(
+                class_fees.aggregate(total=Sum("payable_amount"))["total"]
+            )
+            class_collected = decimal_or_zero(
+                class_payments.aggregate(total=Sum("amount"))["total"]
+            )
+            class_rows.append([
+                classroom.name,
+                classroom.academic_session.name,
+                enrollments.count(),
+                Section.objects.filter(classroom=classroom).count(),
+                attendance_summary(class_attendance)["overall_percentage"],
+                assignments.filter(teacher_assignment__section__classroom=classroom).count(),
+                results.filter(exam__section__classroom=classroom).count(),
+                float(class_expected),
+                float(class_collected),
+                float(max(class_expected - class_collected, ZERO)),
+            ])
+        add_sheet(
+            "Class-wise Performance",
+            ["Class", "Session", "Students", "Sections", "Attendance %", "Assignments",
+             "Published Results", "Expected Fees", "Collected Fees", "Pending Fees"],
+            class_rows,
+        )
+
+        section_rows = []
+        section_qs = Section.objects.filter(organization=org).select_related("classroom")
+        if filters["classroom"]:
+            section_qs = section_qs.filter(classroom=filters["classroom"])
+        if filters["section"]:
+            section_qs = section_qs.filter(pk=filters["section"].pk)
+        for section in section_qs:
+            section_rows.append([
+                section.classroom.name,
+                section.name,
+                StudentEnrollment.objects.filter(section=section, is_active=True).count(),
+                attendance_summary(attendance.filter(attendance_session__section=section))["overall_percentage"],
+            ])
+        add_sheet(
+            "Section Attendance",
+            ["Class", "Section", "Students", "Attendance %"],
+            section_rows,
+        )
+
+        subject_rows = []
+        subject_qs = Subject.objects.filter(organization=org)
+        if filters["classroom"]:
+            subject_qs = subject_qs.filter(classroom=filters["classroom"])
+        if filters["subject"]:
+            subject_qs = subject_qs.filter(pk=filters["subject"].pk)
+        for subject in subject_qs:
+            sr = results.filter(subject=subject)
+            total_obtained = decimal_or_zero(sr.aggregate(total=Sum("marks_obtained"))["total"])
+            total_max = decimal_or_zero(sr.aggregate(total=Sum("maximum_marks"))["total"])
+            average = round(float(total_obtained / total_max * 100), 2) if total_max else 0
+            subject_rows.append([
+                subject.name,
+                attendance_summary(attendance.filter(attendance_session__subject=subject))["overall_percentage"],
+                assignments.filter(teacher_assignment__subject=subject).count(),
+                sr.count(),
+                average,
+            ])
+        add_sheet(
+            "Subject Analytics",
+            ["Subject", "Attendance %", "Assignments", "Published Results", "Average %"],
+            subject_rows,
+        )
+
+        low_attendance_rows = []
+        student_ids = attendance.values_list("student_id", flat=True).distinct()
+        for enrollment in StudentEnrollment.objects.filter(
+            student_id__in=student_ids,
+            is_active=True,
+        ).select_related("student__user", "section__classroom"):
+            summary = attendance_summary(attendance.filter(student=enrollment.student))
+            if summary["overall_percentage"] < 75:
+                user = enrollment.student.user
+                low_attendance_rows.append([
+                    user.get_full_name() or user.username,
+                    enrollment.roll_number,
+                    enrollment.section.classroom.name,
+                    enrollment.section.name,
+                    summary["present"],
+                    summary["absent"],
+                    summary["late"],
+                    summary["overall_percentage"],
+                ])
+        add_sheet(
+            "Low Attendance",
+            ["Student", "Roll Number", "Class", "Section", "Present", "Absent", "Late", "Attendance %"],
+            low_attendance_rows,
+        )
+
+        teacher_rows = []
+        teacher_ids = live.values_list("teacher_assignment__teacher_id", flat=True).distinct()
+        for teacher in TeacherProfile.objects.filter(pk__in=teacher_ids).select_related("user"):
+            teacher_live = live.filter(teacher_assignment__teacher=teacher)
+            teacher_rows.append([
+                teacher.user.get_full_name() or teacher.user.username,
+                teacher_live.filter(status=LiveClass.Status.SCHEDULED).count(),
+                teacher_live.filter(status=LiveClass.Status.COMPLETED).count(),
+                teacher_live.filter(status=LiveClass.Status.CANCELLED).count(),
+            ])
+        add_sheet(
+            "Teacher Activity",
+            ["Teacher", "Scheduled", "Completed", "Cancelled"],
+            teacher_rows,
+        )
+
+        outstanding_rows = []
+        for fee in fees.select_related("student__user").prefetch_related("payments"):
+            paid = fee.paid_amount
+            pending = max(fee.payable_amount - paid, ZERO)
+            if pending <= ZERO:
+                continue
+            enrollment = StudentEnrollment.objects.filter(
+                student=fee.student,
+                is_active=True,
+            ).select_related("section__classroom").first()
+            outstanding_rows.append([
+                fee.student.user.get_full_name() or fee.student.user.username,
+                enrollment.roll_number if enrollment else "",
+                enrollment.section.classroom.name if enrollment else "",
+                enrollment.section.name if enrollment else "",
+                float(fee.payable_amount),
+                float(paid),
+                float(pending),
+                fee.calculated_status(),
+            ])
+        add_sheet(
+            "Outstanding Fees",
+            ["Student", "Roll Number", "Class", "Section", "Expected", "Paid", "Pending", "Status"],
+            outstanding_rows,
+        )
+
+        output = BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        response["Content-Disposition"] = 'attachment; filename="college-admin-report.xlsx"'
         return response
