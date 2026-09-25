@@ -5,6 +5,33 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
+import AdminIcon, { AdminIconName } from "@/components/college-admin/AdminIcon";
+
+const iconByLabel: Record<string, AdminIconName> = {
+  Dashboard: "results",
+  Students: "students",
+  Teachers: "teachers",
+  Parents: "parents",
+  "Parent-Student Links": "enrollments",
+  "Academic Sessions": "attendance",
+  Classes: "classes",
+  Sections: "sections",
+  Subjects: "subjects",
+  Enrollments: "enrollments",
+  "Teacher Assignments": "assignments",
+  "Live Classes": "live",
+  Attendance: "attendance",
+  Assignments: "assignments",
+  Results: "results",
+  "Reports & Analytics": "results",
+  Documents: "documents",
+  Fees: "fees",
+  "Recorded Courses": "live",
+  "Course Purchases": "fees",
+  Notifications: "pending",
+  Notices: "notices",
+  Profile: "teachers",
+};
 
 const links = [
   ["Dashboard", "/college-admin/dashboard"],
@@ -128,7 +155,7 @@ export default function CollegeAdminSidebar() {
               className={isActive(href) ? "active" : ""}
               onClick={() => setOpen(false)}
             >
-              <span>{label}</span>
+              <span className="college-admin-nav-label"><AdminIcon name={iconByLabel[label] || "classes"} size={18} /><span>{label}</span></span>
               {href === "/college-admin/notifications" &&
                 unreadCount > 0 && (
                   <span className="badge bg-primary ms-2">
