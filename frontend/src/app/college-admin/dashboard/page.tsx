@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { CSSProperties, ReactNode, useEffect, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import AdminIcon, { AdminIconName } from "@/components/college-admin/AdminIcon";
 
 import "../../teacher/dashboard/dashboard.css";
 import "./college-admin-dashboard.css";
@@ -123,21 +124,7 @@ interface Notice {
   is_active: boolean;
 }
 
-type IconName =
-  | "students"
-  | "teachers"
-  | "classes"
-  | "attendance"
-  | "fees"
-  | "pending"
-  | "parents"
-  | "sections"
-  | "subjects"
-  | "enrollments"
-  | "assignments"
-  | "live"
-  | "documents"
-  | "results";
+type IconName = AdminIconName;
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -186,27 +173,6 @@ function contextLine(item: RecentItemBase) {
   ]
     .filter(Boolean)
     .join(" - ");
-}
-
-function MiniIcon({ name }: { name: IconName }) {
-  const icons: Record<IconName, ReactNode> = {
-    students: "👥",
-    teachers: "👤",
-    classes: "▣",
-    attendance: "▥",
-    fees: "▰",
-    pending: "◷",
-    parents: "♟",
-    sections: "▤",
-    subjects: "▦",
-    enrollments: "✓",
-    assignments: "✎",
-    live: "●",
-    documents: "▧",
-    results: "▥",
-  };
-
-  return <span className="cad-icon-glyph">{icons[name]}</span>;
 }
 
 function noticeStatus(notice: Notice) {
@@ -467,9 +433,7 @@ export default function CollegeAdminDashboardPage() {
                     </p>
                   </div>
                   <div className="cad-welcome-side">
-                    <div className="cad-campus-art" aria-hidden="true">
-                      <span>▥</span><span>▦</span><span>▥</span>
-                    </div>
+                    <div className="cad-campus-art" aria-hidden="true"><span><AdminIcon name="classes" size={34} /></span><span><AdminIcon name="classes" size={48} /></span><span><AdminIcon name="classes" size={34} /></span></div>
                     <div className="cad-date">{today}</div>
                   </div>
                 </section>
@@ -478,7 +442,7 @@ export default function CollegeAdminDashboardPage() {
                   {primaryCards.map((card) => (
                     <Link key={card.label} href={card.href} className="cad-kpi-card">
                       <div className="cad-icon-box">
-                        <MiniIcon name={card.icon} />
+                        <AdminIcon name={card.icon} size={20} />
                       </div>
                       <div className="cad-kpi-copy">
                         <span>{card.label}</span>
@@ -493,7 +457,7 @@ export default function CollegeAdminDashboardPage() {
                   <article className="cad-panel cad-attendance-panel">
                     <div className="cad-panel-heading">
                       <div>
-                        <span className="cad-panel-icon">▦</span>
+                        <span className="cad-panel-icon"><AdminIcon name="attendance" size={18} /></span>
                         <div>
                           <h2>Attendance Overview</h2>
                           <p>Present and late count toward attendance percentage.</p>
@@ -542,7 +506,7 @@ export default function CollegeAdminDashboardPage() {
                   <article className="cad-panel cad-fee-panel">
                     <div className="cad-panel-heading">
                       <div>
-                        <span className="cad-panel-icon">▰</span>
+                        <span className="cad-panel-icon"><AdminIcon name="fees" size={18} /></span>
                         <div>
                           <h2>Fee Collection Summary</h2>
                           <p>Overview of collected and pending fees.</p>
@@ -586,7 +550,7 @@ export default function CollegeAdminDashboardPage() {
                   <article className="cad-panel cad-actions-panel">
                     <div className="cad-panel-heading">
                       <div>
-                        <span className="cad-panel-icon">ϟ</span>
+                        <span className="cad-panel-icon"><AdminIcon name="actions" size={18} /></span>
                         <div>
                           <h2>Quick Actions</h2>
                           <p>Perform common administrative tasks quickly.</p>
@@ -597,7 +561,7 @@ export default function CollegeAdminDashboardPage() {
                     <div className="cad-actions-grid">
                       {quickActions.map(([label, href, icon]) => (
                         <Link href={href} key={href} className="cad-action-tile">
-                          <span className="cad-action-icon"><MiniIcon name={icon} /></span>
+                          <span className="cad-action-icon"><AdminIcon name={icon} size={18} /></span>
                           <strong>{label}</strong>
                           <span className="cad-action-arrow">→</span>
                         </Link>
@@ -610,7 +574,7 @@ export default function CollegeAdminDashboardPage() {
                   <article className="cad-panel cad-table-panel">
                     <div className="cad-panel-heading compact">
                       <div>
-                        <span className="cad-panel-icon">▤</span>
+                        <span className="cad-panel-icon"><AdminIcon name="classes" size={18} /></span>
                         <div>
                           <h2>Class-wise Performance</h2>
                           <p>Current academic overview across classes.</p>
@@ -669,7 +633,7 @@ export default function CollegeAdminDashboardPage() {
                     </div>
 
                     <div className="cad-empty-state">
-                      <div className="cad-empty-icon">₹</div>
+                      <div className="cad-empty-icon"><AdminIcon name="fees" size={20} /></div>
                       <strong>No recent payment rows available</strong>
                       <span>
                         Fee totals above are live. Open Fees for student-level payment details.
@@ -681,7 +645,7 @@ export default function CollegeAdminDashboardPage() {
                   <article className="cad-panel cad-notices">
                     <div className="cad-panel-heading compact">
                       <div>
-                        <span className="cad-panel-icon">◖</span>
+                        <span className="cad-panel-icon"><AdminIcon name="notices" size={18} /></span>
                         <div>
                           <h2>Recent Notices</h2>
                           <p>Latest announcements for students and staff.</p>
@@ -722,7 +686,7 @@ export default function CollegeAdminDashboardPage() {
                 <section className="cad-panel cad-analytics-panel">
                   <div className="cad-panel-heading compact">
                     <div>
-                      <span className="cad-panel-icon">▥</span>
+                      <span className="cad-panel-icon"><AdminIcon name="results" size={18} /></span>
                       <div>
                         <h2>Reports & Analytics</h2>
                         <p>Current visual snapshot of your institution&apos;s performance.</p>
@@ -762,7 +726,7 @@ export default function CollegeAdminDashboardPage() {
                 <section className="cad-panel cad-snapshot-panel">
                   <div className="cad-panel-heading compact">
                     <div>
-                      <span className="cad-panel-icon">▦</span>
+                      <span className="cad-panel-icon"><AdminIcon name="classes" size={18} /></span>
                       <div>
                         <h2>Institution Snapshot</h2>
                         <p>Quick access to the rest of your existing dashboard metrics.</p>
@@ -772,7 +736,7 @@ export default function CollegeAdminDashboardPage() {
                   <div className="cad-snapshot-grid">
                     {snapshotCards.map(([label, value, href, icon]) => (
                       <Link href={href} key={href} className="cad-snapshot-card">
-                        <span className="cad-snapshot-icon"><MiniIcon name={icon} /></span>
+                        <span className="cad-snapshot-icon"><AdminIcon name={icon} size={18} /></span>
                         <div>
                           <small>{label}</small>
                           <strong>{value}</strong>
