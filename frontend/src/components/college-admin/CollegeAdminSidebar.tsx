@@ -28,6 +28,7 @@ const links = [
   ["Recorded Courses", "/college-admin/recorded-courses"],
   ["Course Purchases", "/college-admin/recorded-course-purchases"],
   ["Notifications", "/college-admin/notifications"],
+  ["Notices", "/college-admin/notices"],
   ["Profile", "/college-admin/profile"],
 ];
 
@@ -47,6 +48,8 @@ export default function CollegeAdminSidebar() {
       pathname.startsWith("/college-admin/parent-student-links/")) ||
     (href === "/college-admin/notifications" &&
       pathname.startsWith("/college-admin/notifications/")) ||
+    (href === "/college-admin/notices" &&
+      pathname.startsWith("/college-admin/notices/")) ||
     (href === "/college-admin/fees" &&
       pathname.startsWith("/college-admin/fees/")) ||
     (href === "/college-admin/recorded-courses" &&
