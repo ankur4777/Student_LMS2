@@ -3,26 +3,32 @@
 import { useRouter } from "next/navigation";
 
 import NotificationPopup from "@/components/notifications/NotificationPopup";
+import StudentIcon from "@/components/student/StudentIcon";
 
 interface StudentTopbarProps {
   name: string;
   organization?: string;
 }
 
+function initials(name: string) {
+  const value = (name || "S").trim();
+  const parts = value.split(/\s+/).filter(Boolean);
+  return (parts.length > 1
+    ? `${parts[0][0]}${parts[1][0]}`
+    : value.slice(0, 2)
+  ).toUpperCase();
+}
+
 export default function StudentTopbar({
   name,
+  organization,
 }: StudentTopbarProps) {
   const router = useRouter();
-
-  const initial = name
-    ? name.charAt(0).toUpperCase()
-    : "S";
 
   function handleLogout() {
     localStorage.removeItem("student_access_token");
     localStorage.removeItem("student_refresh_token");
     localStorage.removeItem("student_user");
-
     router.replace("/student/login");
   }
 
@@ -35,24 +41,22 @@ export default function StudentTopbar({
         loginPath="/student/login"
       />
 
-      <header className="student-topbar">
-        <div>
-          <h4 className="mb-1">
-            Student Dashboard
-          </h4>
-
-          <p className="mb-0 text-muted">
-            Welcome back, {name}
-          </p>
+      <header className="student-topbar student-portal-topbar">
+        <div className="student-portal-topbar-title">
+          <h4 className="mb-1">Student Portal</h4>
+          <p className="mb-0">Classes, attendance, assignments and learning resources.</p>
         </div>
 
-        <div className="d-flex align-items-center gap-3">
-
-          <div className="topbar-profile">
-            <div className="profile-avatar">
-              {initial}
+        <div className="student-portal-topbar-actions">
+          {organization && (
+            <div className="student-portal-organization">
+              <StudentIcon name="school" size={16} />
+              <span>{organization}</span>
             </div>
+          )}
 
+          <div className="student-portal-user">
+            <span className="student-portal-avatar">{initials(name)}</span>
             <div>
               <strong>{name}</strong>
               <small>Student</small>
@@ -61,12 +65,11 @@ export default function StudentTopbar({
 
           <button
             type="button"
-            className="btn btn-outline-danger btn-sm"
+            className="btn btn-outline-danger btn-sm student-portal-logout"
             onClick={handleLogout}
           >
             Logout
           </button>
-
         </div>
       </header>
     </>
