@@ -13,17 +13,51 @@ type TeacherNavItem = {
   icon: TeacherIconName;
 };
 
-const navItems: TeacherNavItem[] = [
-  { label: "Dashboard", href: "/teacher/dashboard", icon: "dashboard" },
-  { label: "My Classes", href: "/teacher/classes", icon: "classes" },
-  { label: "Recordings", href: "/teacher/recordings", icon: "recordings" },
-  { label: "Attendance", href: "/teacher/attendance", icon: "attendance" },
-  { label: "Assignments", href: "/teacher/assignments", icon: "assignments" },
-  { label: "Students", href: "/teacher/students", icon: "students" },
-  { label: "Results", href: "/teacher/results", icon: "results" },
-  { label: "Documents", href: "/teacher/documents", icon: "documents" },
-  { label: "Notifications", href: "/teacher/notifications", icon: "notifications" },
-  { label: "Profile", href: "/teacher/profile", icon: "profile" },
+type TeacherNavSection = {
+  label: string;
+  items: TeacherNavItem[];
+};
+
+const navSections: TeacherNavSection[] = [
+  {
+    label: "Main",
+    items: [
+      { label: "Dashboard", href: "/teacher/dashboard", icon: "dashboard" },
+    ],
+  },
+  {
+    label: "Teaching",
+    items: [
+      { label: "My Classes", href: "/teacher/classes", icon: "classes" },
+      { label: "Recordings", href: "/teacher/recordings", icon: "recordings" },
+      { label: "Attendance", href: "/teacher/attendance", icon: "attendance" },
+      { label: "Assignments", href: "/teacher/assignments", icon: "assignments" },
+    ],
+  },
+  {
+    label: "Academics",
+    items: [
+      { label: "Students", href: "/teacher/students", icon: "students" },
+      { label: "Results", href: "/teacher/results", icon: "results" },
+    ],
+  },
+  {
+    label: "Resources",
+    items: [
+      { label: "Documents", href: "/teacher/documents", icon: "documents" },
+      {
+        label: "Notifications",
+        href: "/teacher/notifications",
+        icon: "notifications",
+      },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Profile", href: "/teacher/profile", icon: "profile" },
+    ],
+  },
 ];
 
 export default function TeacherSidebar() {
@@ -52,7 +86,9 @@ export default function TeacherSidebar() {
         onClick={() => setOpen(false)}
       />
 
-      <aside className={`teacher-sidebar teacher-portal-sidebar ${open ? "sidebar-open" : ""}`}>
+      <aside
+        className={`teacher-sidebar teacher-portal-sidebar ${open ? "sidebar-open" : ""}`}
+      >
         <div className="teacher-sidebar-brand teacher-portal-brand">
           <span className="teacher-brand-logo">
             <TeacherIcon name="school" size={22} />
@@ -64,18 +100,28 @@ export default function TeacherSidebar() {
         </div>
 
         <nav className="teacher-sidebar-nav teacher-portal-nav">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={isActive(item.href) ? "active" : ""}
-              onClick={() => setOpen(false)}
-            >
-              <span className="teacher-nav-label">
-                <TeacherIcon name={item.icon} size={18} />
-                <span>{item.label}</span>
-              </span>
-            </Link>
+          {navSections.map((section) => (
+            <section className="teacher-nav-section" key={section.label}>
+              <div className="teacher-nav-section-title">{section.label}</div>
+
+              <div className="teacher-nav-section-items">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={isActive(item.href) ? "active" : ""}
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="teacher-nav-label">
+                      <span className="teacher-nav-icon">
+                        <TeacherIcon name={item.icon} size={18} />
+                      </span>
+                      <span className="teacher-nav-text">{item.label}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
 
