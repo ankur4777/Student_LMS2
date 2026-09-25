@@ -786,3 +786,110 @@
     width: 100%;
   }
 }
+
+
+/* Student menu page polish */
+.student-ui-scope .student-dashboard:not(.student-dashboard-polished) .student-dashboard-content .container-fluid > .mb-4:first-child,
+.student-ui-scope .student-dashboard:not(.student-dashboard-polished) .student-dashboard-content .container-fluid > .d-flex.mb-4:first-child {
+  margin-bottom: 16px !important;
+  padding: 2px 0 4px;
+}
+
+.student-ui-scope .student-dashboard:not(.student-dashboard-polished) .student-dashboard-content .container-fluid > .mb-4:first-child::before,
+.student-ui-scope .student-dashboard:not(.student-dashboard-polished) .student-dashboard-content .container-fluid > .d-flex.mb-4:first-child > div:first-child::before {
+  content: "STUDENT PORTAL";
+  display: block;
+  margin-bottom: 5px;
+  color: #b42318;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+}
+
+.student-ui-scope .student-dashboard-content .row.g-4 > [class*="col-"] > .card {
+  height: 100%;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.student-ui-scope .student-dashboard-content .row.g-4 > [class*="col-"] > .card:hover {
+  border-color: #dcdfe5 !important;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .05) !important;
+}
+
+.student-ui-scope .student-dashboard-content .card .border.rounded.p-3,
+.student-ui-scope .student-dashboard-content .card .border.rounded-3.p-3 {
+  background: #fbfcfd;
+}
+
+.student-ui-scope .student-dashboard-content .fw-semibold,
+.student-ui-scope .student-dashboard-content .fw-bold {
+  color: #344054;
+}
+
+.student-ui-scope .student-dashboard-content .text-muted.small {
+  font-size: .66rem;
+}
+
+.student-ui-scope .student-dashboard-content .progress {
+  height: 8px;
+  border-radius: 999px;
+  background: #f0f2f5;
+}
+
+.student-ui-scope .student-dashboard-content .progress-bar {
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+.student-ui-scope .student-dashboard-content .card.border-primary {
+  position: relative;
+  border-color: #f0b3b3 !important;
+  background: #fffafa;
+}
+
+.student-ui-scope .student-dashboard-content .d-flex.flex-column.gap-3 > .card.border-primary::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+.student-ui-scope .student-dashboard-content .btn-outline-secondary {
+  border-color: #dfe3e8;
+  color: #667085;
+  background: #fff;
+}
+
+.student-ui-scope .student-dashboard-content .btn-outline-secondary:hover {
+  border-color: #cfd4dc;
+  background: #f8f9fb;
+  color: #344054;
+}
+
+.student-ui-scope .student-dashboard-content .table-responsive {
+  border-radius: 0 0 12px 12px;
+}
+
+.student-ui-scope .student-dashboard-content .card .row.g-4 > [class*="col-"] > .text-muted.small {
+  margin-bottom: 3px;
+  color: #8b95a5 !important;
+}
+
+.student-ui-scope .student-dashboard-content .card .row.g-4 > [class*="col-"] > .fw-semibold {
+  color: #344054;
+  font-size: .76rem;
+  font-weight: 620 !important;
+}
+
+.student-ui-scope .student-menu-toggle {
+  width: 48px;
+  height: 42px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, .18);
+}
+
