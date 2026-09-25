@@ -63,27 +63,17 @@ export default function CollegeAdminSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const isActive = (href: string) => (
-    pathname === href ||
-    (href === "/college-admin/results" &&
-      pathname.startsWith("/college-admin/results/")) ||
-    (href === "/college-admin/reports" &&
-      pathname.startsWith("/college-admin/reports/")) ||
-    (href === "/college-admin/documents" &&
-      pathname.startsWith("/college-admin/documents/")) ||
-    (href === "/college-admin/parent-student-links" &&
-      pathname.startsWith("/college-admin/parent-student-links/")) ||
-    (href === "/college-admin/notifications" &&
-      pathname.startsWith("/college-admin/notifications/")) ||
-    (href === "/college-admin/notices" &&
-      pathname.startsWith("/college-admin/notices/")) ||
-    (href === "/college-admin/fees" &&
-      pathname.startsWith("/college-admin/fees/")) ||
-    (href === "/college-admin/recorded-courses" &&
-      pathname.startsWith("/college-admin/recorded-courses/")) ||
-    (href === "/college-admin/recorded-course-purchases" &&
-      pathname.startsWith("/college-admin/recorded-course-purchases/"))
-  );
+  const isActive = (href: string) => {
+    if (pathname === href) {
+      return true;
+    }
+
+    if (href === "/college-admin/dashboard") {
+      return false;
+    }
+
+    return pathname.startsWith(`${href}/`);
+  };
   const loadUnreadCount = useCallback(async () => {
     const token = localStorage.getItem("college_admin_access_token");
 
