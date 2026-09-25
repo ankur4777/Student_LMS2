@@ -5,42 +5,94 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
+import StudentIcon, { StudentIconName } from "@/components/student/StudentIcon";
+
+type StudentNavItem = {
+  label: string;
+  href: string;
+  icon: StudentIconName;
+};
+
+type StudentNavSection = {
+  label: string;
+  items: StudentNavItem[];
+};
+
+const navSections: StudentNavSection[] = [
+  {
+    label: "Main",
+    items: [
+      { label: "Dashboard", href: "/student/dashboard", icon: "dashboard" },
+    ],
+  },
+  {
+    label: "Learning",
+    items: [
+      { label: "My Classes", href: "/student/classes", icon: "classes" },
+      { label: "Recorded Classes", href: "/student/recorded-classes", icon: "recordings" },
+      { label: "Buy Recorded Courses", href: "/student/recorded-courses", icon: "courses" },
+    ],
+  },
+  {
+    label: "Academics",
+    items: [
+      { label: "Attendance", href: "/student/attendance", icon: "attendance" },
+      { label: "Assignments", href: "/student/assignments", icon: "assignments" },
+      { label: "Results", href: "/student/results", icon: "results" },
+      { label: "Documents", href: "/student/documents", icon: "documents" },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { label: "Fees", href: "/student/fees", icon: "fees" },
+    ],
+  },
+  {
+    label: "Communication",
+    items: [
+      { label: "Notifications", href: "/student/notifications", icon: "notifications" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Profile", href: "/student/profile", icon: "profile" },
+    ],
+  },
+];
 
 export default function StudentSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  const links = [
-    { href: "/student/dashboard", label: "Dashboard" },
-    { href: "/student/classes", label: "My Classes" },
-    { href: "/student/recorded-classes", label: "Recorded Classes" },
-    { href: "/student/recorded-courses", label: "Buy Recorded Courses" },
-    { href: "/student/attendance", label: "Attendance" },
-    { href: "/student/assignments", label: "Assignments" },
-    { href: "/student/results", label: "Results" },
-    { href: "/student/documents", label: "Documents" },
-    { href: "/student/fees", label: "Fees" },
-    { href: "/student/notifications", label: "Notifications" },
-    { href: "/student/profile", label: "Profile" },
-  ];
+  const isActive = (href: string) => {
+    if (pathname === href) return true;
+    if (href === "/student/dashboard") return false;
+    return pathname.startsWith(`${href}/`);
+  };
 
   return (
     <>
       <button
         type="button"
-        className="dashboard-menu-toggle"
+        className="dashboard-menu-toggle student-menu-toggle"
         aria-label="Open navigation"
         onClick={() => setOpen(true)}
       >
         Menu
       </button>
+
       <div
         className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
         onClick={() => setOpen(false)}
       />
-      <aside className={`student-sidebar ${open ? "sidebar-open" : ""}`}>
-        <div className="sidebar-brand">
-          <div className="brand-logo">SI</div>
+
+      <aside className={`student-sidebar student-portal-sidebar ${open ? "sidebar-open" : ""}`}>
+        <div className="sidebar-brand student-portal-brand">
+          <span className="student-brand-logo">
+            <StudentIcon name="school" size={22} />
+          </span>
 
           <div>
             <h5>Shabdd LMS</h5>
@@ -48,16 +100,29 @@ export default function StudentSidebar() {
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={pathname === link.href || pathname.startsWith(`${link.href}/`) ? "active" : ""}
-              onClick={() => setOpen(false)}
-            >
-              {link.label}
-            </Link>
+        <nav className="sidebar-nav student-portal-nav">
+          {navSections.map((section) => (
+            <section className="student-nav-section" key={section.label}>
+              <div className="student-nav-section-title">{section.label}</div>
+
+              <div className="student-nav-section-items">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={isActive(item.href) ? "active" : ""}
+                    onClick={() => setOpen(false)}
+                  >
+                    <span className="student-nav-label">
+                      <span className="student-nav-icon">
+                        <StudentIcon name={item.icon} size={18} />
+                      </span>
+                      <span className="student-nav-text">{item.label}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
 
