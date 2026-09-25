@@ -13,16 +13,51 @@ type ParentNavItem = {
   icon: ParentIconName;
 };
 
-const navItems: ParentNavItem[] = [
-  { label: "Dashboard", href: "/parent/dashboard", icon: "dashboard" },
-  { label: "My Children", href: "/parent/children", icon: "children" },
-  { label: "Attendance", href: "/parent/attendance", icon: "attendance" },
-  { label: "Assignments", href: "/parent/assignments", icon: "assignments" },
-  { label: "Results", href: "/parent/results", icon: "results" },
-  { label: "Recorded Courses", href: "/parent/recorded-courses", icon: "courses" },
-  { label: "Fees", href: "/parent/fees", icon: "fees" },
-  { label: "Notifications", href: "/parent/notifications", icon: "notifications" },
-  { label: "Profile", href: "/parent/profile", icon: "profile" },
+type ParentNavSection = {
+  label: string;
+  items: ParentNavItem[];
+};
+
+const navSections: ParentNavSection[] = [
+  {
+    label: "Main",
+    items: [
+      { label: "Dashboard", href: "/parent/dashboard", icon: "dashboard" },
+    ],
+  },
+  {
+    label: "Children & Academics",
+    items: [
+      { label: "My Children", href: "/parent/children", icon: "children" },
+      { label: "Attendance", href: "/parent/attendance", icon: "attendance" },
+      { label: "Assignments", href: "/parent/assignments", icon: "assignments" },
+      { label: "Results", href: "/parent/results", icon: "results" },
+    ],
+  },
+  {
+    label: "Learning",
+    items: [
+      { label: "Recorded Courses", href: "/parent/recorded-courses", icon: "courses" },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { label: "Fees", href: "/parent/fees", icon: "fees" },
+    ],
+  },
+  {
+    label: "Communication",
+    items: [
+      { label: "Notifications", href: "/parent/notifications", icon: "notifications" },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { label: "Profile", href: "/parent/profile", icon: "profile" },
+    ],
+  },
 ];
 
 export default function ParentSidebar() {
@@ -64,18 +99,28 @@ export default function ParentSidebar() {
         </div>
 
         <nav className="sidebar-nav parent-sidebar-nav">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setOpen(false)}
-              className={isActive(item.href) ? "active" : ""}
-            >
-              <span className="parent-nav-label">
-                <ParentIcon name={item.icon} size={18} />
-                <span>{item.label}</span>
-              </span>
-            </Link>
+          {navSections.map((section) => (
+            <section className="parent-nav-section" key={section.label}>
+              <div className="parent-nav-section-title">{section.label}</div>
+
+              <div className="parent-nav-section-items">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={isActive(item.href) ? "active" : ""}
+                  >
+                    <span className="parent-nav-label">
+                      <span className="parent-nav-icon">
+                        <ParentIcon name={item.icon} size={18} />
+                      </span>
+                      <span className="parent-nav-text">{item.label}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
           ))}
         </nav>
 
