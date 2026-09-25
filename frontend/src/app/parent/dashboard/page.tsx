@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import NoticeFeed from "@/components/notices/NoticeFeed";
 
 import "../../student/dashboard/dashboard.css";
 
@@ -412,6 +413,11 @@ export default function ParentDashboardPage() {
                   </div>
 
                 </div>
+
+                <NoticeFeed
+                  tokenKey="parent_access_token"
+                  loginPath="/parent/login"
+                />
 
                 <div className="card border-0 shadow-sm mt-4">
                   <div className="card-body p-4">
