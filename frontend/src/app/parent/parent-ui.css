@@ -503,19 +503,19 @@
   color: #d92d20;
 }
 
-.parent-dashboard-polished .parent-overview-card small,
-.parent-dashboard-polished .parent-overview-card strong,
-.parent-dashboard-polished .parent-overview-card span {
+.parent-dashboard-polished .parent-overview-card > div small,
+.parent-dashboard-polished .parent-overview-card > div strong,
+.parent-dashboard-polished .parent-overview-card > div span {
   display: block;
 }
 
-.parent-dashboard-polished .parent-overview-card small {
+.parent-dashboard-polished .parent-overview-card > div small {
   color: #748094;
   font-size: .68rem;
   font-weight: 540;
 }
 
-.parent-dashboard-polished .parent-overview-card strong {
+.parent-dashboard-polished .parent-overview-card > div strong {
   margin-top: 3px;
   color: #1f2937;
   font-size: 1.42rem;
@@ -523,7 +523,7 @@
   letter-spacing: -.025em;
 }
 
-.parent-dashboard-polished .parent-overview-card span {
+.parent-dashboard-polished .parent-overview-card > div > span {
   margin-top: 3px;
   color: #98a2b3;
   font-size: .62rem;
@@ -949,3 +949,147 @@
     font-size: .7rem;
   }
 }
+
+
+/* Parent sidebar grouping and dashboard icon alignment */
+.parent-ui-scope .parent-sidebar-nav {
+  gap: 0;
+}
+
+.parent-ui-scope .parent-nav-section {
+  margin: 0 0 14px;
+}
+
+.parent-ui-scope .parent-nav-section:last-child {
+  margin-bottom: 0;
+}
+
+.parent-ui-scope .parent-nav-section-title {
+  padding: 0 10px 6px;
+  color: #98a2b3;
+  font-size: .59rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.parent-ui-scope .parent-nav-section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.parent-ui-scope .parent-sidebar-nav a {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.parent-ui-scope .parent-nav-label {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 22px;
+}
+
+.parent-ui-scope .parent-nav-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 22px;
+  line-height: 0;
+}
+
+.parent-ui-scope .parent-nav-icon svg {
+  display: block;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  color: #8792a2;
+}
+
+.parent-ui-scope .parent-nav-text {
+  display: flex;
+  align-items: center;
+  min-height: 22px;
+  line-height: 1.25;
+}
+
+.parent-ui-scope .parent-sidebar-nav a:hover .parent-nav-icon svg {
+  color: #667085;
+}
+
+.parent-ui-scope .parent-sidebar-nav a.active .parent-nav-icon svg {
+  color: #d92d20;
+}
+
+.parent-dashboard-polished .parent-overview-card {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
+}
+
+.parent-dashboard-polished .parent-overview-icon {
+  display: grid !important;
+  width: 44px;
+  height: 44px;
+  margin: 0 !important;
+  padding: 0;
+  place-items: center;
+  align-self: center;
+  justify-self: center;
+  line-height: 0;
+  color: #d92d20 !important;
+  font-size: initial !important;
+}
+
+.parent-dashboard-polished .parent-overview-icon svg {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+  transform: none;
+}
+
+.parent-dashboard-polished .parent-overview-card > div {
+  display: flex;
+  min-width: 0;
+  min-height: 64px;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.parent-ui-scope .parent-brand-logo svg,
+.parent-ui-scope .parent-topbar-organization svg,
+.parent-dashboard-polished .parent-welcome-actions .btn svg,
+.parent-dashboard-polished .parent-quick-link svg {
+  display: block;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.parent-dashboard-polished .parent-welcome-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.parent-dashboard-polished .parent-quick-link > span:first-child {
+  align-items: center;
+}
+
+@media (max-width: 991px) {
+  .parent-ui-scope .parent-nav-section {
+    margin-bottom: 12px;
+  }
+}
+
