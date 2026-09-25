@@ -16,7 +16,16 @@ export type AdminIconName =
   | "documents"
   | "results"
   | "actions"
-  | "notices";
+  | "notices"
+  | "search"
+  | "add"
+  | "view"
+  | "edit"
+  | "back"
+  | "mail"
+  | "phone"
+  | "calendar"
+  | "status";
 
 interface AdminIconProps {
   name: AdminIconName;
@@ -156,6 +165,66 @@ export default function AdminIcon({
         <svg {...common} className={className}>
           <path d="M3 11v2h4l8 4V7l-8 4z" />
           <path d="M7 13v6M18 9a4 4 0 0 1 0 6" />
+        </svg>
+      );
+    case "search":
+      return (
+        <svg {...common} className={className}>
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-4-4" />
+        </svg>
+      );
+    case "add":
+      return (
+        <svg {...common} className={className}>
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+      );
+    case "view":
+      return (
+        <svg {...common} className={className}>
+          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </svg>
+      );
+    case "edit":
+      return (
+        <svg {...common} className={className}>
+          <path d="M4 20h4l11-11-4-4L4 16z" />
+          <path d="m13.5 6.5 4 4" />
+        </svg>
+      );
+    case "back":
+      return (
+        <svg {...common} className={className}>
+          <path d="m15 18-6-6 6-6" />
+        </svg>
+      );
+    case "mail":
+      return (
+        <svg {...common} className={className}>
+          <rect x="3" y="5" width="18" height="14" rx="2" />
+          <path d="m3 7 9 6 9-6" />
+        </svg>
+      );
+    case "phone":
+      return (
+        <svg {...common} className={className}>
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.34 1.78.65 2.63a2 2 0 0 1-.45 2.11L8 9.77a16 16 0 0 0 6 6l1.31-1.31a2 2 0 0 1 2.11-.45c.85.31 1.73.53 2.63.65A2 2 0 0 1 22 16.92z" />
+        </svg>
+      );
+    case "calendar":
+      return (
+        <svg {...common} className={className}>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M8 3v4M16 3v4M3 10h18" />
+        </svg>
+      );
+    case "status":
+      return (
+        <svg {...common} className={className}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8 12 2.5 2.5L16 9" />
         </svg>
       );
     default:
