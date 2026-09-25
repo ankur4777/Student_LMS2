@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import ParentIcon from "@/components/parent/ParentIcon";
 import NoticeFeed from "@/components/notices/NoticeFeed";
 
 import "../../student/dashboard/dashboard.css";
@@ -55,47 +56,27 @@ interface ChildDashboard extends Child {
 }
 
 function getSavedParent() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const savedParent = localStorage.getItem("parent_user");
-
-  if (!savedParent) {
-    return {};
-  }
-
+  if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(savedParent);
+    return JSON.parse(localStorage.getItem("parent_user") || "{}");
   } catch {
     return {};
   }
 }
 
 function formatPercent(value: number | null) {
-  if (value === null || Number.isNaN(value)) {
-    return "-";
-  }
-
+  if (value === null || Number.isNaN(value)) return "-";
   return `${Math.round(value)}%`;
 }
 
 function getLatestResult(exams: ExamResult[]) {
   if (exams.length === 0) {
-    return {
-      latestResult: "-",
-      latestExamDate: "",
-    };
+    return { latestResult: "-", latestExamDate: "" };
   }
 
   const latestExam = [...exams].sort((first, second) => {
-    const firstDate = first.exam_date
-      ? new Date(first.exam_date).getTime()
-      : 0;
-    const secondDate = second.exam_date
-      ? new Date(second.exam_date).getTime()
-      : 0;
-
+    const firstDate = first.exam_date ? new Date(first.exam_date).getTime() : 0;
+    const secondDate = second.exam_date ? new Date(second.exam_date).getTime() : 0;
     return secondDate - firstDate;
   })[0];
 
@@ -122,6 +103,15 @@ function getLatestResult(exams: ExamResult[]) {
   };
 }
 
+function initials(name: string) {
+  const value = (name || "S").trim();
+  const parts = value.split(/\s+/).filter(Boolean);
+  return (parts.length > 1
+    ? `${parts[0][0]}${parts[1][0]}`
+    : value.slice(0, 2)
+  ).toUpperCase();
+}
+
 export default function ParentDashboardPage() {
   const router = useRouter();
 
@@ -135,46 +125,29 @@ export default function ParentDashboardPage() {
       .map((child) => child.attendancePercentage)
       .filter((value): value is number => value !== null);
 
-    if (available.length === 0) {
-      return null;
-    }
+    if (available.length === 0) return null;
 
-    return (
-      available.reduce((total, value) => total + value, 0) /
-      available.length
-    );
+    return available.reduce((total, value) => total + value, 0) / available.length;
   }, [children]);
 
   const pendingAssignments = useMemo(
-    () =>
-      children.reduce(
-        (total, child) => total + child.pendingAssignments,
-        0
-      ),
+    () => children.reduce((total, child) => total + child.pendingAssignments, 0),
     [children]
   );
 
   const latestResult = useMemo(() => {
-    const childrenWithResults = children.filter(
-      (child) => child.latestResult !== "-"
-    );
+    const childrenWithResults = children.filter((child) => child.latestResult !== "-");
+    if (childrenWithResults.length === 0) return "-";
 
-    if (childrenWithResults.length === 0) {
-      return "-";
-    }
-
-    const sortedChildren = [...childrenWithResults].sort(
-      (first, second) => {
-        const firstDate = first.latestExamDate
-          ? new Date(first.latestExamDate).getTime()
-          : 0;
-        const secondDate = second.latestExamDate
-          ? new Date(second.latestExamDate).getTime()
-          : 0;
-
-        return secondDate - firstDate;
-      }
-    );
+    const sortedChildren = [...childrenWithResults].sort((first, second) => {
+      const firstDate = first.latestExamDate
+        ? new Date(first.latestExamDate).getTime()
+        : 0;
+      const secondDate = second.latestExamDate
+        ? new Date(second.latestExamDate).getTime()
+        : 0;
+      return secondDate - firstDate;
+    });
 
     return sortedChildren[0].latestResult;
   }, [children]);
@@ -196,9 +169,7 @@ export default function ParentDashboardPage() {
 
     const fetchJson = async (url: string) => {
       const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.status === 401) {
@@ -210,31 +181,20 @@ export default function ParentDashboardPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          result?.detail || "Unable to load dashboard data."
-        );
+        throw new Error(result?.detail || "Unable to load dashboard data.");
       }
 
       return result;
     };
 
-    const loadChildDetails = async (
-      child: Child
-    ): Promise<ChildDashboard> => {
+    const loadChildDetails = async (child: Child): Promise<ChildDashboard> => {
       const childId = child.student_profile_id;
 
-      const [attendance, assignments, results] =
-        await Promise.allSettled([
-          fetchJson(
-            `${API_BASE}/api/attendance/parent/student/${childId}/`
-          ),
-          fetchJson(
-            `${API_BASE}/api/assignments/parent/student/${childId}/`
-          ),
-          fetchJson(
-            `${API_BASE}/api/results/parent/student/${childId}/`
-          ),
-        ]);
+      const [attendance, assignments, results] = await Promise.allSettled([
+        fetchJson(`${API_BASE}/api/attendance/parent/student/${childId}/`),
+        fetchJson(`${API_BASE}/api/assignments/parent/student/${childId}/`),
+        fetchJson(`${API_BASE}/api/results/parent/student/${childId}/`),
+      ]);
 
       const summary =
         attendance.status === "fulfilled"
@@ -243,8 +203,7 @@ export default function ParentDashboardPage() {
 
       const assignmentList =
         assignments.status === "fulfilled"
-          ? (assignments.value.assignments as Assignment[] | undefined) ||
-            []
+          ? (assignments.value.assignments as Assignment[] | undefined) || []
           : [];
 
       const examList =
@@ -283,21 +242,13 @@ export default function ParentDashboardPage() {
           childList.map((child) => loadChildDetails(child))
         );
 
-        if (isMounted) {
-          setChildren(childDetails);
-        }
+        if (isMounted) setChildren(childDetails);
       } catch (err) {
         if (isMounted && err instanceof Error) {
-          setError(
-            err.message === "Unauthorized"
-              ? ""
-              : err.message
-          );
+          setError(err.message === "Unauthorized" ? "" : err.message);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -308,8 +259,41 @@ export default function ParentDashboardPage() {
     };
   }, [router]);
 
+  const quickLinks = [
+    {
+      label: "Attendance",
+      description: "Review daily attendance",
+      href: "/parent/attendance",
+      icon: "attendance" as const,
+    },
+    {
+      label: "Assignments",
+      description: "Check pending work",
+      href: "/parent/assignments",
+      icon: "assignments" as const,
+    },
+    {
+      label: "Results",
+      description: "View exam performance",
+      href: "/parent/results",
+      icon: "results" as const,
+    },
+    {
+      label: "Fees",
+      description: "Track payment status",
+      href: "/parent/fees",
+      icon: "fees" as const,
+    },
+    {
+      label: "Recorded Courses",
+      description: "Browse recorded learning",
+      href: "/parent/recorded-courses",
+      icon: "courses" as const,
+    },
+  ];
+
   return (
-    <div className="student-dashboard">
+    <div className="student-dashboard parent-dashboard-polished">
       <ParentSidebar />
 
       <main className="student-dashboard-main">
@@ -320,237 +304,212 @@ export default function ParentDashboardPage() {
 
         <div className="student-dashboard-content">
           <div className="container-fluid">
-
-            <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+            <section className="parent-welcome">
               <div>
-                <h2 className="fw-bold mb-1">
-                  Parent Dashboard
-                </h2>
-
-                <p className="text-muted mb-0">
-                  Monitor your child&apos;s academic progress.
+                <div className="parent-welcome-kicker">PARENT PORTAL</div>
+                <h1>
+                  Welcome back, {parent.name || parent.username || "Parent"}
+                </h1>
+                <p>
+                  Keep track of your child&apos;s attendance, assignments, results and academic updates.
                 </p>
               </div>
 
-              <Link
-                className="btn btn-outline-primary"
-                href="/parent/children"
-              >
-                View All Children
-              </Link>
-            </div>
-
-            {error && (
-              <div className="alert alert-danger">
-                {error}
+              <div className="parent-welcome-actions">
+                <Link className="btn btn-primary" href="/parent/children">
+                  <ParentIcon name="children" size={16} />
+                  My Children
+                </Link>
+                <Link className="btn btn-outline-primary" href="/parent/notifications">
+                  <ParentIcon name="notifications" size={16} />
+                  Notifications
+                </Link>
               </div>
-            )}
+            </section>
+
+            {error && <div className="alert alert-danger">{error}</div>}
 
             {loading ? (
-              <div className="card border-0 shadow-sm">
+              <div className="card">
                 <div className="card-body py-5 text-center text-muted">
                   Loading dashboard...
                 </div>
               </div>
             ) : (
               <>
-                <div className="row g-4">
-
-                  <div className="col-md-6 col-xl-3">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <div className="text-muted small mb-2">
-                          Linked Children
-                        </div>
-
-                        <h3 className="fw-bold mb-0">
-                          {children.length}
-                        </h3>
-                      </div>
+                <section className="parent-overview-grid">
+                  <div className="parent-overview-card">
+                    <span className="parent-overview-icon">
+                      <ParentIcon name="children" size={20} />
+                    </span>
+                    <div>
+                      <small>Linked Children</small>
+                      <strong>{children.length}</strong>
+                      <span>Students connected to your account</span>
                     </div>
                   </div>
 
-                  <div className="col-md-6 col-xl-3">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <div className="text-muted small mb-2">
-                          Attendance
-                        </div>
-
-                        <h3 className="fw-bold mb-0">
-                          {formatPercent(averageAttendance)}
-                        </h3>
-                      </div>
+                  <div className="parent-overview-card">
+                    <span className="parent-overview-icon">
+                      <ParentIcon name="attendance" size={20} />
+                    </span>
+                    <div>
+                      <small>Average Attendance</small>
+                      <strong>{formatPercent(averageAttendance)}</strong>
+                      <span>Across linked children</span>
                     </div>
                   </div>
 
-                  <div className="col-md-6 col-xl-3">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <div className="text-muted small mb-2">
-                          Pending Assignments
-                        </div>
-
-                        <h3 className="fw-bold mb-0">
-                          {pendingAssignments}
-                        </h3>
-                      </div>
+                  <div className="parent-overview-card">
+                    <span className="parent-overview-icon">
+                      <ParentIcon name="assignments" size={20} />
+                    </span>
+                    <div>
+                      <small>Pending Assignments</small>
+                      <strong>{pendingAssignments}</strong>
+                      <span>Work still awaiting submission</span>
                     </div>
                   </div>
 
-                  <div className="col-md-6 col-xl-3">
-                    <div className="card border-0 shadow-sm h-100">
-                      <div className="card-body p-4">
-                        <div className="text-muted small mb-2">
-                          Latest Result
-                        </div>
-
-                        <h3 className="fw-bold mb-0">
-                          {latestResult}
-                        </h3>
-                      </div>
+                  <div className="parent-overview-card">
+                    <span className="parent-overview-icon">
+                      <ParentIcon name="results" size={20} />
+                    </span>
+                    <div>
+                      <small>Latest Result</small>
+                      <strong>{latestResult}</strong>
+                      <span>Most recently published performance</span>
                     </div>
                   </div>
+                </section>
 
-                </div>
-
-                <NoticeFeed
-                  tokenKey="parent_access_token"
-                  loginPath="/parent/login"
-                />
-
-                <div className="card border-0 shadow-sm mt-4">
-                  <div className="card-body p-4">
-
-                    <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
-                      <h5 className="fw-bold mb-0">
-                        My Children
-                      </h5>
-
-                      <Link
-                        className="btn btn-outline-primary btn-sm"
-                        href="/parent/children"
-                      >
-                        View All Children
-                      </Link>
+                <section className="parent-dashboard-grid">
+                  <article className="parent-panel">
+                    <div className="parent-panel-header">
+                      <div>
+                        <h2>My Children</h2>
+                        <p>Quick academic snapshot for each linked child.</p>
+                      </div>
+                      <Link href="/parent/children">View all</Link>
                     </div>
 
-                    {children.length === 0 ? (
-                      <p className="text-muted mb-0">
-                        No linked children found.
-                      </p>
-                    ) : (
-                      <div className="row g-4">
-                        {children.map((child) => (
+                    <div className="parent-children-list">
+                      {children.length === 0 ? (
+                        <div className="text-muted small p-3">
+                          No linked children found.
+                        </div>
+                      ) : (
+                        children.map((child) => (
                           <div
-                            className="col-lg-6"
+                            className="parent-child-card"
                             key={child.student_profile_id}
                           >
-                            <div className="border rounded p-3 h-100">
-                              <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-                                <div>
-                                  <h6 className="fw-bold mb-1">
-                                    {child.name}
-                                  </h6>
-
-                                  <div className="text-muted">
-                                    Roll Number:{" "}
-                                    {child.roll_number || "-"}
-                                  </div>
-                                </div>
-
-                                <span className="badge bg-primary">
-                                  {child.relationship || "-"}
+                            <div className="parent-child-head">
+                              <div className="parent-child-identity">
+                                <span className="parent-child-avatar">
+                                  {initials(child.name)}
                                 </span>
-                              </div>
-
-                              <div className="row g-3 mb-3">
-                                <div className="col-sm-6">
-                                  <div className="text-muted small">
-                                    Class
-                                  </div>
-
-                                  <div className="fw-semibold">
+                                <div>
+                                  <strong>{child.name}</strong>
+                                  <small>
                                     {child.classroom_name || "-"}
-                                  </div>
-                                </div>
-
-                                <div className="col-sm-6">
-                                  <div className="text-muted small">
-                                    Section
-                                  </div>
-
-                                  <div className="fw-semibold">
-                                    {child.section_name || "-"}
-                                  </div>
-                                </div>
-
-                                <div className="col-sm-4">
-                                  <div className="text-muted small">
-                                    Attendance
-                                  </div>
-
-                                  <div className="fw-semibold">
-                                    {formatPercent(
-                                      child.attendancePercentage
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="col-sm-4">
-                                  <div className="text-muted small">
-                                    Pending
-                                  </div>
-
-                                  <div className="fw-semibold">
-                                    {child.pendingAssignments}
-                                  </div>
-                                </div>
-
-                                <div className="col-sm-4">
-                                  <div className="text-muted small">
-                                    Latest Result
-                                  </div>
-
-                                  <div className="fw-semibold">
-                                    {child.latestResult}
-                                  </div>
+                                    {child.section_name
+                                      ? ` · Section ${child.section_name}`
+                                      : ""}
+                                    {child.roll_number
+                                      ? ` · Roll ${child.roll_number}`
+                                      : ""}
+                                  </small>
                                 </div>
                               </div>
 
-                              <div className="d-flex flex-wrap gap-2">
-                                <Link
-                                  className="btn btn-outline-primary btn-sm"
-                                  href="/parent/attendance"
-                                >
-                                  Attendance
-                                </Link>
+                              <span className="badge bg-primary">
+                                {child.relationship || "-"}
+                              </span>
+                            </div>
 
-                                <Link
-                                  className="btn btn-outline-primary btn-sm"
-                                  href="/parent/assignments"
-                                >
-                                  Assignments
-                                </Link>
-
-                                <Link
-                                  className="btn btn-outline-primary btn-sm"
-                                  href="/parent/results"
-                                >
-                                  Results
-                                </Link>
+                            <div className="parent-child-stats">
+                              <div className="parent-child-stat">
+                                <span>Attendance</span>
+                                <strong>
+                                  {formatPercent(child.attendancePercentage)}
+                                </strong>
+                              </div>
+                              <div className="parent-child-stat">
+                                <span>Pending Assignments</span>
+                                <strong>{child.pendingAssignments}</strong>
+                              </div>
+                              <div className="parent-child-stat">
+                                <span>Latest Result</span>
+                                <strong>{child.latestResult}</strong>
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
 
-                  </div>
+                            <div className="parent-child-actions">
+                              <Link
+                                className="btn btn-outline-primary btn-sm"
+                                href="/parent/attendance"
+                              >
+                                Attendance
+                              </Link>
+                              <Link
+                                className="btn btn-outline-primary btn-sm"
+                                href="/parent/assignments"
+                              >
+                                Assignments
+                              </Link>
+                              <Link
+                                className="btn btn-outline-primary btn-sm"
+                                href="/parent/results"
+                              >
+                                Results
+                              </Link>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </article>
+
+                  <article className="parent-panel">
+                    <div className="parent-panel-header">
+                      <div>
+                        <h2>Quick Access</h2>
+                        <p>Open the areas parents use most often.</p>
+                      </div>
+                    </div>
+
+                    <div className="parent-quick-links">
+                      {quickLinks.map((item) => (
+                        <Link
+                          className="parent-quick-link"
+                          href={item.href}
+                          key={item.href}
+                        >
+                          <span>
+                            <ParentIcon name={item.icon} size={17} />
+                            <span>
+                              {item.label}
+                              <small className="d-block text-muted mt-1">
+                                {item.description}
+                              </small>
+                            </span>
+                          </span>
+                          <ParentIcon name="arrow" size={15} />
+                        </Link>
+                      ))}
+                    </div>
+                  </article>
+                </section>
+
+                <div className="parent-notice-wrap">
+                  <NoticeFeed
+                    tokenKey="parent_access_token"
+                    loginPath="/parent/login"
+                  />
                 </div>
               </>
             )}
-
           </div>
         </div>
       </main>
