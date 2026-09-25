@@ -1,79 +1,182 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
 import AdminIcon, { AdminIconName } from "@/components/college-admin/AdminIcon";
 
-const iconByLabel: Record<string, AdminIconName> = {
-  Dashboard: "results",
-  Students: "students",
-  Teachers: "teachers",
-  Parents: "parents",
-  "Parent-Student Links": "enrollments",
-  "Academic Sessions": "attendance",
-  Classes: "classes",
-  Sections: "sections",
-  Subjects: "subjects",
-  Enrollments: "enrollments",
-  "Teacher Assignments": "assignments",
-  "Live Classes": "live",
-  Attendance: "attendance",
-  Assignments: "assignments",
-  Results: "results",
-  "Reports & Analytics": "results",
-  Documents: "documents",
-  Fees: "fees",
-  "Recorded Courses": "live",
-  "Course Purchases": "fees",
-  Notifications: "pending",
-  Notices: "notices",
-  Profile: "teachers",
+type MenuItem = {
+  label: string;
+  href: string;
+  icon: AdminIconName;
 };
 
-const links = [
-  ["Dashboard", "/college-admin/dashboard"],
-  ["Students", "/college-admin/students"],
-  ["Teachers", "/college-admin/teachers"],
-  ["Parents", "/college-admin/parents"],
-  ["Parent-Student Links", "/college-admin/parent-student-links"],
-  ["Academic Sessions", "/college-admin/academic-sessions"],
-  ["Classes", "/college-admin/classes"],
-  ["Sections", "/college-admin/sections"],
-  ["Subjects", "/college-admin/subjects"],
-  ["Enrollments", "/college-admin/enrollments"],
-  ["Teacher Assignments", "/college-admin/teacher-assignments"],
-  ["Live Classes", "/college-admin/live-classes"],
-  ["Attendance", "/college-admin/attendance"],
-  ["Assignments", "/college-admin/assignments"],
-  ["Results", "/college-admin/results"],
-  ["Reports & Analytics", "/college-admin/reports"],
-  ["Documents", "/college-admin/documents"],
-  ["Fees", "/college-admin/fees"],
-  ["Recorded Courses", "/college-admin/recorded-courses"],
-  ["Course Purchases", "/college-admin/recorded-course-purchases"],
-  ["Notifications", "/college-admin/notifications"],
-  ["Notices", "/college-admin/notices"],
-  ["Profile", "/college-admin/profile"],
+type MenuSection = {
+  key: string;
+  label: string;
+  icon: AdminIconName;
+  items: MenuItem[];
+};
+
+const dashboardItem: MenuItem = {
+  label: "Dashboard",
+  href: "/college-admin/dashboard",
+  icon: "results",
+};
+
+const menuSections: MenuSection[] = [
+  {
+    key: "people",
+    label: "People",
+    icon: "students",
+    items: [
+      { label: "Students", href: "/college-admin/students", icon: "students" },
+      { label: "Teachers", href: "/college-admin/teachers", icon: "teachers" },
+      { label: "Parents", href: "/college-admin/parents", icon: "parents" },
+      {
+        label: "Parent-Student Links",
+        href: "/college-admin/parent-student-links",
+        icon: "enrollments",
+      },
+    ],
+  },
+  {
+    key: "academics",
+    label: "Academic Setup",
+    icon: "classes",
+    items: [
+      {
+        label: "Academic Sessions",
+        href: "/college-admin/academic-sessions",
+        icon: "calendar",
+      },
+      { label: "Classes", href: "/college-admin/classes", icon: "classes" },
+      { label: "Sections", href: "/college-admin/sections", icon: "sections" },
+      { label: "Subjects", href: "/college-admin/subjects", icon: "subjects" },
+      {
+        label: "Enrollments",
+        href: "/college-admin/enrollments",
+        icon: "enrollments",
+      },
+      {
+        label: "Teacher Assignments",
+        href: "/college-admin/teacher-assignments",
+        icon: "assignments",
+      },
+    ],
+  },
+  {
+    key: "learning",
+    label: "Teaching & Learning",
+    icon: "live",
+    items: [
+      {
+        label: "Live Classes",
+        href: "/college-admin/live-classes",
+        icon: "live",
+      },
+      {
+        label: "Attendance",
+        href: "/college-admin/attendance",
+        icon: "attendance",
+      },
+      {
+        label: "Assignments",
+        href: "/college-admin/assignments",
+        icon: "assignments",
+      },
+      { label: "Results", href: "/college-admin/results", icon: "results" },
+      {
+        label: "Documents",
+        href: "/college-admin/documents",
+        icon: "documents",
+      },
+      {
+        label: "Recorded Courses",
+        href: "/college-admin/recorded-courses",
+        icon: "live",
+      },
+    ],
+  },
+  {
+    key: "finance",
+    label: "Finance & Reports",
+    icon: "fees",
+    items: [
+      { label: "Fees", href: "/college-admin/fees", icon: "fees" },
+      {
+        label: "Course Purchases",
+        href: "/college-admin/recorded-course-purchases",
+        icon: "fees",
+      },
+      {
+        label: "Reports & Analytics",
+        href: "/college-admin/reports",
+        icon: "results",
+      },
+    ],
+  },
+  {
+    key: "communication",
+    label: "Communication",
+    icon: "notices",
+    items: [
+      {
+        label: "Notifications",
+        href: "/college-admin/notifications",
+        icon: "pending",
+      },
+      { label: "Notices", href: "/college-admin/notices", icon: "notices" },
+    ],
+  },
+  {
+    key: "account",
+    label: "Account",
+    icon: "teachers",
+    items: [
+      { label: "Profile", href: "/college-admin/profile", icon: "teachers" },
+    ],
+  },
 ];
 
 export default function CollegeAdminSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const isActive = (href: string) => {
-    if (pathname === href) {
-      return true;
-    }
 
-    if (href === "/college-admin/dashboard") {
-      return false;
-    }
+  const isActive = useCallback(
+    (href: string) => {
+      if (pathname === href) {
+        return true;
+      }
 
-    return pathname.startsWith(`${href}/`);
-  };
+      if (href === "/college-admin/dashboard") {
+        return false;
+      }
+
+      return pathname.startsWith(`${href}/`);
+    },
+    [pathname]
+  );
+
+  const activeSectionKey = useMemo(() => {
+    return (
+      menuSections.find((section) =>
+        section.items.some((item) => isActive(item.href))
+      )?.key || null
+    );
+  }, [isActive]);
+
+  const [openGroup, setOpenGroup] = useState<string | null>(activeSectionKey);
+
+  useEffect(() => {
+    if (activeSectionKey) {
+      setOpenGroup(activeSectionKey);
+    }
+  }, [activeSectionKey]);
+
   const loadUnreadCount = useCallback(async () => {
     const token = localStorage.getItem("college_admin_access_token");
 
@@ -108,6 +211,12 @@ export default function CollegeAdminSidebar() {
     });
   }, [loadUnreadCount]);
 
+  const toggleGroup = (key: string) => {
+    setOpenGroup((current) => (current === key ? null : key));
+  };
+
+  const closeMobileMenu = () => setOpen(false);
+
   return (
     <>
       <button
@@ -118,10 +227,12 @@ export default function CollegeAdminSidebar() {
       >
         Menu
       </button>
+
       <div
         className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
         onClick={() => setOpen(false)}
       />
+
       <aside
         className={`teacher-sidebar ${open ? "sidebar-open" : ""}`}
         style={{
@@ -132,28 +243,91 @@ export default function CollegeAdminSidebar() {
       >
         <div className="teacher-sidebar-brand">
           Shabdd LMS
-          <div className="small text-muted fw-normal mt-1">
-            College Admin
-          </div>
+          <div className="small text-muted fw-normal mt-1">College Admin</div>
         </div>
 
-        <nav className="teacher-sidebar-nav">
-          {links.map(([label, href]) => (
-            <Link
-              key={href}
-              href={href}
-              className={isActive(href) ? "active" : ""}
-              onClick={() => setOpen(false)}
-            >
-              <span className="college-admin-nav-label"><AdminIcon name={iconByLabel[label] || "classes"} size={18} /><span>{label}</span></span>
-              {href === "/college-admin/notifications" &&
-                unreadCount > 0 && (
-                  <span className="badge bg-primary ms-2">
-                    {unreadCount}
+        <nav className="teacher-sidebar-nav college-admin-grouped-nav">
+          <Link
+            href={dashboardItem.href}
+            className={`college-admin-dashboard-link ${isActive(dashboardItem.href) ? "active" : ""}`}
+            onClick={closeMobileMenu}
+          >
+            <span className="college-admin-nav-label">
+              <AdminIcon name={dashboardItem.icon} size={18} />
+              <span>{dashboardItem.label}</span>
+            </span>
+          </Link>
+
+          <div className="college-admin-nav-divider" />
+
+          {menuSections.map((section) => {
+            const expanded = openGroup === section.key;
+            const sectionActive = section.items.some((item) =>
+              isActive(item.href)
+            );
+            const showUnread =
+              section.key === "communication" && unreadCount > 0;
+
+            return (
+              <div
+                className={`college-admin-menu-group ${sectionActive ? "has-active-child" : ""}`}
+                key={section.key}
+              >
+                <button
+                  type="button"
+                  className={`college-admin-menu-group-toggle ${sectionActive ? "active" : ""}`}
+                  aria-expanded={expanded}
+                  aria-controls={`college-admin-group-${section.key}`}
+                  onClick={() => toggleGroup(section.key)}
+                >
+                  <span className="college-admin-nav-label">
+                    <AdminIcon name={section.icon} size={18} />
+                    <span>{section.label}</span>
                   </span>
-                )}
-            </Link>
-          ))}
+
+                  <span className="college-admin-menu-group-meta">
+                    {showUnread && (
+                      <span className="college-admin-group-badge">
+                        {unreadCount}
+                      </span>
+                    )}
+                    <span
+                      className={`college-admin-menu-chevron ${expanded ? "open" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </span>
+                </button>
+
+                <div
+                  id={`college-admin-group-${section.key}`}
+                  className={`college-admin-submenu ${expanded ? "open" : ""}`}
+                >
+                  <div className="college-admin-submenu-inner">
+                    {section.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={isActive(item.href) ? "active" : ""}
+                        onClick={closeMobileMenu}
+                      >
+                        <span className="college-admin-nav-label">
+                          <AdminIcon name={item.icon} size={16} />
+                          <span>{item.label}</span>
+                        </span>
+
+                        {item.href === "/college-admin/notifications" &&
+                          unreadCount > 0 && (
+                            <span className="college-admin-submenu-badge">
+                              {unreadCount}
+                            </span>
+                          )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </nav>
 
         <div className="sidebar-product-credit">
