@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
 import SecureVideoPlayer from "@/components/student/SecureVideoPlayer";
+import NoticeFeed from "@/components/notices/NoticeFeed";
 
 import "./dashboard.css";
 
@@ -576,6 +577,11 @@ export default function StudentDashboard() {
             </div>
 
 
+
+            <NoticeFeed
+              tokenKey="student_access_token"
+              loginPath="/student/login"
+            />
 
             {/* =========================
                 RECORDED CLASSES
