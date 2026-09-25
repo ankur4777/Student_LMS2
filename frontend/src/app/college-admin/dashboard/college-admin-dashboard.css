@@ -886,3 +886,202 @@
     flex-direction: column;
   }
 }
+
+
+/* Professional polish */
+.college-admin-dashboard-redesign,
+.college-admin-dashboard-redesign button,
+.college-admin-dashboard-redesign input,
+.college-admin-dashboard-redesign select,
+.college-admin-dashboard-redesign textarea {
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.college-admin-dashboard-redesign {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.college-admin-dashboard-redesign .teacher-topbar h4,
+.college-admin-dashboard-redesign .teacher-sidebar-brand,
+.cad-welcome h1,
+.cad-panel-heading h2 {
+  letter-spacing: -0.025em;
+}
+
+.college-admin-dashboard-redesign .teacher-topbar h4 {
+  font-size: 1.28rem;
+  font-weight: 700;
+}
+
+.college-admin-dashboard-redesign .teacher-sidebar-brand {
+  font-size: 1.2rem;
+  font-weight: 750;
+}
+
+.college-admin-dashboard-redesign .teacher-sidebar-nav a {
+  font-size: .82rem;
+  font-weight: 560;
+  padding: 9px 11px;
+}
+
+.college-admin-nav-label {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.college-admin-nav-label svg {
+  flex: 0 0 auto;
+  color: #77839a;
+  transition: color .18s ease, transform .18s ease;
+}
+
+.college-admin-dashboard-redesign .teacher-sidebar-nav a:hover .college-admin-nav-label svg,
+.college-admin-dashboard-redesign .teacher-sidebar-nav a.active .college-admin-nav-label svg {
+  color: var(--cad-red-dark);
+  transform: scale(1.04);
+}
+
+.cad-welcome h1 {
+  font-weight: 760;
+}
+
+.cad-eyebrow {
+  font-weight: 700;
+}
+
+.cad-kpi-card {
+  align-items: center;
+  min-width: 0;
+}
+
+.cad-kpi-copy {
+  width: 100%;
+}
+
+.cad-kpi-copy > span {
+  font-size: .75rem;
+  font-weight: 560;
+}
+
+.cad-kpi-copy strong {
+  font-size: clamp(1.25rem, 1.55vw, 1.65rem);
+  font-weight: 760;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cad-kpi-copy small {
+  font-size: .66rem;
+  font-weight: 450;
+}
+
+.cad-icon-box,
+.cad-panel-icon,
+.cad-snapshot-icon {
+  color: #ed2f3c;
+  background: linear-gradient(145deg, #fff3f4, #ffe9eb);
+  border: 1px solid rgba(255, 59, 59, .08);
+}
+
+.cad-icon-box svg,
+.cad-panel-icon svg,
+.cad-action-icon svg,
+.cad-snapshot-icon svg,
+.cad-empty-icon svg {
+  display: block;
+}
+
+.cad-panel-heading h2 {
+  font-size: 1.02rem !important;
+  line-height: 1.25;
+  font-weight: 720;
+}
+
+.cad-panel-heading p {
+  font-size: .7rem;
+  line-height: 1.45;
+}
+
+.cad-panel-heading a {
+  font-weight: 650;
+}
+
+.cad-action-tile strong {
+  font-size: .72rem;
+  font-weight: 650;
+}
+
+.cad-action-icon {
+  color: var(--cad-red-dark);
+}
+
+.cad-action-arrow {
+  font-weight: 500;
+}
+
+.cad-ring-inner strong,
+.cad-fee-ring strong {
+  font-weight: 740;
+  letter-spacing: -0.025em;
+}
+
+.cad-stat-tile strong {
+  font-weight: 700;
+}
+
+.cad-stat-tile small,
+.cad-fee-legend,
+.cad-table,
+.cad-notice-item,
+.cad-mini-chart,
+.cad-snapshot-card,
+.cad-activity-row {
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.cad-table thead th {
+  font-weight: 650;
+  letter-spacing: .01em;
+}
+
+.cad-table td strong,
+.cad-notice-item strong,
+.cad-activity-row strong {
+  font-weight: 650;
+}
+
+.cad-mini-chart > span,
+.cad-snapshot-card small {
+  font-weight: 560;
+}
+
+.cad-mini-chart strong,
+.cad-snapshot-card strong {
+  font-weight: 720;
+  letter-spacing: -0.02em;
+}
+
+.cad-campus-art {
+  letter-spacing: 0;
+}
+
+.cad-campus-art span {
+  display: inline-flex;
+  color: rgba(255, 67, 78, .28);
+}
+
+.cad-campus-art span:nth-child(2) {
+  color: rgba(255, 67, 78, .42);
+}
+
+@media (max-width: 1280px) {
+  .cad-kpi-copy strong {
+    font-size: 1.28rem;
+  }
+}
