@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ReactNode, useEffect, useState } from "react";
+import { CSSProperties, ReactNode, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
 
 import "../../teacher/dashboard/dashboard.css";
+import "./college-admin-dashboard.css";
 
 interface CollegeAdminUser {
   username?: string;
@@ -82,55 +83,97 @@ interface DashboardData {
   recent_exams: RecentExam[];
 }
 
-function getSavedCollegeAdmin() {
-  if (typeof window === "undefined") {
-    return {};
-  }
+interface ReportsOverview {
+  attendance?: {
+    overall_percentage?: number;
+    present?: number;
+    absent?: number;
+    late?: number;
+    excused?: number;
+  };
+  fees?: {
+    total_expected_amount?: string | number;
+    total_collected_amount?: string | number;
+    total_pending_amount?: string | number;
+  };
+}
 
-  const savedUser = localStorage.getItem("college_admin_user");
+interface ClassPerformance {
+  id: number;
+  name: string;
+  academic_session: string;
+  students: number;
+  sections: number;
+  attendance_percentage: number;
+  assignments: number;
+  published_results: number;
+}
 
-  if (!savedUser) {
-    return {};
-  }
+interface ReportsDetails {
+  classes?: ClassPerformance[];
+}
 
+interface Notice {
+  id: number;
+  title: string;
+  message: string;
+  audience: string;
+  publish_at: string;
+  expires_at?: string | null;
+  is_active: boolean;
+}
+
+type IconName =
+  | "students"
+  | "teachers"
+  | "classes"
+  | "attendance"
+  | "fees"
+  | "pending"
+  | "parents"
+  | "sections"
+  | "subjects"
+  | "enrollments"
+  | "assignments"
+  | "live"
+  | "documents"
+  | "results";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+function getSavedCollegeAdmin(): CollegeAdminUser {
+  if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(savedUser);
+    return JSON.parse(localStorage.getItem("college_admin_user") || "{}");
   } catch {
     return {};
   }
 }
 
 function formatDate(value?: string | null) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Date(value).toLocaleDateString();
+  if (!value) return "-";
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function formatTime(value?: string | null) {
-  if (!value) {
-    return "";
-  }
-
+  if (!value) return "";
   return value.slice(0, 5);
 }
 
-function statusBadge(status?: string) {
-  const normalized = status || "";
-  const className = ["published", "completed", "scheduled"].includes(
-    normalized
-  )
-    ? "badge bg-success"
-    : normalized === "draft"
-      ? "badge bg-secondary"
-      : "badge bg-primary";
+function money(value?: string | number | null) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0));
+}
 
-  return (
-    <span className={className}>
-      {normalized || "active"}
-    </span>
-  );
+function clampPercent(value: number) {
+  return Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
 }
 
 function contextLine(item: RecentItemBase) {
@@ -140,7 +183,41 @@ function contextLine(item: RecentItemBase) {
     item.classroom_name && item.section_name
       ? `${item.classroom_name} - ${item.section_name}`
       : item.classroom_name || item.section_name,
-  ].filter(Boolean).join(" - ");
+  ]
+    .filter(Boolean)
+    .join(" - ");
+}
+
+function MiniIcon({ name }: { name: IconName }) {
+  const icons: Record<IconName, ReactNode> = {
+    students: "👥",
+    teachers: "👤",
+    classes: "▣",
+    attendance: "▥",
+    fees: "▰",
+    pending: "◷",
+    parents: "♟",
+    sections: "▤",
+    subjects: "▦",
+    enrollments: "✓",
+    assignments: "✎",
+    live: "●",
+    documents: "▧",
+    results: "▥",
+  };
+
+  return <span className="cad-icon-glyph">{icons[name]}</span>;
+}
+
+function noticeStatus(notice: Notice) {
+  const now = new Date();
+  const publish = new Date(notice.publish_at);
+  const expiry = notice.expires_at ? new Date(notice.expires_at) : null;
+
+  if (!notice.is_active) return { label: "Inactive", className: "neutral" };
+  if (publish > now) return { label: "Scheduled", className: "info" };
+  if (expiry && expiry <= now) return { label: "Expired", className: "dark" };
+  return { label: "Active", className: "success" };
 }
 
 export default function CollegeAdminDashboardPage() {
@@ -148,14 +225,15 @@ export default function CollegeAdminDashboardPage() {
 
   const [admin] = useState<CollegeAdminUser>(getSavedCollegeAdmin);
   const [data, setData] = useState<DashboardData | null>(null);
+  const [reports, setReports] = useState<ReportsOverview | null>(null);
+  const [details, setDetails] = useState<ReportsDetails | null>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem(
-      "college_admin_access_token"
-    );
-    let isMounted = true;
+    const token = localStorage.getItem("college_admin_access_token");
+    let mounted = true;
 
     if (!token) {
       router.replace("/college-admin/login");
@@ -168,352 +246,605 @@ export default function CollegeAdminDashboardPage() {
       localStorage.removeItem("college_admin_user");
     };
 
+    const authHeaders = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    const fetchOptional = async (path: string) => {
+      const response = await fetch(`${API_BASE}${path}`, {
+        headers: authHeaders,
+      });
+      if (response.status === 401) {
+        clearSession();
+        router.replace("/college-admin/login");
+        throw new Error("Unauthorized");
+      }
+      if (!response.ok) return null;
+      return response.json();
+    };
+
     const loadDashboard = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/accounts/college-admin/dashboard/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const dashboardResponse = await fetch(
+          `${API_BASE}/api/accounts/college-admin/dashboard/`,
+          { headers: authHeaders }
         );
 
-        if (response.status === 401) {
+        if (dashboardResponse.status === 401) {
           clearSession();
           router.replace("/college-admin/login");
           return;
         }
 
-        const result = await response.json();
-
-        if (!response.ok) {
+        const dashboardResult = await dashboardResponse.json();
+        if (!dashboardResponse.ok) {
           throw new Error(
-            result?.detail ||
+            dashboardResult?.detail ||
               "Unable to load college admin dashboard."
           );
         }
 
-        if (isMounted) {
-          setData(result);
-        }
+        const [reportsResult, detailsResult, noticesResult] =
+          await Promise.all([
+            fetchOptional("/api/reports/college-admin/overview/"),
+            fetchOptional("/api/reports/college-admin/details/"),
+            fetchOptional("/api/notices/college-admin/"),
+          ]);
+
+        if (!mounted) return;
+
+        setData(dashboardResult);
+        if (reportsResult) setReports(reportsResult);
+        if (detailsResult) setDetails(detailsResult);
+        if (Array.isArray(noticesResult)) setNotices(noticesResult);
       } catch (err) {
-        if (isMounted && err instanceof Error) {
+        if (mounted && err instanceof Error && err.message !== "Unauthorized") {
           setError(err.message);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
 
     void loadDashboard();
 
     return () => {
-      isMounted = false;
+      mounted = false;
     };
   }, [router]);
 
-  const summaryCards = data
+  const attendance = clampPercent(
+    Number(
+      reports?.attendance?.overall_percentage ??
+        data?.summary.attendance_percentage ??
+        0
+    )
+  );
+  const present = Number(reports?.attendance?.present || 0);
+  const absent = Number(reports?.attendance?.absent || 0);
+  const late = Number(reports?.attendance?.late || 0);
+  const excused = Number(reports?.attendance?.excused || 0);
+
+  const expectedFees = Number(reports?.fees?.total_expected_amount || 0);
+  const collectedFees = Number(reports?.fees?.total_collected_amount || 0);
+  const pendingFees = Number(reports?.fees?.total_pending_amount || 0);
+  const feeCollectionPercent =
+    expectedFees > 0
+      ? clampPercent((collectedFees / expectedFees) * 100)
+      : 0;
+
+  const classRows = details?.classes?.slice(0, 4) || [];
+  const recentNotices = useMemo(
+    () =>
+      [...notices]
+        .sort(
+          (a, b) =>
+            new Date(b.publish_at).getTime() -
+            new Date(a.publish_at).getTime()
+        )
+        .slice(0, 3),
+    [notices]
+  );
+
+  const primaryCards = data
     ? [
-        ["Students", data.summary.total_students, "/college-admin/students"],
-        ["Teachers", data.summary.total_teachers, "/college-admin/teachers"],
-        ["Parents", data.summary.total_parents, "/college-admin/parents"],
-        ["Classes", data.summary.total_classes, "/college-admin/classes"],
-        ["Sections", data.summary.total_sections, "/college-admin/sections"],
-        ["Subjects", data.summary.total_subjects, "/college-admin/subjects"],
-        [
-          "Active Enrollments",
-          data.summary.active_enrollments,
-          "/college-admin/enrollments",
-        ],
-        [
-          "Teacher Assignments",
-          data.summary.total_teacher_assignments,
-          "/college-admin/teacher-assignments",
-        ],
+        {
+          label: "Total Students",
+          value: data.summary.total_students,
+          hint: "Registered students",
+          href: "/college-admin/students",
+          icon: "students" as IconName,
+        },
+        {
+          label: "Total Teachers",
+          value: data.summary.total_teachers,
+          hint: "Faculty members",
+          href: "/college-admin/teachers",
+          icon: "teachers" as IconName,
+        },
+        {
+          label: "Total Classes",
+          value: data.summary.total_classes,
+          hint: "Active classes",
+          href: "/college-admin/classes",
+          icon: "classes" as IconName,
+        },
+        {
+          label: "Overall Attendance",
+          value: `${Math.round(attendance)}%`,
+          hint: "Current attendance",
+          href: "/college-admin/attendance",
+          icon: "attendance" as IconName,
+        },
+        {
+          label: "Fees Collected",
+          value: money(collectedFees),
+          hint: "Current academic year",
+          href: "/college-admin/fees",
+          icon: "fees" as IconName,
+        },
+        {
+          label: "Pending Fees",
+          value: money(pendingFees),
+          hint: "Outstanding amount",
+          href: "/college-admin/fees",
+          icon: "pending" as IconName,
+        },
       ]
     : [];
 
-  const academicCards = data
+  const snapshotCards = data
     ? [
-        [
-          "Live Classes",
-          data.summary.total_live_classes,
-          "/college-admin/live-classes",
-        ],
-        [
-          "Assignments",
-          data.summary.total_assignments,
-          "/college-admin/assignments",
-        ],
-        [
-          "Documents",
-          data.summary.total_documents,
-          "/college-admin/documents",
-        ],
-        ["Exams", data.summary.total_exams, "/college-admin/results"],
-        [
-          "Attendance %",
-          `${data.summary.attendance_percentage}%`,
-          "/college-admin/attendance",
-        ],
-      ]
+        ["Parents", data.summary.total_parents, "/college-admin/parents", "parents"],
+        ["Sections", data.summary.total_sections, "/college-admin/sections", "sections"],
+        ["Subjects", data.summary.total_subjects, "/college-admin/subjects", "subjects"],
+        ["Active Enrollments", data.summary.active_enrollments, "/college-admin/enrollments", "enrollments"],
+        ["Teacher Assignments", data.summary.total_teacher_assignments, "/college-admin/teacher-assignments", "teachers"],
+        ["Live Classes", data.summary.total_live_classes, "/college-admin/live-classes", "live"],
+        ["Assignments", data.summary.total_assignments, "/college-admin/assignments", "assignments"],
+        ["Documents", data.summary.total_documents, "/college-admin/documents", "documents"],
+        ["Exams", data.summary.total_exams, "/college-admin/results", "results"],
+      ] as [string, string | number, string, IconName][]
     : [];
 
   const quickActions = [
-    ["Add Student", "/college-admin/students/create"],
-    ["Add Teacher", "/college-admin/teachers/create"],
-    ["Create Enrollment", "/college-admin/enrollments/create"],
-    ["Assign Teacher", "/college-admin/teacher-assignments/create"],
-  ];
+    ["Add Student", "/college-admin/students/create", "students"],
+    ["Add Teacher", "/college-admin/teachers/create", "teachers"],
+    ["Create Enrollment", "/college-admin/enrollments/create", "enrollments"],
+    ["Assign Teacher", "/college-admin/teacher-assignments/create", "assignments"],
+    ["Create Notice", "/college-admin/notices", "documents"],
+    ["Generate Report", "/college-admin/reports", "results"],
+  ] as [string, string, IconName][];
 
-  const renderMetricCards = (
-    items: (string | number)[][]
-  ) => (
-    <div className="row g-3">
-      {items.map(([label, value, href]) => (
-        <div key={String(label)} className="col-6 col-xl-3">
-          <Link
-            href={String(href)}
-            className="text-decoration-none text-reset"
-          >
-            <div className="card border-0 shadow-sm h-100">
-              <div className="card-body p-3 p-md-4">
-                <div className="text-muted small mb-2">
-                  {label}
-                </div>
-                <div className="fs-3 fw-bold">
-                  {value}
-                </div>
-              </div>
-            </div>
-          </Link>
-        </div>
-      ))}
-    </div>
-  );
+  const today = new Intl.DateTimeFormat("en-IN", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date());
 
-  const renderRecentSection = (
-    title: string,
-    href: string,
-    items: ReactNode,
-    isEmpty: boolean
-  ) => (
-    <div className="card border-0 shadow-sm h-100">
-      <div className="card-body p-4">
-        <div className="d-flex justify-content-between align-items-center gap-3 mb-3">
-          <h5 className="fw-bold mb-0">{title}</h5>
-          <Link className="btn btn-outline-primary btn-sm" href={href}>
-            View All
-          </Link>
-        </div>
-
-        {isEmpty ? (
-          <div className="text-muted text-center py-4">
-            No records found.
+  if (loading) {
+    return (
+      <div className="teacher-dashboard college-admin-dashboard-redesign">
+        <CollegeAdminSidebar />
+        <main className="teacher-dashboard-main">
+          <CollegeAdminTopbar
+            name={admin.name || admin.username || "College Admin"}
+            organization={admin.organization || ""}
+          />
+          <div className="teacher-dashboard-content">
+            <div className="cad-loading-card">Loading dashboard...</div>
           </div>
-        ) : (
-          <div className="d-flex flex-column gap-3">
-            {items}
-          </div>
-        )}
+        </main>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className="teacher-dashboard">
+    <div className="teacher-dashboard college-admin-dashboard-redesign">
       <CollegeAdminSidebar />
 
       <main className="teacher-dashboard-main">
         <CollegeAdminTopbar
           name={admin.name || admin.username || "College Admin"}
-          organization={
-            data?.organization.name ||
-            admin.organization ||
-            ""
-          }
+          organization={data?.organization.name || admin.organization || ""}
         />
 
-        <div className="teacher-dashboard-content">
+        <div className="teacher-dashboard-content cad-page">
           <div className="container-fluid">
-            <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
-              <div>
-                <h2 className="fw-bold mb-1">
-                  College Admin Dashboard
-                </h2>
-                <p className="text-muted mb-0">
-                  {data?.organization.name ||
-                    admin.organization ||
-                    "Institution overview"}
-                </p>
-              </div>
+            {error && <div className="alert alert-danger">{error}</div>}
 
-              <div className="d-flex flex-wrap gap-2">
-                {quickActions.map(([label, href]) => (
-                  <Link
-                    key={href}
-                    className="btn btn-primary btn-sm"
-                    href={href}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            {error && (
-              <div className="alert alert-danger">
-                {error}
-              </div>
-            )}
-
-            {loading ? (
-              <div className="card border-0 shadow-sm">
-                <div className="card-body py-5 text-center text-muted">
-                  Loading dashboard...
-                </div>
-              </div>
-            ) : data ? (
+            {data && (
               <>
-                <div className="mb-4">
-                  {renderMetricCards(summaryCards)}
-                </div>
+                <section className="cad-welcome">
+                  <div>
+                    <p className="cad-eyebrow">COLLEGE ADMIN PORTAL</p>
+                    <h1>
+                      Welcome back, {admin.name || admin.username || "Admin"}!
+                    </h1>
+                    <p>
+                      Here&apos;s an overview of your college&apos;s academic activity.
+                    </p>
+                  </div>
+                  <div className="cad-welcome-side">
+                    <div className="cad-campus-art" aria-hidden="true">
+                      <span>▥</span><span>▦</span><span>▥</span>
+                    </div>
+                    <div className="cad-date">{today}</div>
+                  </div>
+                </section>
 
-                <div className="card border-0 shadow-sm mb-4">
-                  <div className="card-body p-4">
-                    <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+                <section className="cad-kpi-grid">
+                  {primaryCards.map((card) => (
+                    <Link key={card.label} href={card.href} className="cad-kpi-card">
+                      <div className="cad-icon-box">
+                        <MiniIcon name={card.icon} />
+                      </div>
+                      <div className="cad-kpi-copy">
+                        <span>{card.label}</span>
+                        <strong>{card.value}</strong>
+                        <small>{card.hint}</small>
+                      </div>
+                    </Link>
+                  ))}
+                </section>
+
+                <section className="cad-main-grid">
+                  <article className="cad-panel cad-attendance-panel">
+                    <div className="cad-panel-heading">
                       <div>
-                        <h5 className="fw-bold mb-1">
-                          Academic Overview
-                        </h5>
-                        <p className="text-muted mb-0">
-                          {data.summary.upcoming_live_classes} upcoming live classes
-                        </p>
+                        <span className="cad-panel-icon">▦</span>
+                        <div>
+                          <h2>Attendance Overview</h2>
+                          <p>Present and late count toward attendance percentage.</p>
+                        </div>
+                      </div>
+                      <Link href="/college-admin/attendance">View details</Link>
+                    </div>
+
+                    <div className="cad-attendance-body">
+                      <div
+                        className="cad-ring"
+                        style={
+                          {
+                            "--cad-progress": `${attendance * 3.6}deg`,
+                          } as CSSProperties
+                        }
+                      >
+                        <div className="cad-ring-inner">
+                          <strong>{Math.round(attendance)}%</strong>
+                          <span>Overall Attendance</span>
+                        </div>
+                      </div>
+
+                      <div className="cad-attendance-stats">
+                        {[
+                          ["Present", present, "success"],
+                          ["Absent", absent, "danger"],
+                          ["Late", late, "warning"],
+                          ["Excused", excused, "neutral"],
+                        ].map(([label, value, tone]) => (
+                          <div
+                            className={`cad-stat-tile ${tone}`}
+                            key={String(label)}
+                          >
+                            <span className="cad-stat-dot" />
+                            <div>
+                              <strong>{value}</strong>
+                              <small>{label}</small>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {renderMetricCards(academicCards)}
-                  </div>
-                </div>
+                  </article>
 
-                <div className="row g-4">
-                  <div className="col-xl-6">
-                    {renderRecentSection(
-                      "Recent Live Classes",
-                      "/college-admin/live-classes",
-                      data.recent_live_classes.map((item) => (
-                        <div
-                          key={`${item.title}-${item.class_date}-${item.start_time}`}
-                          className="border-bottom pb-3"
-                        >
-                          <div className="d-flex justify-content-between gap-3">
-                            <div>
-                              <div className="fw-semibold">{item.title}</div>
-                              <div className="text-muted small">
-                                {contextLine(item)}
-                              </div>
-                              <div className="text-muted small mt-1">
-                                {formatDate(item.class_date)}{" "}
-                                {formatTime(item.start_time)}-
-                                {formatTime(item.end_time)}
-                              </div>
-                            </div>
-                            {statusBadge(item.status)}
-                          </div>
+                  <article className="cad-panel cad-fee-panel">
+                    <div className="cad-panel-heading">
+                      <div>
+                        <span className="cad-panel-icon">▰</span>
+                        <div>
+                          <h2>Fee Collection Summary</h2>
+                          <p>Overview of collected and pending fees.</p>
                         </div>
-                      )),
-                      data.recent_live_classes.length === 0
-                    )}
+                      </div>
+                      <Link href="/college-admin/fees">View fees</Link>
+                    </div>
+
+                    <div className="cad-fee-body">
+                      <div
+                        className="cad-fee-ring"
+                        style={
+                          {
+                            "--cad-fee-progress": `${feeCollectionPercent * 3.6}deg`,
+                          } as CSSProperties
+                        }
+                      >
+                        <div>
+                          <strong>{money(expectedFees)}</strong>
+                          <span>Total Fees</span>
+                        </div>
+                      </div>
+
+                      <div className="cad-fee-legend">
+                        <div>
+                          <span className="cad-legend-dot collected" />
+                          <span>Collected Fees</span>
+                          <strong>{money(collectedFees)}</strong>
+                          <small>{Math.round(feeCollectionPercent)}%</small>
+                        </div>
+                        <div>
+                          <span className="cad-legend-dot pending" />
+                          <span>Pending Fees</span>
+                          <strong>{money(pendingFees)}</strong>
+                          <small>{Math.round(100 - feeCollectionPercent)}%</small>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+
+                  <article className="cad-panel cad-actions-panel">
+                    <div className="cad-panel-heading">
+                      <div>
+                        <span className="cad-panel-icon">ϟ</span>
+                        <div>
+                          <h2>Quick Actions</h2>
+                          <p>Perform common administrative tasks quickly.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="cad-actions-grid">
+                      {quickActions.map(([label, href, icon]) => (
+                        <Link href={href} key={href} className="cad-action-tile">
+                          <span className="cad-action-icon"><MiniIcon name={icon} /></span>
+                          <strong>{label}</strong>
+                          <span className="cad-action-arrow">→</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </article>
+                </section>
+
+                <section className="cad-secondary-grid">
+                  <article className="cad-panel cad-table-panel">
+                    <div className="cad-panel-heading compact">
+                      <div>
+                        <span className="cad-panel-icon">▤</span>
+                        <div>
+                          <h2>Class-wise Performance</h2>
+                          <p>Current academic overview across classes.</p>
+                        </div>
+                      </div>
+                      <Link href="/college-admin/reports">View All →</Link>
+                    </div>
+
+                    <div className="table-responsive">
+                      <table className="table cad-table align-middle mb-0">
+                        <thead>
+                          <tr>
+                            <th>Class</th>
+                            <th>Students</th>
+                            <th>Attendance</th>
+                            <th>Assignments</th>
+                            <th>Results</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {classRows.length ? (
+                            classRows.map((row) => (
+                              <tr key={row.id}>
+                                <td>
+                                  <strong>{row.name}</strong>
+                                  <small>{row.academic_session}</small>
+                                </td>
+                                <td>{row.students}</td>
+                                <td>{Math.round(row.attendance_percentage)}%</td>
+                                <td>{row.assignments}</td>
+                                <td>{row.published_results}</td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan={5} className="cad-empty-cell">
+                                No class analytics available yet.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </article>
+
+                  <article className="cad-panel cad-recent-payments">
+                    <div className="cad-panel-heading compact">
+                      <div>
+                        <span className="cad-panel-icon">▰</span>
+                        <div>
+                          <h2>Recent Payments</h2>
+                          <p>Latest fee payment activity.</p>
+                        </div>
+                      </div>
+                      <Link href="/college-admin/fees">View All →</Link>
+                    </div>
+
+                    <div className="cad-empty-state">
+                      <div className="cad-empty-icon">₹</div>
+                      <strong>No recent payment rows available</strong>
+                      <span>
+                        Fee totals above are live. Open Fees for student-level payment details.
+                      </span>
+                      <Link href="/college-admin/fees">Open Fees</Link>
+                    </div>
+                  </article>
+
+                  <article className="cad-panel cad-notices">
+                    <div className="cad-panel-heading compact">
+                      <div>
+                        <span className="cad-panel-icon">◖</span>
+                        <div>
+                          <h2>Recent Notices</h2>
+                          <p>Latest announcements for students and staff.</p>
+                        </div>
+                      </div>
+                      <Link href="/college-admin/notices">View All →</Link>
+                    </div>
+
+                    <div className="cad-notice-list">
+                      {recentNotices.length ? (
+                        recentNotices.map((notice) => {
+                          const status = noticeStatus(notice);
+                          return (
+                            <Link
+                              href="/college-admin/notices"
+                              className="cad-notice-item"
+                              key={notice.id}
+                            >
+                              <span className={`cad-notice-dot ${status.className}`} />
+                              <div>
+                                <strong>{notice.title}</strong>
+                                <small>{formatDate(notice.publish_at)}</small>
+                              </div>
+                              <span>›</span>
+                            </Link>
+                          );
+                        })
+                      ) : (
+                        <div className="cad-empty-state compact">
+                          <strong>No notices available</strong>
+                          <Link href="/college-admin/notices">Create Notice</Link>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                </section>
+
+                <section className="cad-panel cad-analytics-panel">
+                  <div className="cad-panel-heading compact">
+                    <div>
+                      <span className="cad-panel-icon">▥</span>
+                      <div>
+                        <h2>Reports & Analytics</h2>
+                        <p>Current visual snapshot of your institution&apos;s performance.</p>
+                      </div>
+                    </div>
+                    <Link href="/college-admin/reports">Open Reports →</Link>
                   </div>
 
-                  <div className="col-xl-6">
-                    {renderRecentSection(
-                      "Recent Assignments",
-                      "/college-admin/assignments",
-                      data.recent_assignments.map((item) => (
-                        <div
-                          key={`${item.title}-${item.created_at}`}
-                          className="border-bottom pb-3"
-                        >
-                          <div className="d-flex justify-content-between gap-3">
-                            <div>
-                              <div className="fw-semibold">{item.title}</div>
-                              <div className="text-muted small">
-                                {contextLine(item)}
-                              </div>
-                              <div className="text-muted small mt-1">
-                                Due {formatDate(item.due_date)}{" "}
-                                {formatTime(item.due_time)}
-                              </div>
-                            </div>
-                            {statusBadge(item.status)}
-                          </div>
+                  <div className="cad-analytics-grid">
+                    <div className="cad-mini-chart">
+                      <span>Students</span>
+                      <strong>{data.summary.total_students}</strong>
+                      <div className="cad-bar-track"><i style={{ width: "72%" }} /></div>
+                      <small>Registered students</small>
+                    </div>
+                    <div className="cad-mini-chart">
+                      <span>Attendance</span>
+                      <strong>{Math.round(attendance)}%</strong>
+                      <div className="cad-bar-track"><i style={{ width: `${attendance}%` }} /></div>
+                      <small>Overall attendance</small>
+                    </div>
+                    <div className="cad-mini-chart">
+                      <span>Fee Collection</span>
+                      <strong>{Math.round(feeCollectionPercent)}%</strong>
+                      <div className="cad-bar-track"><i style={{ width: `${feeCollectionPercent}%` }} /></div>
+                      <small>{money(collectedFees)} collected</small>
+                    </div>
+                    <div className="cad-mini-chart">
+                      <span>Classes</span>
+                      <strong>{data.summary.total_classes}</strong>
+                      <div className="cad-bar-track"><i style={{ width: data.summary.total_classes ? "68%" : "0%" }} /></div>
+                      <small>{data.summary.total_sections} sections</small>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="cad-panel cad-snapshot-panel">
+                  <div className="cad-panel-heading compact">
+                    <div>
+                      <span className="cad-panel-icon">▦</span>
+                      <div>
+                        <h2>Institution Snapshot</h2>
+                        <p>Quick access to the rest of your existing dashboard metrics.</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="cad-snapshot-grid">
+                    {snapshotCards.map(([label, value, href, icon]) => (
+                      <Link href={href} key={href} className="cad-snapshot-card">
+                        <span className="cad-snapshot-icon"><MiniIcon name={icon} /></span>
+                        <div>
+                          <small>{label}</small>
+                          <strong>{value}</strong>
                         </div>
-                      )),
-                      data.recent_assignments.length === 0
-                    )}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="cad-activity-grid">
+                  <div className="cad-panel">
+                    <div className="cad-panel-heading compact">
+                      <div><h2>Recent Live Classes</h2></div>
+                      <Link href="/college-admin/live-classes">View All</Link>
+                    </div>
+                    {data.recent_live_classes.length ? (
+                      data.recent_live_classes.slice(0, 3).map((item) => (
+                        <div className="cad-activity-row" key={`${item.title}-${item.class_date}-${item.start_time}`}>
+                          <div><strong>{item.title}</strong><small>{contextLine(item)}</small></div>
+                          <span>{formatDate(item.class_date)} {formatTime(item.start_time)}</span>
+                        </div>
+                      ))
+                    ) : <div className="cad-empty-state compact">No recent live classes.</div>}
                   </div>
 
-                  <div className="col-xl-6">
-                    {renderRecentSection(
-                      "Recent Documents",
-                      "/college-admin/documents",
-                      data.recent_documents.map((item) => (
-                        <div
-                          key={`${item.title}-${item.created_at}`}
-                          className="border-bottom pb-3"
-                        >
-                          <div className="d-flex justify-content-between gap-3">
-                            <div>
-                              <div className="fw-semibold">{item.title}</div>
-                              <div className="text-muted small">
-                                {contextLine(item)}
-                              </div>
-                              <div className="text-muted small mt-1">
-                                {item.document_type.replace("_", " ")} -{" "}
-                                {formatDate(item.published_at || item.created_at)}
-                              </div>
-                            </div>
-                            {statusBadge(item.status)}
-                          </div>
+                  <div className="cad-panel">
+                    <div className="cad-panel-heading compact">
+                      <div><h2>Recent Assignments</h2></div>
+                      <Link href="/college-admin/assignments">View All</Link>
+                    </div>
+                    {data.recent_assignments.length ? (
+                      data.recent_assignments.slice(0, 3).map((item) => (
+                        <div className="cad-activity-row" key={`${item.title}-${item.created_at}`}>
+                          <div><strong>{item.title}</strong><small>{contextLine(item)}</small></div>
+                          <span>Due {formatDate(item.due_date)}</span>
                         </div>
-                      )),
-                      data.recent_documents.length === 0
-                    )}
+                      ))
+                    ) : <div className="cad-empty-state compact">No recent assignments.</div>}
                   </div>
 
-                  <div className="col-xl-6">
-                    {renderRecentSection(
-                      "Recent Exams / Results",
-                      "/college-admin/results",
-                      data.recent_exams.map((item) => (
-                        <div
-                          key={`${item.name}-${item.exam_date}`}
-                          className="border-bottom pb-3"
-                        >
-                          <div className="d-flex justify-content-between gap-3">
-                            <div>
-                              <div className="fw-semibold">{item.name}</div>
-                              <div className="text-muted small">
-                                {item.classroom_name} - {item.section_name}
-                              </div>
-                              <div className="text-muted small mt-1">
-                                {formatDate(item.exam_date)} -{" "}
-                                {item.results_entered} results entered
-                              </div>
-                            </div>
-                            {statusBadge(item.status)}
-                          </div>
+                  <div className="cad-panel">
+                    <div className="cad-panel-heading compact">
+                      <div><h2>Recent Documents</h2></div>
+                      <Link href="/college-admin/documents">View All</Link>
+                    </div>
+                    {data.recent_documents.length ? (
+                      data.recent_documents.slice(0, 3).map((item) => (
+                        <div className="cad-activity-row" key={`${item.title}-${item.created_at}`}>
+                          <div><strong>{item.title}</strong><small>{item.document_type.replace("_", " ")}</small></div>
+                          <span>{formatDate(item.published_at || item.created_at)}</span>
                         </div>
-                      )),
-                      data.recent_exams.length === 0
-                    )}
+                      ))
+                    ) : <div className="cad-empty-state compact">No recent documents.</div>}
                   </div>
-                </div>
+
+                  <div className="cad-panel">
+                    <div className="cad-panel-heading compact">
+                      <div><h2>Recent Exams / Results</h2></div>
+                      <Link href="/college-admin/results">View All</Link>
+                    </div>
+                    {data.recent_exams.length ? (
+                      data.recent_exams.slice(0, 3).map((item) => (
+                        <div className="cad-activity-row" key={`${item.name}-${item.exam_date}`}>
+                          <div><strong>{item.name}</strong><small>{item.classroom_name} - {item.section_name}</small></div>
+                          <span>{item.results_entered} results</span>
+                        </div>
+                      ))
+                    ) : <div className="cad-empty-state compact">No recent exams or results.</div>}
+                  </div>
+                </section>
               </>
-            ) : null}
+            )}
           </div>
         </div>
       </main>
