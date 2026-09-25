@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import AdminIcon from "@/components/college-admin/AdminIcon";
 
 import "../../../teacher/dashboard/dashboard.css";
+import "../students.css";
 
 interface CollegeAdminUser {
   username?: string;
@@ -17,18 +19,9 @@ interface CollegeAdminUser {
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
 function getSavedAdmin() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const savedUser = localStorage.getItem("college_admin_user");
-
-  if (!savedUser) {
-    return {};
-  }
-
+  if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(savedUser);
+    return JSON.parse(localStorage.getItem("college_admin_user") || "{}");
   } catch {
     return {};
   }
@@ -59,18 +52,14 @@ export default function CollegeAdminCreateStudentPage() {
 
   const getToken = useCallback(() => {
     const token = localStorage.getItem("college_admin_access_token");
-
     if (!token) {
       router.replace("/college-admin/login");
       return "";
     }
-
     return token;
   }, [router]);
 
-  const handleSubmit = async (
-    event: FormEvent<HTMLFormElement>
-  ) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (password !== confirmPassword) {
@@ -83,10 +72,7 @@ export default function CollegeAdminCreateStudentPage() {
       setError("");
 
       const token = getToken();
-
-      if (!token) {
-        return;
-      }
+      if (!token) return;
 
       const response = await fetch(
         `${API_BASE}/api/accounts/college-admin/students/`,
@@ -132,7 +118,7 @@ export default function CollegeAdminCreateStudentPage() {
   };
 
   return (
-    <div className="teacher-dashboard">
+    <div className="teacher-dashboard college-admin-students-ui">
       <CollegeAdminSidebar />
 
       <main className="teacher-dashboard-main">
@@ -141,189 +127,115 @@ export default function CollegeAdminCreateStudentPage() {
           organization={admin.organization || ""}
         />
 
-        <div className="teacher-dashboard-content">
+        <div className="teacher-dashboard-content student-management-page">
           <div className="container-fluid">
-            <div className="mb-4">
-              <h2 className="fw-bold mb-1">
-                Add Student
-              </h2>
-
-              <p className="text-muted mb-0">
-                Create a student account for your institution.
-              </p>
+            <div className="student-page-header">
+              <div>
+                <button
+                  type="button"
+                  className="student-back-link mb-3"
+                  onClick={() => router.push("/college-admin/students")}
+                >
+                  <AdminIcon name="back" size={17} />
+                  Back to Students
+                </button>
+                <div className="student-page-kicker">STUDENT MANAGEMENT</div>
+                <h1>Add Student</h1>
+                <p>Create a student account and admission profile for your institution.</p>
+              </div>
             </div>
 
-            {error && (
-              <div className="alert alert-danger">
-                {error}
-              </div>
-            )}
+            {error && <div className="alert alert-danger">{error}</div>}
 
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
-                <form onSubmit={handleSubmit}>
-                  <div className="row g-3">
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        First Name
-                      </label>
-                      <input
-                        className="form-control"
-                        value={firstName}
-                        onChange={(event) =>
-                          setFirstName(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Last Name
-                      </label>
-                      <input
-                        className="form-control"
-                        value={lastName}
-                        onChange={(event) =>
-                          setLastName(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Username
-                      </label>
-                      <input
-                        className="form-control"
-                        value={username}
-                        onChange={(event) =>
-                          setUsername(event.target.value)
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Email
-                      </label>
-                      <input
-                        className="form-control"
-                        type="email"
-                        value={email}
-                        onChange={(event) =>
-                          setEmail(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Admission Number
-                      </label>
-                      <input
-                        className="form-control"
-                        value={admissionNumber}
-                        onChange={(event) =>
-                          setAdmissionNumber(event.target.value)
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Phone
-                      </label>
-                      <input
-                        className="form-control"
-                        value={phone}
-                        onChange={(event) =>
-                          setPhone(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Date of Birth
-                      </label>
-                      <input
-                        className="form-control"
-                        type="date"
-                        value={dateOfBirth}
-                        onChange={(event) =>
-                          setDateOfBirth(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Admission Date
-                      </label>
-                      <input
-                        className="form-control"
-                        type="date"
-                        value={admissionDate}
-                        onChange={(event) =>
-                          setAdmissionDate(event.target.value)
-                        }
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Password
-                      </label>
-                      <input
-                        className="form-control"
-                        type="password"
-                        value={password}
-                        onChange={(event) =>
-                          setPassword(event.target.value)
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="col-md-6">
-                      <label className="form-label">
-                        Confirm Password
-                      </label>
-                      <input
-                        className="form-control"
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(event) =>
-                          setConfirmPassword(event.target.value)
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="col-12 d-flex gap-2">
-                      <button
-                        type="submit"
-                        className="btn btn-primary"
-                        disabled={loading}
-                      >
-                        {loading ? "Creating..." : "Create Student"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-secondary"
-                        onClick={() =>
-                          router.push("/college-admin/students")
-                        }
-                      >
-                        Cancel
-                      </button>
+            <form onSubmit={handleSubmit} className="student-form-shell">
+              <div className="student-form-card">
+                <section className="student-form-section">
+                  <div className="student-section-heading">
+                    <span><AdminIcon name="students" size={18} /></span>
+                    <div>
+                      <h2>Personal Information</h2>
+                      <p>Basic identity and contact details for the student.</p>
                     </div>
                   </div>
-                </form>
+
+                  <div className="student-form-grid">
+                    <div className="student-form-group">
+                      <label htmlFor="first-name">First Name</label>
+                      <input id="first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="last-name">Last Name</label>
+                      <input id="last-name" value={lastName} onChange={(event) => setLastName(event.target.value)} />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="email">Email</label>
+                      <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="phone">Phone</label>
+                      <input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="dob">Date of Birth</label>
+                      <input id="dob" type="date" value={dateOfBirth} onChange={(event) => setDateOfBirth(event.target.value)} />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="admission-date">Admission Date</label>
+                      <input id="admission-date" type="date" value={admissionDate} onChange={(event) => setAdmissionDate(event.target.value)} />
+                    </div>
+                  </div>
+                </section>
+
+                <section className="student-form-section">
+                  <div className="student-section-heading">
+                    <span><AdminIcon name="enrollments" size={18} /></span>
+                    <div>
+                      <h2>Account & Admission</h2>
+                      <p>Login credentials and college admission information.</p>
+                    </div>
+                  </div>
+
+                  <div className="student-form-grid">
+                    <div className="student-form-group">
+                      <label htmlFor="username">Username</label>
+                      <input id="username" value={username} onChange={(event) => setUsername(event.target.value)} required />
+                      <small>This username will be used for student login.</small>
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="admission-number">Admission Number</label>
+                      <input id="admission-number" value={admissionNumber} onChange={(event) => setAdmissionNumber(event.target.value)} required />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="password">Password</label>
+                      <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="confirm-password">Confirm Password</label>
+                      <input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+                    </div>
+                  </div>
+                </section>
+
+                <div className="student-form-actions">
+                  <button type="button" className="student-form-cancel" onClick={() => router.push("/college-admin/students")}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="student-form-submit" disabled={loading}>
+                    {loading ? "Creating..." : "Create Student"}
+                  </button>
+                </div>
               </div>
-            </div>
+
+              <aside className="student-side-card">
+                <h3>Before you create the account</h3>
+                <ul>
+                  <li>Use a unique username and admission number.</li>
+                  <li>Email and phone are optional, but useful for contact.</li>
+                  <li>You can assign class and section enrollment after the account is created.</li>
+                  <li>The student will use the username and password to sign in.</li>
+                </ul>
+              </aside>
+            </form>
           </div>
         </div>
       </main>
