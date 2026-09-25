@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import TeacherTopbar from "@/components/teacher/TeacherTopbar";
+import NoticeFeed from "@/components/notices/NoticeFeed";
 import "./dashboard.css";
 
 interface TeacherInfo {
@@ -264,6 +265,11 @@ export default function TeacherDashboard() {
 
             </div>
           </div>
+
+          <NoticeFeed
+            tokenKey="teacher_access_token"
+            loginPath="/teacher/login"
+          />
 
           {/* TODAY CLASSES */}
           <div className="card border-0 shadow-sm mt-4">
