@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import AdminIcon from "@/components/college-admin/AdminIcon";
 
 import "../../teacher/dashboard/dashboard.css";
+import "./students.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -32,29 +34,26 @@ interface Student {
 }
 
 function getSavedAdmin() {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const savedUser = localStorage.getItem("college_admin_user");
-
-  if (!savedUser) {
-    return {};
-  }
-
+  if (typeof window === "undefined") return {};
   try {
-    return JSON.parse(savedUser);
+    return JSON.parse(localStorage.getItem("college_admin_user") || "{}");
   } catch {
     return {};
   }
 }
 
+function initials(name: string, username: string) {
+  const value = (name || username || "S").trim();
+  const parts = value.split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : value.slice(0, 2)).toUpperCase();
+}
+
 export default function CollegeAdminStudentsPage() {
   const router = useRouter();
-
   const [admin] = useState<CollegeAdminUser>(getSavedAdmin);
   const [students, setStudents] = useState<Student[]>([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -67,24 +66,16 @@ export default function CollegeAdminStudentsPage() {
 
   const getToken = useCallback(() => {
     const token = localStorage.getItem("college_admin_access_token");
-
     if (!token) {
       router.replace("/college-admin/login");
       return "";
     }
-
     return token;
   }, [router]);
 
-  const fetchJson = useCallback(async (
-    url: string,
-    options: RequestInit = {}
-  ) => {
+  const fetchJson = useCallback(async (url: string, options: RequestInit = {}) => {
     const token = getToken();
-
-    if (!token) {
-      throw new Error("Unauthorized");
-    }
+    if (!token) throw new Error("Unauthorized");
 
     const response = await fetch(url, {
       ...options,
@@ -101,66 +92,69 @@ export default function CollegeAdminStudentsPage() {
     }
 
     const result = await response.json();
-
     if (!response.ok) {
-      throw new Error(
-        result?.detail || "Unable to load students."
-      );
+      throw new Error(result?.detail || "Unable to load students.");
     }
-
     return result;
   }, [clearSession, getToken, router]);
 
   const loadStudents = useCallback(async (query = search) => {
-    const url = new URL(
-      `${API_BASE}/api/accounts/college-admin/students/`
-    );
-
-    if (query.trim()) {
-      url.searchParams.set("search", query.trim());
-    }
-
+    const url = new URL(`${API_BASE}/api/accounts/college-admin/students/`);
+    if (query.trim()) url.searchParams.set("search", query.trim());
     const result = await fetchJson(url.toString());
     setStudents(result.students || []);
   }, [fetchJson, search]);
 
   useEffect(() => {
-    let isMounted = true;
-
+    let mounted = true;
     const load = async () => {
       try {
         await loadStudents("");
       } catch (err) {
-        if (
-          isMounted &&
-          err instanceof Error &&
-          err.message !== "Unauthorized"
-        ) {
+        if (mounted && err instanceof Error && err.message !== "Unauthorized") {
           setError(err.message);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (mounted) setLoading(false);
       }
     };
-
     void load();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { mounted = false; };
   }, [loadStudents]);
 
-  const handleSearch = async () => {
+  const visibleStudents = useMemo(() => {
+    if (statusFilter === "active") return students.filter((student) => student.is_active);
+    if (statusFilter === "inactive") return students.filter((student) => !student.is_active);
+    return students;
+  }, [statusFilter, students]);
+
+  const stats = useMemo(() => ({
+    total: students.length,
+    active: students.filter((student) => student.is_active).length,
+    inactive: students.filter((student) => !student.is_active).length,
+  }), [students]);
+
+  const handleSearch = async (event?: FormEvent) => {
+    event?.preventDefault();
     try {
       setError("");
       setLoading(true);
       await loadStudents(search);
     } catch (err) {
-      if (err instanceof Error && err.message !== "Unauthorized") {
-        setError(err.message);
-      }
+      if (err instanceof Error && err.message !== "Unauthorized") setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clearSearch = async () => {
+    setSearch("");
+    setStatusFilter("all");
+    try {
+      setLoading(true);
+      await loadStudents("");
+    } catch (err) {
+      if (err instanceof Error && err.message !== "Unauthorized") setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -170,32 +164,21 @@ export default function CollegeAdminStudentsPage() {
     try {
       setSaving(true);
       setError("");
-
-      await fetchJson(
-        `${API_BASE}/api/accounts/college-admin/students/${student.id}/`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            is_active: !student.is_active,
-          }),
-        }
-      );
-
+      await fetchJson(`${API_BASE}/api/accounts/college-admin/students/${student.id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_active: !student.is_active }),
+      });
       await loadStudents(search);
     } catch (err) {
-      if (err instanceof Error && err.message !== "Unauthorized") {
-        setError(err.message);
-      }
+      if (err instanceof Error && err.message !== "Unauthorized") setError(err.message);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="teacher-dashboard">
+    <div className="teacher-dashboard college-admin-students-ui">
       <CollegeAdminSidebar />
 
       <main className="teacher-dashboard-main">
@@ -204,144 +187,153 @@ export default function CollegeAdminStudentsPage() {
           organization={admin.organization || ""}
         />
 
-        <div className="teacher-dashboard-content">
+        <div className="teacher-dashboard-content student-management-page">
           <div className="container-fluid">
-            <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+            <div className="student-page-header">
               <div>
-                <h2 className="fw-bold mb-1">
-                  Students
-                </h2>
-
-                <p className="text-muted mb-0">
-                  Manage students in your institution.
-                </p>
+                <div className="student-page-kicker">STUDENT MANAGEMENT</div>
+                <h1>Students</h1>
+                <p>Manage student accounts, profiles, enrollment access and account status.</p>
               </div>
-
-              <Link
-                className="btn btn-primary"
-                href="/college-admin/students/create"
-              >
-                Add Student
+              <Link className="student-primary-action" href="/college-admin/students/create">
+                <AdminIcon name="add" size={18} />
+                <span>Add Student</span>
               </Link>
             </div>
 
-            {error && (
-              <div className="alert alert-danger">
-                {error}
+            {error && <div className="alert alert-danger">{error}</div>}
+
+            <div className="student-summary-grid">
+              <div className="student-summary-card">
+                <span className="student-summary-icon"><AdminIcon name="students" size={20} /></span>
+                <div><small>Students shown</small><strong>{stats.total}</strong></div>
               </div>
-            )}
-
-            <div className="card border-0 shadow-sm mb-4">
-              <div className="card-body p-4">
-                <div className="row g-2">
-                  <div className="col-md-10">
-                    <input
-                      className="form-control"
-                      placeholder="Search by name, username, or email"
-                      value={search}
-                      onChange={(event) =>
-                        setSearch(event.target.value)
-                      }
-                    />
-                  </div>
-
-                  <div className="col-md-2 d-grid">
-                    <button
-                      type="button"
-                      className="btn btn-outline-primary"
-                      onClick={handleSearch}
-                    >
-                      Search
-                    </button>
-                  </div>
-                </div>
+              <div className="student-summary-card">
+                <span className="student-summary-icon active"><AdminIcon name="status" size={20} /></span>
+                <div><small>Active accounts</small><strong>{stats.active}</strong></div>
+              </div>
+              <div className="student-summary-card">
+                <span className="student-summary-icon muted"><AdminIcon name="pending" size={20} /></span>
+                <div><small>Inactive accounts</small><strong>{stats.inactive}</strong></div>
               </div>
             </div>
 
-            {loading ? (
-              <div className="card border-0 shadow-sm">
-                <div className="card-body py-5 text-center text-muted">
-                  Loading students...
+            <section className="student-toolbar-card">
+              <form className="student-search-form" onSubmit={handleSearch}>
+                <div className="student-search-field">
+                  <AdminIcon name="search" size={18} />
+                  <input
+                    aria-label="Search students"
+                    placeholder="Search by name, username, or email"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
                 </div>
-              </div>
-            ) : students.length === 0 ? (
-              <div className="card border-0 shadow-sm">
-                <div className="card-body py-5 text-center">
-                  <h5 className="fw-bold">
-                    No Students
-                  </h5>
 
-                  <p className="text-muted mb-0">
-                    Students created for this college will appear here.
-                  </p>
+                <select
+                  className="student-status-filter"
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value)}
+                  aria-label="Filter by account status"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+
+                <button type="submit" className="student-search-button">
+                  <AdminIcon name="search" size={17} />
+                  Search
+                </button>
+
+                {(search || statusFilter !== "all") && (
+                  <button type="button" className="student-clear-button" onClick={() => void clearSearch()}>
+                    Clear
+                  </button>
+                )}
+              </form>
+            </section>
+
+            <section className="student-list-card">
+              <div className="student-list-card-header">
+                <div>
+                  <h2>Student Directory</h2>
+                  <p>{visibleStudents.length} {visibleStudents.length === 1 ? "student" : "students"} in the current view</p>
                 </div>
               </div>
-            ) : (
-              <div className="card border-0 shadow-sm">
+
+              {loading ? (
+                <div className="student-state-panel">Loading students...</div>
+              ) : visibleStudents.length === 0 ? (
+                <div className="student-empty-state">
+                  <span><AdminIcon name="students" size={28} /></span>
+                  <h3>No students found</h3>
+                  <p>Try another search or add a new student account.</p>
+                  <Link href="/college-admin/students/create">Add Student</Link>
+                </div>
+              ) : (
                 <div className="table-responsive">
-                  <table className="table align-middle mb-0">
+                  <table className="table student-directory-table align-middle mb-0">
                     <thead>
                       <tr>
                         <th>Student</th>
                         <th>Username</th>
-                        <th>Email / Phone</th>
+                        <th>Contact</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th className="text-end">Actions</th>
                       </tr>
                     </thead>
-
                     <tbody>
-                      {students.map((student) => (
+                      {visibleStudents.map((student) => (
                         <tr key={student.id}>
                           <td>
-                            <div className="fw-semibold">
-                              {student.name}
-                            </div>
-                            <div className="text-muted small">
-                              {student.profile?.admission_number || "-"}
-                            </div>
-                          </td>
-                          <td>{student.username}</td>
-                          <td>
-                            <div>{student.email || "-"}</div>
-                            <div className="text-muted small">
-                              {student.profile?.phone || "-"}
+                            <div className="student-person-cell">
+                              <span className="student-avatar">{initials(student.name, student.username)}</span>
+                              <div>
+                                <strong>{student.name || student.username}</strong>
+                                <small>Admission No. {student.profile?.admission_number || "-"}</small>
+                              </div>
                             </div>
                           </td>
                           <td>
-                            <span
-                              className={
-                                student.is_active
-                                  ? "badge bg-success"
-                                  : "badge bg-secondary"
-                              }
-                            >
-                              {student.is_active ? "Active" : "Inactive"}
+                            <span className="student-username">@{student.username}</span>
+                          </td>
+                          <td>
+                            <div className="student-contact-cell">
+                              <span><AdminIcon name="mail" size={14} />{student.email || "-"}</span>
+                              <span><AdminIcon name="phone" size={14} />{student.profile?.phone || "-"}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`student-status-pill ${student.is_active ? "active" : "inactive"}`}>
+                              <i />{student.is_active ? "Active" : "Inactive"}
                             </span>
                           </td>
                           <td>
-                            <div className="d-flex flex-wrap gap-2">
+                            <div className="student-row-actions">
                               <Link
-                                className="btn btn-outline-primary btn-sm"
+                                className="student-icon-action"
                                 href={`/college-admin/students/${student.id}`}
+                                title="View student"
                               >
-                                View
+                                <AdminIcon name="view" size={17} />
+                                <span>View</span>
                               </Link>
                               <Link
-                                className="btn btn-outline-secondary btn-sm"
+                                className="student-icon-action"
                                 href={`/college-admin/students/${student.id}/edit`}
+                                title="Edit student"
                               >
-                                Edit
+                                <AdminIcon name="edit" size={17} />
+                                <span>Edit</span>
                               </Link>
                               <button
                                 type="button"
-                                className="btn btn-outline-secondary btn-sm"
+                                className="student-status-action"
                                 disabled={saving}
-                                onClick={() => toggleStatus(student)}
+                                onClick={() => void toggleStatus(student)}
                               >
-                                {student.is_active
-                                  ? "Deactivate"
-                                  : "Activate"}
+                                {student.is_active ? "Deactivate" : "Activate"}
                               </button>
                             </div>
                           </td>
@@ -350,8 +342,8 @@ export default function CollegeAdminStudentsPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            )}
+              )}
+            </section>
           </div>
         </div>
       </main>
