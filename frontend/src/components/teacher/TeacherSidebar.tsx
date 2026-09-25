@@ -5,58 +5,76 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
+import TeacherIcon, { TeacherIconName } from "@/components/teacher/TeacherIcon";
 
-const links = [
-  ["Dashboard", "/teacher/dashboard"],
-  ["My Classes", "/teacher/classes"],
-  ["Recordings", "/teacher/recordings"],
-  ["Attendance", "/teacher/attendance"],
-  ["Assignments", "/teacher/assignments"],
-  ["Students", "/teacher/students"],
-  ["Results", "/teacher/results"],
-  ["Documents", "/teacher/documents"],
-  ["Notifications", "/teacher/notifications"],
-  ["Profile", "/teacher/profile"],
+type TeacherNavItem = {
+  label: string;
+  href: string;
+  icon: TeacherIconName;
+};
+
+const navItems: TeacherNavItem[] = [
+  { label: "Dashboard", href: "/teacher/dashboard", icon: "dashboard" },
+  { label: "My Classes", href: "/teacher/classes", icon: "classes" },
+  { label: "Recordings", href: "/teacher/recordings", icon: "recordings" },
+  { label: "Attendance", href: "/teacher/attendance", icon: "attendance" },
+  { label: "Assignments", href: "/teacher/assignments", icon: "assignments" },
+  { label: "Students", href: "/teacher/students", icon: "students" },
+  { label: "Results", href: "/teacher/results", icon: "results" },
+  { label: "Documents", href: "/teacher/documents", icon: "documents" },
+  { label: "Notifications", href: "/teacher/notifications", icon: "notifications" },
+  { label: "Profile", href: "/teacher/profile", icon: "profile" },
 ];
 
 export default function TeacherSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const isActive = (href: string) => (
-    pathname === href || pathname.startsWith(`${href}/`)
-  );
+
+  const isActive = (href: string) => {
+    if (pathname === href) return true;
+    if (href === "/teacher/dashboard") return false;
+    return pathname.startsWith(`${href}/`);
+  };
 
   return (
     <>
       <button
         type="button"
-        className="dashboard-menu-toggle"
+        className="dashboard-menu-toggle teacher-menu-toggle"
         aria-label="Open navigation"
         onClick={() => setOpen(true)}
       >
         Menu
       </button>
+
       <div
         className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
         onClick={() => setOpen(false)}
       />
-      <aside className={`teacher-sidebar ${open ? "sidebar-open" : ""}`}>
-        <div className="teacher-sidebar-brand">
-          Shabdd LMS
-          <div className="small text-muted fw-normal mt-1">
-            Teacher Portal
+
+      <aside className={`teacher-sidebar teacher-portal-sidebar ${open ? "sidebar-open" : ""}`}>
+        <div className="teacher-sidebar-brand teacher-portal-brand">
+          <span className="teacher-brand-logo">
+            <TeacherIcon name="school" size={22} />
+          </span>
+          <div>
+            <strong>Shabdd LMS</strong>
+            <small>Teacher Portal</small>
           </div>
         </div>
 
-        <nav className="teacher-sidebar-nav">
-          {links.map(([label, href]) => (
+        <nav className="teacher-sidebar-nav teacher-portal-nav">
+          {navItems.map((item) => (
             <Link
-              key={href}
-              href={href}
-              className={isActive(href) ? "active" : ""}
+              key={item.href}
+              href={item.href}
+              className={isActive(item.href) ? "active" : ""}
               onClick={() => setOpen(false)}
             >
-              {label}
+              <span className="teacher-nav-label">
+                <TeacherIcon name={item.icon} size={18} />
+                <span>{item.label}</span>
+              </span>
             </Link>
           ))}
         </nav>
