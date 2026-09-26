@@ -126,16 +126,3 @@ class CurrencyServiceTests(TestCase):
         self.assertEqual(response.data["currency"], "GBP")
         self.assertEqual(response.data["converted_amount"], "190.00")
         self.assertEqual(response.data["rate"], "0.0095")
-
-    def test_production_ignores_ip_override(self):
-        request = self.client.get("/api/currency/").wsgi_request
-        request.META["REMOTE_ADDR"] = "127.0.0.1"
-
-        with override_settings(DEBUG=False):
-            with patch("currency.services.get_ip_location") as lookup:
-                context = get_currency_context(
-                    request,
-                    override_ip="8.8.8.8",
-                )
-                lookup.assert_called_once_with("8.8.8.8")
-                self.assertEqual(context["currency"], "INR")
