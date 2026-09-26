@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import { useCurrency } from "@/hooks/useCurrency";
 import "../../student/dashboard/dashboard.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -24,9 +25,9 @@ export default function ParentFeesPage() {
   const [fees,setFees]=useState<Fee[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
+  const { formatCurrency: money } = useCurrency();
 
   const clearSession=()=>{localStorage.removeItem("parent_access_token");localStorage.removeItem("parent_refresh_token");localStorage.removeItem("parent_user");};
-  const money=(v:number|string)=>`₹${Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const label=(v:string)=>v.replaceAll("_"," ").replace(/\b\w/g,c=>c.toUpperCase());
 
   const downloadPdf=async(path:string,filename:string)=>{
