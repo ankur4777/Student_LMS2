@@ -101,6 +101,7 @@ class CurrencyServiceTests(TestCase):
         with self.assertRaises(CurrencyServiceError):
             get_currency_context(request, override_ip="8.8.8.8")
 
+    @override_settings(DEBUG=True)
     @patch("currency.services._http_get_json")
     def test_currency_api_returns_conversion_for_debug_ip_override(self, http_get):
         http_get.side_effect = [
