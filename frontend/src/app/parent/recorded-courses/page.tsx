@@ -3,11 +3,11 @@ import {useCallback,useEffect,useState} from "react";
 import {useRouter} from "next/navigation";
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import { useCurrency } from "@/hooks/useCurrency";
 import "../../student/dashboard/dashboard.css";
 const API_BASE=process.env.NEXT_PUBLIC_API_BASE_URL;
 export default function ParentRecordedCoursesPage(){
- const router=useRouter();const [parent,setParent]=useState<any>({});const [children,setChildren]=useState<any[]>([]);const [selected,setSelected]=useState("");const [courses,setCourses]=useState<any[]>([]);const [purchases,setPurchases]=useState<any[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [busy,setBusy]=useState<number|null>(null);
- const money=(v:any)=>"₹"+Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2});
+ const router=useRouter();const [parent,setParent]=useState<any>({});const [children,setChildren]=useState<any[]>([]);const [selected,setSelected]=useState("");const [courses,setCourses]=useState<any[]>([]);const [purchases,setPurchases]=useState<any[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [busy,setBusy]=useState<number|null>(null);const { formatCurrency: money } = useCurrency();
  const load=useCallback(async()=>{const token=localStorage.getItem("parent_access_token");if(!token){router.replace("/parent/login");return}setLoading(true);try{const h={Authorization:"Bearer "+token};const [cr,pr]=await Promise.all([fetch(API_BASE+"/api/recorded-courses/parent/catalog/",{headers:h}),fetch(API_BASE+"/api/recorded-courses/parent/purchases/",{headers:h})]);const cj=await cr.json(),pj=await pr.json();if(!cr.ok)throw new Error(cj.detail||"Unable to load courses.");if(!pr.ok)throw new Error(pj.detail||"Unable to load purchases.");setChildren(cj.children||[]);setSelected(s=>s||String(cj.children?.[0]?.id||""));setCourses(cj.courses||[]);setPurchases(pj.purchases||[])}catch(e){setError(e instanceof Error?e.message:"Unable to load courses.")}finally{setLoading(false)}},[router]);
  useEffect(()=>{try{setParent(JSON.parse(localStorage.getItem("parent_user")||"{}"))}catch{};void load()},[load]);
  const pending=(cid:number)=>purchases.find(p=>p.course.id===cid&&String(p.student.id)===selected&&p.status==="pending");
