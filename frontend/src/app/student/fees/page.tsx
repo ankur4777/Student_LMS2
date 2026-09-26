@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import { useCurrency } from "@/hooks/useCurrency";
 import "../dashboard/dashboard.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -27,6 +28,7 @@ export default function StudentFeesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [student, setStudent] = useState<any>({});
+  const { formatCurrency: money } = useCurrency();
 
   useEffect(() => {
     const token = localStorage.getItem("student_access_token");
@@ -56,7 +58,6 @@ export default function StudentFeesPage() {
     pending: a.pending + Number(f.outstanding_amount || 0),
   }), {payable:0, paid:0, pending:0}), [fees]);
 
-  const money = (v:number|string) => `₹${Number(v || 0).toLocaleString("en-IN", {minimumFractionDigits:2, maximumFractionDigits:2})}`;
   const label = (v:string) => v.replaceAll("_"," ").replace(/\b\w/g, c => c.toUpperCase());
 
   const downloadPdf = async (path:string, filename:string) => {
