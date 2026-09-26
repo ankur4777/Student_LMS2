@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     'recordedcourses',
     'reports',
     'notices',
+    'currency',
 ]
 
 MIDDLEWARE = [
@@ -176,4 +177,33 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+}
+
+
+# Currency conversion (base prices are stored in INR)
+CURRENCY_BASE_CODE = os.environ.get('CURRENCY_BASE_CODE', 'INR')
+CURRENCY_DEFAULT_CODE = os.environ.get('CURRENCY_DEFAULT_CODE', 'INR')
+CURRENCY_IP_LOOKUP_URL = os.environ.get(
+    'CURRENCY_IP_LOOKUP_URL',
+    'https://ipapi.co/{ip}/json/',
+)
+CURRENCY_RATES_URL = os.environ.get(
+    'CURRENCY_RATES_URL',
+    'https://open.er-api.com/v6/latest/{base}',
+)
+CURRENCY_HTTP_TIMEOUT = float(os.environ.get('CURRENCY_HTTP_TIMEOUT', '5'))
+CURRENCY_IP_CACHE_TTL = int(os.environ.get('CURRENCY_IP_CACHE_TTL', '86400'))
+CURRENCY_RATE_CACHE_TTL = int(os.environ.get('CURRENCY_RATE_CACHE_TTL', '86400'))
+CURRENCY_TRUST_PROXY_HEADERS = os.environ.get(
+    'CURRENCY_TRUST_PROXY_HEADERS',
+    'false',
+).lower() in {'1', 'true', 'yes', 'on'}
+
+# Django's local-memory cache is sufficient for development. Configure a shared
+# cache (for example Redis) in production so all application workers reuse rates.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'student-lms-currency-cache',
+    },
 }
