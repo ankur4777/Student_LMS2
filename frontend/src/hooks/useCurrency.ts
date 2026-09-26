@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const CURRENCY_TEST_IP = process.env.NEXT_PUBLIC_CURRENCY_TEST_IP;
 
 export type CurrencyContext = {
   base_currency: string;
@@ -33,9 +34,18 @@ export function useCurrency() {
 
     async function loadCurrency() {
       try {
-        const endpoint = API_BASE
+        const baseEndpoint = API_BASE
           ? `${API_BASE}/api/currency/`
           : "/api/currency/";
+
+        const testIp =
+          process.env.NODE_ENV !== "production"
+            ? CURRENCY_TEST_IP?.trim()
+            : undefined;
+
+        const endpoint = testIp
+          ? `${baseEndpoint}?ip=${encodeURIComponent(testIp)}`
+          : baseEndpoint;
 
         const response = await fetch(endpoint, {
           cache: "no-store",
