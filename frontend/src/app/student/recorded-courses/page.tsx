@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import { useCurrency } from "@/hooks/useCurrency";
 import "../dashboard/dashboard.css";
 
 const API_BASE=process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -11,8 +12,7 @@ type Course={id:number;title:string;description:string;price:string;access_durat
 type Purchase={id:number;course:{id:number;title:string};amount:string;status:string;created_at:string};
 
 export default function StudentRecordedCoursesPage(){
- const router=useRouter();const [student,setStudent]=useState<any>({});const [courses,setCourses]=useState<Course[]>([]);const [purchases,setPurchases]=useState<Purchase[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [busy,setBusy]=useState<number|null>(null);
- const money=(v:string)=>`₹${Number(v||0).toLocaleString("en-IN",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+ const router=useRouter();const [student,setStudent]=useState<any>({});const [courses,setCourses]=useState<Course[]>([]);const [purchases,setPurchases]=useState<Purchase[]>([]);const [loading,setLoading]=useState(true);const [error,setError]=useState("");const [busy,setBusy]=useState<number|null>(null);const { formatCurrency: money } = useCurrency();
  const load=useCallback(async()=>{const token=localStorage.getItem("student_access_token");if(!token){router.replace("/student/login");return}setLoading(true);setError("");try{const h={Authorization:`Bearer ${token}`};const [cr,pr]=await Promise.all([fetch(`${API_BASE}/api/recorded-courses/student/catalog/`,{headers:h}),fetch(`${API_BASE}/api/recorded-courses/student/purchases/`,{headers:h})]);if(cr.status===401||pr.status===401){router.replace("/student/login");return}const cj=await cr.json(),pj=await pr.json();if(!cr.ok)throw new Error(cj.detail||"Unable to load recorded courses.");if(!pr.ok)throw new Error(pj.detail||"Unable to load purchases.");setCourses(cj.courses||[]);setPurchases(pj.purchases||[])}catch(e){setError(e instanceof Error?e.message:"Unable to load recorded courses.")}finally{setLoading(false)}},[router]);
  useEffect(()=>{try{setStudent(JSON.parse(localStorage.getItem("student_user")||"{}"))}catch{};void load()},[load]);
  const pending=(id:number)=>purchases.find(p=>p.course.id===id&&p.status==="pending");
