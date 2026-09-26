@@ -72,6 +72,10 @@ path(
     "api/notices/",
     include("notices.urls"),
 ),
+path(
+    "api/currency/",
+    include("currency.urls"),
+),
 ]
 
 if settings.DEBUG:
