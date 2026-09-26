@@ -1,5 +1,6 @@
-from decimal import InvalidOperation, Decimal
+from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,14 +13,8 @@ class CurrencyContextAPIView(APIView):
 
     def get(self, request):
         override_ip = None
-        if request.query_params.get("ip") and request.settings.DEBUG if False else False:
-            override_ip = request.query_params.get("ip")
-
-        if getattr(request, "query_params", None) and request.query_params.get("ip"):
-            from django.conf import settings
-
-            if settings.DEBUG:
-                override_ip = request.query_params.get("ip", "").strip() or None
+        if settings.DEBUG:
+            override_ip = request.query_params.get("ip", "").strip() or None
 
         try:
             context = get_currency_context(request, override_ip=override_ip)
