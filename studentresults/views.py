@@ -1,4 +1,4 @@
-from academics.feature_access import StudentClassFeaturePermission
+from academics.feature_access import ParentChildFeaturePermission, StudentClassFeaturePermission
 
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
@@ -1161,7 +1161,8 @@ class StudentResultsAPIView(APIView):
         })
         
 class ParentStudentResultsAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ParentChildFeaturePermission]
+    parent_feature_key = "results"
 
     def get(self, request, student_id):
         user = request.user
