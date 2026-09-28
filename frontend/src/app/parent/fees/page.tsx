@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import ParentFeatureRestricted, { isParentClassFeatureRestricted } from "@/components/parent/ParentFeatureRestricted";
 import { useCurrency } from "@/hooks/useCurrency";
 import "../../student/dashboard/dashboard.css";
 
@@ -69,6 +70,8 @@ export default function ParentFeesPage() {
   },[router]);
 
   const totals=useMemo(()=>fees.reduce((a,f)=>({payable:a.payable+Number(f.payable_amount||0),paid:a.paid+Number(f.paid_amount||0),pending:a.pending+Number(f.outstanding_amount||0)}),{payable:0,paid:0,pending:0}),[fees]);
+  const selectedChild=children.find(c=>String(c.student_profile_id)===selected);
+  const featureRestricted=isParentClassFeatureRestricted(error);
 
   const changeChild=async(id:string)=>{setSelected(id);setFees([]);const token=localStorage.getItem("parent_access_token");if(token&&id)await loadFees(token,id);};
 
@@ -83,12 +86,14 @@ export default function ParentFeesPage() {
             {children.map(c=><option key={c.student_profile_id} value={c.student_profile_id}>{c.name} - {c.classroom_name} / {c.section_name}</option>)}
           </select></div>
         </div>
-        {error&&<div className="alert alert-danger mt-3">{error}</div>}
+        {error&&!featureRestricted&&<div className="alert alert-danger mt-3">{error}</div>}
         {loading&&<div className="empty-state">Loading fees...</div>}
         {!loading&&!error&&selected&&<div className="row g-3 mt-2">
           {([["Total Payable",totals.payable],["Total Paid",totals.paid],["Total Pending",totals.pending]] as const).map(([k,v])=><div className="col-md-4" key={k}><div className="border rounded p-3 h-100"><div className="text-muted small">{k}</div><div className="fs-4 fw-bold">{money(v)}</div></div></div>)}
         </div>}
       </div>
+
+      {featureRestricted&&<ParentFeatureRestricted featureName="Fees" childName={selectedChild?.name} />}
 
       {!loading&&!error&&selected&&fees.length===0&&<div className="dashboard-panel"><div className="empty-state">No fees assigned to this child.</div></div>}
       {fees.map(f=><div className="dashboard-panel mb-4" key={f.id}>
