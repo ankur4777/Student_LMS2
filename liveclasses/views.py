@@ -6,6 +6,8 @@ from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.utils.dateparse import parse_date, parse_time
 
+from academics.feature_access import StudentClassFeaturePermission
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -561,7 +563,8 @@ class CollegeAdminLiveClassCancelAPIView(APIView):
 
 
 class StudentLiveClassesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "classes"
 
     def get(self, request):
 
@@ -606,7 +609,8 @@ class StudentLiveClassesAPIView(APIView):
         return Response(serializer.data)    
 
 class StudentTodayClassesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "classes"
 
     def get(self, request):
         user = request.user
@@ -650,7 +654,8 @@ class StudentTodayClassesAPIView(APIView):
         return Response(serializer.data)
     
 class StudentUpcomingClassesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "classes"
 
     def get(self, request):
         user = request.user
@@ -698,7 +703,8 @@ class StudentUpcomingClassesAPIView(APIView):
         return Response(serializer.data)
     
 class StudentCompletedClassesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "classes"
 
     def get(self, request):
         user = request.user
@@ -743,7 +749,8 @@ class StudentCompletedClassesAPIView(APIView):
         return Response(serializer.data)
     
 class StudentRecordedClassesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_classes"
 
     def get(self, request):
         user = request.user
@@ -794,7 +801,8 @@ class StudentRecordedClassesAPIView(APIView):
         return Response(serializer.data)
     
 class StudentRecordingPlaybackAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_classes"
 
     def get(self, request, public_id):
         user = request.user
