@@ -245,6 +245,7 @@ class ClassFeatureAccess(models.Model):
         choices=Feature.choices,
     )
     is_enabled = models.BooleanField(default=True)
+    parent_enabled = models.BooleanField(default=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -256,6 +257,7 @@ class ClassFeatureAccess(models.Model):
         ]
 
     def __str__(self):
-        state = "enabled" if self.is_enabled else "disabled"
-        return f"{self.classroom} - {self.get_feature_key_display()} - {state}"
+        student_state = "enabled" if self.is_enabled else "disabled"
+        parent_state = "enabled" if self.parent_enabled else "disabled"
+        return (\n            f"{self.classroom} - {self.get_feature_key_display()} - "\n            f"student:{student_state} parent:{parent_state}"\n        )
 
