@@ -6,6 +6,8 @@ from django.http import FileResponse
 import mimetypes
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from academics.feature_access import StudentClassFeaturePermission
+
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -328,7 +330,8 @@ def serialize_purchase(purchase):
 
 
 class StudentRecordedCourseCatalogAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_courses"
 
     def get(self, request):
         student = student_profile_for_user(request.user)
@@ -363,7 +366,8 @@ class ParentRecordedCourseCatalogAPIView(APIView):
 
 
 class StudentRecordedCoursePurchasesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_courses"
 
     def get(self, request):
         student = student_profile_for_user(request.user)
@@ -528,7 +532,8 @@ def active_recorded_course_access(user, course_id):
 
 
 class StudentPurchasedRecordedCoursesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_courses"
 
     def get(self, request):
         student = student_profile_for_user(request.user)
@@ -562,7 +567,8 @@ class StudentPurchasedRecordedCoursesAPIView(APIView):
 
 
 class StudentPurchasedRecordedCourseDetailAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_courses"
 
     def get(self, request, course_id):
         student, access = active_recorded_course_access(request.user, course_id)
@@ -583,7 +589,8 @@ class StudentPurchasedRecordedCourseDetailAPIView(APIView):
 
 
 class StudentRecordedLessonPlaybackAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_courses"
 
     def get(self, request, lesson_id):
         student = student_profile_for_user(request.user)
