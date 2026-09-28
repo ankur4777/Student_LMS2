@@ -508,16 +508,55 @@ export default function CollegeAdminNoticesPage() {
 
                     <div className="col-12 col-lg-8">
                       <label className="form-label">Attachment</label>
-                      <input
-                        type="file"
-                        className="form-control"
-                        onChange={(e) =>
-                          setForm({
-                            ...form,
-                            attachment: e.target.files?.[0] || null,
-                          })
-                        }
-                      />
+
+                      <div className="border rounded-3 bg-white p-2 d-flex align-items-center gap-3 flex-wrap">
+                        <input
+                          id="notice-attachment"
+                          type="file"
+                          className="visually-hidden"
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              attachment: e.target.files?.[0] || null,
+                            })
+                          }
+                        />
+
+                        <label
+                          htmlFor="notice-attachment"
+                          className="btn btn-outline-primary mb-0"
+                          style={{ minWidth: 132 }}
+                        >
+                          Choose File
+                        </label>
+
+                        <div className="flex-grow-1 text-muted text-truncate">
+                          {form.attachment
+                            ? form.attachment.name
+                            : editingId
+                            ? "Choose a new file to replace the current attachment"
+                            : "No file selected"}
+                        </div>
+
+                        {form.attachment && (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() =>
+                              setForm({
+                                ...form,
+                                attachment: null,
+                              })
+                            }
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="form-text">
+                        Optional attachment for this notice.
+                      </div>
                     </div>
 
                     <div className="col-12 col-lg-4 d-flex align-items-end">
