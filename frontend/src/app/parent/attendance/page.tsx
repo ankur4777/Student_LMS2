@@ -332,7 +332,7 @@ export default function ParentAttendancePage() {
               />
             )}
 
-            {loadingAttendance ? (
+            {featureRestricted ? null : loadingAttendance ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center text-muted">
                   Loading attendance...
