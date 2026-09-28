@@ -6,7 +6,10 @@ from django.http import FileResponse
 import mimetypes
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from academics.feature_access import (\n    StudentClassFeaturePermission,\n    parent_child_feature_is_enabled,\n)
+from academics.feature_access import (
+    StudentClassFeaturePermission,
+    parent_child_feature_is_enabled,
+)
 
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
