@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
 
@@ -126,6 +127,8 @@ export default function StudentResultsPage() {
     }
   };
 
+  const featureRestricted = isClassFeatureRestricted(error);
+
   return (
     <div className="student-dashboard">
       <StudentSidebar />
@@ -142,24 +145,28 @@ export default function StudentResultsPage() {
         <div className="student-dashboard-content">
           <div className="container-fluid">
 
-            <div className="mb-4">
-              <h2 className="fw-bold mb-1">
-                Results
-              </h2>
+            {featureRestricted ? (
+              <StudentFeatureRestricted featureName="Results" />
+            ) : (
+              <>
+                <div className="mb-4">
+                  <h2 className="fw-bold mb-1">
+                    Results
+                  </h2>
 
-              <p className="text-muted mb-0">
-                View your published examination
-                results.
-              </p>
-            </div>
+                  <p className="text-muted mb-0">
+                    View your published examination
+                    results.
+                  </p>
+                </div>
 
-            {error && (
-              <div className="alert alert-danger">
-                {error}
-              </div>
-            )}
+                {error && (
+                  <div className="alert alert-danger">
+                    {error}
+                  </div>
+                )}
 
-            {loading ? (
+                {loading ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center text-muted">
                   Loading results...
