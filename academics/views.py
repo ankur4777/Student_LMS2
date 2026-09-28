@@ -6,7 +6,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .feature_access import (\n    FEATURE_DEFINITIONS,\n    PARENT_FEATURE_KEYS,\n    get_parent_child_feature_map,\n    get_student_feature_map,\n)\nfrom .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
+from .feature_access import (
+    FEATURE_DEFINITIONS,
+    PARENT_FEATURE_KEYS,
+    get_parent_child_feature_map,
+    get_student_feature_map,
+)
+from .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
 
 
 def college_admin_organization(user):
