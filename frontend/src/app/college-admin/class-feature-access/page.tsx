@@ -25,7 +25,9 @@ interface ClassRoom {
 interface FeatureAccess {
   key: string;
   label: string;
-  enabled: boolean;
+  student_enabled: boolean;
+  parent_enabled: boolean;
+  parent_supported: boolean;
 }
 
 function getSavedAdmin(): AdminUser {
@@ -33,14 +35,10 @@ function getSavedAdmin(): AdminUser {
     return {};
   }
 
-  const saved = localStorage.getItem("college_admin_user");
-
-  if (!saved) {
-    return {};
-  }
-
   try {
-    return JSON.parse(saved);
+    return JSON.parse(
+      localStorage.getItem("college_admin_user") || "{}"
+    );
   } catch {
     return {};
   }
@@ -65,7 +63,9 @@ export default function CollegeAdminClassFeatureAccessPage() {
 
   const request = useCallback(
     async (url: string, options: RequestInit = {}) => {
-      const token = localStorage.getItem("college_admin_access_token");
+      const token = localStorage.getItem(
+        "college_admin_access_token"
+      );
 
       if (!token) {
         router.replace("/college-admin/login");
@@ -91,7 +91,8 @@ export default function CollegeAdminClassFeatureAccessPage() {
 
       if (!response.ok) {
         throw new Error(
-          result?.detail || "Unable to manage class feature access."
+          result?.detail ||
+            "Unable to manage class feature access."
         );
       }
 
@@ -124,6 +125,7 @@ export default function CollegeAdminClassFeatureAccessPage() {
     const load = async () => {
       try {
         setError("");
+
         const result = await request(
           `${API_BASE}/api/academics/college-admin/classes/`
         );
@@ -171,7 +173,10 @@ export default function CollegeAdminClassFeatureAccessPage() {
     try {
       await loadFeatureAccess(classId);
     } catch (err) {
-      if (err instanceof Error && err.message !== "Unauthorized") {
+      if (
+        err instanceof Error &&
+        err.message !== "Unauthorized"
+      ) {
         setError(err.message);
       }
     } finally {
@@ -179,11 +184,29 @@ export default function CollegeAdminClassFeatureAccessPage() {
     }
   };
 
-  const toggleFeature = (featureKey: string) => {
+  const toggleStudentAccess = (featureKey: string) => {
     setFeatures((current) =>
       current.map((feature) =>
         feature.key === featureKey
-          ? { ...feature, enabled: !feature.enabled }
+          ? {
+              ...feature,
+              student_enabled: !feature.student_enabled,
+            }
+          : feature
+      )
+    );
+    setMessage("");
+  };
+
+  const toggleParentAccess = (featureKey: string) => {
+    setFeatures((current) =>
+      current.map((feature) =>
+        feature.key === featureKey &&
+        feature.parent_supported
+          ? {
+              ...feature,
+              parent_enabled: !feature.parent_enabled,
+            }
           : feature
       )
     );
@@ -201,7 +224,15 @@ export default function CollegeAdminClassFeatureAccessPage() {
 
     try {
       const featureMap = Object.fromEntries(
-        features.map((feature) => [feature.key, feature.enabled])
+        features.map((feature) => [
+          feature.key,
+          {
+            student_enabled: feature.student_enabled,
+            ...(feature.parent_supported
+              ? { parent_enabled: feature.parent_enabled }
+              : {}),
+          },
+        ])
       );
 
       const result = await request(
@@ -217,10 +248,14 @@ export default function CollegeAdminClassFeatureAccessPage() {
 
       setFeatures(result.features || []);
       setMessage(
-        result.message || "Class feature access updated successfully."
+        result.message ||
+          "Class feature access updated successfully."
       );
     } catch (err) {
-      if (err instanceof Error && err.message !== "Unauthorized") {
+      if (
+        err instanceof Error &&
+        err.message !== "Unauthorized"
+      ) {
         setError(err.message);
       }
     } finally {
@@ -234,41 +269,67 @@ export default function CollegeAdminClassFeatureAccessPage() {
 
       <main className="teacher-dashboard-main">
         <CollegeAdminTopbar
-          name={admin.name || admin.username || "College Admin"}
+          name={
+            admin.name ||
+            admin.username ||
+            "College Admin"
+          }
           organization={admin.organization || ""}
         />
 
         <div className="teacher-dashboard-content">
           <div className="container-fluid">
             <div className="mb-4">
-              <h2 className="fw-bold mb-1">Class Feature Access</h2>
+              <h2 className="fw-bold mb-1">
+                Class Feature Access
+              </h2>
+
               <p className="text-muted mb-0">
-                Allow or restrict student features for an entire class.
+                Control student and parent access independently for
+                each class.
               </p>
             </div>
 
-            {error && <div className="alert alert-danger">{error}</div>}
-            {message && <div className="alert alert-success">{message}</div>}
+            {error && (
+              <div className="alert alert-danger">
+                {error}
+              </div>
+            )}
+
+            {message && (
+              <div className="alert alert-success">
+                {message}
+              </div>
+            )}
 
             <div className="card border-0 shadow-sm mb-4">
               <div className="card-body p-4">
                 <label className="form-label fw-semibold">
                   Select Class
                 </label>
+
                 <select
                   className="form-select"
                   value={selectedClassId}
                   onChange={(event) =>
-                    void handleClassChange(event.target.value)
+                    void handleClassChange(
+                      event.target.value
+                    )
                   }
                   disabled={classes.length === 0}
                 >
                   {classes.length === 0 ? (
-                    <option value="">No classes available</option>
+                    <option value="">
+                      No classes available
+                    </option>
                   ) : (
                     classes.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name} - {item.academic_session}
+                      <option
+                        key={item.id}
+                        value={item.id}
+                      >
+                        {item.name} -{" "}
+                        {item.academic_session}
                       </option>
                     ))
                   )}
@@ -285,9 +346,13 @@ export default function CollegeAdminClassFeatureAccessPage() {
             ) : classes.length === 0 ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center">
-                  <h5 className="fw-bold">No Classes</h5>
+                  <h5 className="fw-bold">
+                    No Classes
+                  </h5>
+
                   <p className="text-muted mb-0">
-                    Create a class before configuring feature access.
+                    Create a class before configuring
+                    feature access.
                   </p>
                 </div>
               </div>
@@ -296,10 +361,14 @@ export default function CollegeAdminClassFeatureAccessPage() {
                 <div className="card-body p-4">
                   <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
                     <div>
-                      <h5 className="fw-bold mb-1">Student Features</h5>
+                      <h5 className="fw-bold mb-1">
+                        Class Feature Permissions
+                      </h5>
+
                       <p className="text-muted mb-0">
-                        Disabled features are hidden from students in this
-                        class and blocked by the backend API.
+                        Student and parent permissions are separate.
+                        Parent access is shown only for features
+                        available in the Parent Portal.
                       </p>
                     </div>
 
@@ -309,30 +378,90 @@ export default function CollegeAdminClassFeatureAccessPage() {
                       onClick={() => void saveAccess()}
                       disabled={saving}
                     >
-                      {saving ? "Saving..." : "Save Access"}
+                      {saving
+                        ? "Saving..."
+                        : "Save Access"}
                     </button>
                   </div>
 
                   <div className="row g-3">
                     {features.map((feature) => (
-                      <div className="col-md-6 col-xl-4" key={feature.key}>
-                        <div className="border rounded-3 p-3 h-100 d-flex justify-content-between align-items-center gap-3">
-                          <div>
-                            <div className="fw-semibold">{feature.label}</div>
-                            <small className="text-muted">
-                              {feature.enabled ? "Allowed" : "Restricted"}
-                            </small>
+                      <div
+                        className="col-lg-6"
+                        key={feature.key}
+                      >
+                        <div className="border rounded-3 p-3 h-100">
+                          <div className="fw-semibold mb-3">
+                            {feature.label}
                           </div>
 
-                          <div className="form-check form-switch m-0">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              role="switch"
-                              aria-label={`Toggle ${feature.label}`}
-                              checked={feature.enabled}
-                              onChange={() => toggleFeature(feature.key)}
-                            />
+                          <div className="d-flex flex-column gap-3">
+                            <div className="d-flex justify-content-between align-items-center gap-3">
+                              <div>
+                                <div className="fw-medium">
+                                  Student Access
+                                </div>
+                                <small className="text-muted">
+                                  {feature.student_enabled
+                                    ? "Allowed"
+                                    : "Restricted"}
+                                </small>
+                              </div>
+
+                              <div className="form-check form-switch m-0">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  role="switch"
+                                  aria-label={`Toggle student access for ${feature.label}`}
+                                  checked={
+                                    feature.student_enabled
+                                  }
+                                  onChange={() =>
+                                    toggleStudentAccess(
+                                      feature.key
+                                    )
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            {feature.parent_supported ? (
+                              <div className="d-flex justify-content-between align-items-center gap-3 border-top pt-3">
+                                <div>
+                                  <div className="fw-medium">
+                                    Parent Access
+                                  </div>
+                                  <small className="text-muted">
+                                    {feature.parent_enabled
+                                      ? "Allowed"
+                                      : "Restricted"}
+                                  </small>
+                                </div>
+
+                                <div className="form-check form-switch m-0">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    role="switch"
+                                    aria-label={`Toggle parent access for ${feature.label}`}
+                                    checked={
+                                      feature.parent_enabled
+                                    }
+                                    onChange={() =>
+                                      toggleParentAccess(
+                                        feature.key
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="border-top pt-3 text-muted small">
+                                Parent access is not applicable to
+                                this feature.
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
