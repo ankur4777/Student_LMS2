@@ -68,8 +68,6 @@ function formatDate(value: string) {
 }
 
 function formatType(type: string) {
-  const featureRestricted = isClassFeatureRestricted(error);
-
   return (
     DOCUMENT_TYPES.find((item) => item.value === type)?.label ||
     type
@@ -219,6 +217,8 @@ export default function StudentDocumentsPage() {
       setSaving(false);
     }
   };
+
+  const featureRestricted = isClassFeatureRestricted(error);
 
   return (
     <div className="student-dashboard">
