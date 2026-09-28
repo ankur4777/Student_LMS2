@@ -1,4 +1,4 @@
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.utils.dateparse import parse_date
 
@@ -6,7 +6,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import AcademicSession, ClassRoom, Section, Subject
+from .feature_access import FEATURE_DEFINITIONS, get_student_feature_map
+from .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
 
 
 def college_admin_organization(user):
@@ -1001,3 +1002,198 @@ class CollegeAdminSubjectDetailAPIView(APIView):
             "message": "Subject updated successfully.",
             "subject": serialize_subject(subject),
         })
+
+def serialize_class_feature_access(classroom, organization):
+    access_by_key = dict(
+        ClassFeatureAccess.objects.filter(
+            organization=organization,
+            classroom=classroom,
+        ).values_list("feature_key", "is_enabled")
+    )
+
+    return {
+        "class": serialize_classroom(classroom),
+        "features": [
+            {
+                **definition,
+                "enabled": access_by_key.get(definition["key"], True),
+            }
+            for definition in FEATURE_DEFINITIONS
+        ],
+    }
+
+
+class CollegeAdminClassFeatureAccessAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_classroom(self, user, classroom_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None, None
+
+        classroom = college_classroom_queryset(organization).filter(
+            id=classroom_id
+        ).first()
+
+        return organization, classroom
+
+    def get(self, request):
+        classroom_id = request.query_params.get("class_id")
+
+        if not classroom_id:
+            return Response(
+                {"detail": "class_id is required."},
+                status=400,
+            )
+
+        organization, classroom = self.get_classroom(
+            request.user,
+            classroom_id,
+        )
+
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can manage class feature access."
+                    )
+                },
+                status=403,
+            )
+
+        if not classroom:
+            return Response(
+                {"detail": "Class not found."},
+                status=404,
+            )
+
+        return Response(
+            serialize_class_feature_access(classroom, organization)
+        )
+
+    def patch(self, request):
+        classroom_id = request.data.get("class_id")
+        features = request.data.get("features")
+
+        if not classroom_id:
+            return Response(
+                {"detail": "class_id is required."},
+                status=400,
+            )
+
+        if not isinstance(features, dict):
+            return Response(
+                {"detail": "features must be an object of feature booleans."},
+                status=400,
+            )
+
+        valid_keys = {
+            definition["key"]
+            for definition in FEATURE_DEFINITIONS
+        }
+        unknown_keys = sorted(set(features.keys()) - valid_keys)
+
+        if unknown_keys:
+            return Response(
+                {
+                    "detail": (
+                        "Unknown feature key(s): "
+                        + ", ".join(unknown_keys)
+                    )
+                },
+                status=400,
+            )
+
+        invalid_values = [
+            key
+            for key, value in features.items()
+            if not isinstance(value, bool)
+        ]
+
+        if invalid_values:
+            return Response(
+                {
+                    "detail": (
+                        "Feature values must be true or false: "
+                        + ", ".join(sorted(invalid_values))
+                    )
+                },
+                status=400,
+            )
+
+        organization, classroom = self.get_classroom(
+            request.user,
+            classroom_id,
+        )
+
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can manage class feature access."
+                    )
+                },
+                status=403,
+            )
+
+        if not classroom:
+            return Response(
+                {"detail": "Class not found."},
+                status=404,
+            )
+
+        with transaction.atomic():
+            for feature_key, is_enabled in features.items():
+                ClassFeatureAccess.objects.update_or_create(
+                    organization=organization,
+                    classroom=classroom,
+                    feature_key=feature_key,
+                    defaults={"is_enabled": is_enabled},
+                )
+
+        response_data = serialize_class_feature_access(
+            classroom,
+            organization,
+        )
+        response_data["message"] = "Class feature access updated successfully."
+
+        return Response(response_data)
+
+    put = patch
+
+
+class StudentFeatureAccessAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if (
+            user.role != "student"
+            or not user.is_active
+            or not user.organization
+            or not user.organization.is_active
+        ):
+            return Response(
+                {"detail": "Only active students can view feature access."},
+                status=403,
+            )
+
+        features, classroom = get_student_feature_map(user)
+
+        return Response(
+            {
+                "class": (
+                    {
+                        "id": classroom.id,
+                        "name": classroom.name,
+                        "academic_session": classroom.academic_session.name,
+                    }
+                    if classroom
+                    else None
+                ),
+                "features": features,
+            }
+        )
+
