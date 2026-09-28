@@ -1,16 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
 import StudentIcon, { StudentIconName } from "@/components/student/StudentIcon";
 
+type StudentFeatureKey =
+  | "classes"
+  | "recorded_classes"
+  | "recorded_courses"
+  | "attendance"
+  | "assignments"
+  | "results"
+  | "documents"
+  | "fees"
+  | "notifications";
+
 type StudentNavItem = {
   label: string;
   href: string;
   icon: StudentIconName;
+  featureKey?: StudentFeatureKey;
 };
 
 type StudentNavSection = {
@@ -28,30 +40,30 @@ const navSections: StudentNavSection[] = [
   {
     label: "Learning",
     items: [
-      { label: "My Classes", href: "/student/classes", icon: "classes" },
-      { label: "Recorded Classes", href: "/student/recorded-classes", icon: "recordings" },
-      { label: "Buy Recorded Courses", href: "/student/recorded-courses", icon: "courses" },
+      { label: "My Classes", href: "/student/classes", icon: "classes", featureKey: "classes" },
+      { label: "Recorded Classes", href: "/student/recorded-classes", icon: "recordings", featureKey: "recorded_classes" },
+      { label: "Buy Recorded Courses", href: "/student/recorded-courses", icon: "courses", featureKey: "recorded_courses" },
     ],
   },
   {
     label: "Academics",
     items: [
-      { label: "Attendance", href: "/student/attendance", icon: "attendance" },
-      { label: "Assignments", href: "/student/assignments", icon: "assignments" },
-      { label: "Results", href: "/student/results", icon: "results" },
-      { label: "Documents", href: "/student/documents", icon: "documents" },
+      { label: "Attendance", href: "/student/attendance", icon: "attendance", featureKey: "attendance" },
+      { label: "Assignments", href: "/student/assignments", icon: "assignments", featureKey: "assignments" },
+      { label: "Results", href: "/student/results", icon: "results", featureKey: "results" },
+      { label: "Documents", href: "/student/documents", icon: "documents", featureKey: "documents" },
     ],
   },
   {
     label: "Finance",
     items: [
-      { label: "Fees", href: "/student/fees", icon: "fees" },
+      { label: "Fees", href: "/student/fees", icon: "fees", featureKey: "fees" },
     ],
   },
   {
     label: "Communication",
     items: [
-      { label: "Notifications", href: "/student/notifications", icon: "notifications" },
+      { label: "Notifications", href: "/student/notifications", icon: "notifications", featureKey: "notifications" },
     ],
   },
   {
@@ -65,6 +77,67 @@ const navSections: StudentNavSection[] = [
 export default function StudentSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [featureAccess, setFeatureAccess] = useState<
+    Partial<Record<StudentFeatureKey, boolean>> | null
+  >(null);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadFeatureAccess = async () => {
+      const token = localStorage.getItem("student_access_token");
+
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/academics/student/feature-access/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result = await response.json();
+
+        if (active) {
+          setFeatureAccess(result.features || {});
+        }
+      } catch {
+        // Keep the existing navigation visible if access settings cannot load.
+      }
+    };
+
+    void loadFeatureAccess();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const visibleNavSections = useMemo(
+    () =>
+      navSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter(
+            (item) =>
+              !item.featureKey ||
+              featureAccess === null ||
+              featureAccess[item.featureKey] !== false
+          ),
+        }))
+        .filter((section) => section.items.length > 0),
+    [featureAccess]
+  );
 
   const isActive = (href: string) => {
     if (pathname === href) return true;
@@ -101,7 +174,7 @@ export default function StudentSidebar() {
         </div>
 
         <nav className="sidebar-nav student-portal-nav">
-          {navSections.map((section) => (
+          {visibleNavSections.map((section) => (
             <section className="student-nav-section" key={section.label}>
               <div className="student-nav-section-title">{section.label}</div>
 
