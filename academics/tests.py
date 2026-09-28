@@ -3,10 +3,17 @@ from datetime import date
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from accounts.models import User
+from accounts.models import StudentProfile, User
 from institutions.models import Organization
 
-from .models import AcademicSession, ClassRoom, Section, Subject
+from .models import (
+    AcademicSession,
+    ClassFeatureAccess,
+    ClassRoom,
+    Section,
+    StudentEnrollment,
+    Subject,
+)
 
 
 class CollegeAdminAcademicsSecurityTests(TestCase):
@@ -273,3 +280,145 @@ class CollegeAdminAcademicsSecurityTests(TestCase):
         self.assertFalse(
             Subject.objects.filter(name="Invalid Subject").exists()
         )
+
+class ClassFeatureAccessTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.org_a = Organization.objects.create(
+            name="Feature College A",
+            code="feature-college-a",
+        )
+        self.org_b = Organization.objects.create(
+            name="Feature College B",
+            code="feature-college-b",
+        )
+        self.admin_a = User.objects.create_user(
+            username="feature-admin-a",
+            password="pass",
+            role="college_admin",
+            organization=self.org_a,
+        )
+        self.student_user = User.objects.create_user(
+            username="feature-student-a",
+            password="pass",
+            role="student",
+            organization=self.org_a,
+        )
+        self.student_profile = StudentProfile.objects.create(
+            user=self.student_user,
+            admission_number="FEATURE-A-001",
+        )
+        self.session_a = AcademicSession.objects.create(
+            organization=self.org_a,
+            name="Feature A 2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_active=True,
+        )
+        self.classroom_a = ClassRoom.objects.create(
+            organization=self.org_a,
+            academic_session=self.session_a,
+            name="Class 10",
+        )
+        self.section_a = Section.objects.create(
+            organization=self.org_a,
+            classroom=self.classroom_a,
+            name="A",
+        )
+        StudentEnrollment.objects.create(
+            student=self.student_profile,
+            section=self.section_a,
+            roll_number="1",
+            is_active=True,
+        )
+        self.session_b = AcademicSession.objects.create(
+            organization=self.org_b,
+            name="Feature B 2026",
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 12, 31),
+            is_active=True,
+        )
+        self.classroom_b = ClassRoom.objects.create(
+            organization=self.org_b,
+            academic_session=self.session_b,
+            name="Foreign Class",
+        )
+
+    def test_features_default_to_enabled_for_enrolled_class(self):
+        self.client.force_authenticate(user=self.student_user)
+
+        response = self.client.get(
+            "/api/academics/student/feature-access/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["class"]["id"], self.classroom_a.id)
+        self.assertTrue(response.data["features"]["attendance"])
+        self.assertTrue(response.data["features"]["results"])
+
+    def test_college_admin_can_disable_feature_for_own_class(self):
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.patch(
+            "/api/academics/college-admin/class-feature-access/",
+            {
+                "class_id": self.classroom_a.id,
+                "features": {
+                    "attendance": False,
+                    "results": True,
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            next(
+                item["enabled"]
+                for item in response.data["features"]
+                if item["key"] == "attendance"
+            )
+        )
+
+        self.client.force_authenticate(user=self.student_user)
+        student_response = self.client.get(
+            "/api/academics/student/feature-access/"
+        )
+        self.assertEqual(student_response.status_code, 200)
+        self.assertFalse(student_response.data["features"]["attendance"])
+        self.assertTrue(student_response.data["features"]["results"])
+
+    def test_college_admin_cannot_manage_foreign_class(self):
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.patch(
+            "/api/academics/college-admin/class-feature-access/",
+            {
+                "class_id": self.classroom_b.id,
+                "features": {"attendance": False},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(
+            ClassFeatureAccess.objects.filter(
+                organization=self.org_a,
+                classroom=self.classroom_b,
+            ).exists()
+        )
+
+    def test_non_admin_cannot_change_class_feature_access(self):
+        self.client.force_authenticate(user=self.student_user)
+
+        response = self.client.patch(
+            "/api/academics/college-admin/class-feature-access/",
+            {
+                "class_id": self.classroom_a.id,
+                "features": {"attendance": False},
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
