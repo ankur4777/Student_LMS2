@@ -330,9 +330,7 @@ export default function StudentAssignmentsPage() {
     const status = getAssignmentStatus(assignment);
 
     if (status === "graded") {
-      const featureRestricted = isClassFeatureRestricted(error);
-
-  return (
+      return (
         <span className="badge bg-primary">
           Graded
         </span>
@@ -361,6 +359,8 @@ export default function StudentAssignmentsPage() {
       </span>
     );
   };
+
+  const featureRestricted = isClassFeatureRestricted(error);
 
   return (
     <div className="student-dashboard">
@@ -672,6 +672,8 @@ export default function StudentAssignmentsPage() {
 
                 </div>
               </div>
+            )}
+              </>
             )}
 
           </div>
