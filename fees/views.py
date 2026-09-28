@@ -5,6 +5,8 @@ from django.http import HttpResponse
 from django.db.models import Prefetch, Sum
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from academics.feature_access import StudentClassFeaturePermission
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -1210,7 +1212,8 @@ class CollegeAdminStudentFeePaymentsAPIView(APIView):
 
 
 class StudentFeesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "fees"
 
     def get(self, request):
         if request.user.role != "student" or not request.user.is_active or not request.user.organization:
@@ -1311,7 +1314,8 @@ def pdf_response(filename, title, organization, rows, payments=None):
 
 
 class FeeInvoicePDFAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "fees"
 
     def get(self, request, student_fee_id):
         fee = fee_document_access(request.user, student_fee_id)
@@ -1339,7 +1343,8 @@ class FeeInvoicePDFAPIView(APIView):
 
 
 class FeeReceiptPDFAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "fees"
 
     def get(self, request, payment_id):
         payment = FeePayment.objects.filter(
