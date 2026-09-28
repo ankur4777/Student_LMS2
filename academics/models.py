@@ -217,3 +217,45 @@ class ParentStudent(models.Model):
 
     def __str__(self):
         return f"{self.parent} - {self.student}"
+
+class ClassFeatureAccess(models.Model):
+    class Feature(models.TextChoices):
+        CLASSES = "classes", "My Classes"
+        RECORDED_CLASSES = "recorded_classes", "Recorded Classes"
+        RECORDED_COURSES = "recorded_courses", "Recorded Courses"
+        ATTENDANCE = "attendance", "Attendance"
+        ASSIGNMENTS = "assignments", "Assignments"
+        RESULTS = "results", "Results"
+        DOCUMENTS = "documents", "Documents"
+        FEES = "fees", "Fees"
+        NOTIFICATIONS = "notifications", "Notifications"
+
+    organization = models.ForeignKey(
+        "institutions.Organization",
+        on_delete=models.CASCADE,
+        related_name="class_feature_access",
+    )
+    classroom = models.ForeignKey(
+        ClassRoom,
+        on_delete=models.CASCADE,
+        related_name="feature_access",
+    )
+    feature_key = models.CharField(
+        max_length=50,
+        choices=Feature.choices,
+    )
+    is_enabled = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("organization", "classroom", "feature_key"),
+                name="uniq_class_feature_access",
+            )
+        ]
+
+    def __str__(self):
+        state = "enabled" if self.is_enabled else "disabled"
+        return f"{self.classroom} - {self.get_feature_key_display()} - {state}"
+
