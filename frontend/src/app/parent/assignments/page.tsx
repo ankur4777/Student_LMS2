@@ -369,7 +369,7 @@ export default function ParentAssignmentsPage() {
               />
             )}
 
-            {loadingAssignments ? (
+            {featureRestricted ? null : loadingAssignments ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center text-muted">
                   Loading assignments...
