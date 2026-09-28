@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.db.models import Prefetch, Sum
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from academics.feature_access import ParentChildFeaturePermission, StudentClassFeaturePermission
+from academics.feature_access import (\n    ParentChildFeaturePermission,\n    StudentClassFeaturePermission,\n    parent_child_feature_is_enabled,\n)
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1272,13 +1272,28 @@ def fee_document_access(user, student_fee_id):
         student = StudentProfile.objects.filter(user=user, user__organization=user.organization).first()
         return qs.filter(student=student).first() if student else None
     if user.role == "parent":
-        parent = ParentProfile.objects.filter(user=user, user__organization=user.organization).first()
+        parent = ParentProfile.objects.filter(
+            user=user,
+            user__organization=user.organization,
+        ).first()
         if not parent:
             return None
-        linked_ids = ParentStudent.objects.filter(
-            parent=parent, student__user__organization=user.organization
-        ).values_list("student_id", flat=True)
-        return qs.filter(student_id__in=linked_ids).first()
+
+        fee = qs.filter(
+            student__parent_links__parent=parent,
+            student__user__organization=user.organization,
+        ).first()
+
+        if not fee:
+            return None
+
+        allowed = parent_child_feature_is_enabled(
+            user,
+            fee.student_id,
+            "fees",
+        )
+
+        return fee if allowed is not False else None
     return None
 
 
