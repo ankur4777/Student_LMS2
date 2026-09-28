@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
 
@@ -132,6 +133,8 @@ export default function StudentAttendancePage() {
     loadAttendance();
   }, [router]);
 
+  const featureRestricted = isClassFeatureRestricted(error);
+
   return (
     <div className="student-dashboard">
       <StudentSidebar />
@@ -144,7 +147,11 @@ export default function StudentAttendancePage() {
 
         <div className="student-dashboard-content">
           <div className="container-fluid">
-            <div className="dashboard-panel mb-4">
+            {featureRestricted ? (
+              <StudentFeatureRestricted featureName="Attendance" />
+            ) : (
+              <>
+                <div className="dashboard-panel mb-4">
               <div className="panel-heading">
                 <h5>Attendance</h5>
               </div>
@@ -223,6 +230,8 @@ export default function StudentAttendancePage() {
                 </div>
               )}
             </div>
+              </>
+            )}
           </div>
         </div>
       </main>
