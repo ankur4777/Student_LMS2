@@ -48,11 +48,19 @@ interface ExamResult {
   total_maximum?: number;
 }
 
+type ParentFeatureKey =
+  | "attendance"
+  | "assignments"
+  | "results"
+  | "recorded_courses"
+  | "fees";
+
 interface ChildDashboard extends Child {
   attendancePercentage: number | null;
   pendingAssignments: number;
   latestResult: string;
   latestExamDate: string;
+  featureAccess: Record<ParentFeatureKey, boolean>;
 }
 
 function getSavedParent() {
@@ -122,6 +130,7 @@ export default function ParentDashboardPage() {
 
   const averageAttendance = useMemo(() => {
     const available = children
+      .filter((child) => child.featureAccess.attendance)
       .map((child) => child.attendancePercentage)
       .filter((value): value is number => value !== null);
 
@@ -131,12 +140,22 @@ export default function ParentDashboardPage() {
   }, [children]);
 
   const pendingAssignments = useMemo(
-    () => children.reduce((total, child) => total + child.pendingAssignments, 0),
+    () =>
+      children
+        .filter((child) => child.featureAccess.assignments)
+        .reduce(
+          (total, child) => total + child.pendingAssignments,
+          0
+        ),
     [children]
   );
 
   const latestResult = useMemo(() => {
-    const childrenWithResults = children.filter((child) => child.latestResult !== "-");
+    const childrenWithResults = children.filter(
+      (child) =>
+        child.featureAccess.results &&
+        child.latestResult !== "-"
+    );
     if (childrenWithResults.length === 0) return "-";
 
     const sortedChildren = [...childrenWithResults].sort((first, second) => {
@@ -187,34 +206,77 @@ export default function ParentDashboardPage() {
       return result;
     };
 
-    const loadChildDetails = async (child: Child): Promise<ChildDashboard> => {
+    const loadChildDetails = async (
+      child: Child
+    ): Promise<ChildDashboard> => {
       const childId = child.student_profile_id;
 
-      const [attendance, assignments, results] = await Promise.allSettled([
-        fetchJson(`${API_BASE}/api/attendance/parent/student/${childId}/`),
-        fetchJson(`${API_BASE}/api/assignments/parent/student/${childId}/`),
-        fetchJson(`${API_BASE}/api/results/parent/student/${childId}/`),
-      ]);
+      const accessResult = await fetchJson(
+        `${API_BASE}/api/academics/parent/student/${childId}/feature-access/`
+      );
 
-      const summary =
+      const featureAccess = {
+        attendance:
+          accessResult.features?.attendance !== false,
+        assignments:
+          accessResult.features?.assignments !== false,
+        results:
+          accessResult.features?.results !== false,
+        recorded_courses:
+          accessResult.features?.recorded_courses !== false,
+        fees:
+          accessResult.features?.fees !== false,
+      } satisfies Record<ParentFeatureKey, boolean>;
+
+      const [attendance, assignments, results] =
+        await Promise.allSettled([
+          featureAccess.attendance
+            ? fetchJson(
+                `${API_BASE}/api/attendance/parent/student/${childId}/`
+              )
+            : Promise.resolve(null),
+          featureAccess.assignments
+            ? fetchJson(
+                `${API_BASE}/api/assignments/parent/student/${childId}/`
+              )
+            : Promise.resolve(null),
+          featureAccess.results
+            ? fetchJson(
+                `${API_BASE}/api/results/parent/student/${childId}/`
+              )
+            : Promise.resolve(null),
+        ]);
+
+      const attendanceValue =
         attendance.status === "fulfilled"
-          ? (attendance.value.summary as AttendanceSummary | null)
+          ? attendance.value
+          : null;
+      const assignmentsValue =
+        assignments.status === "fulfilled"
+          ? assignments.value
+          : null;
+      const resultsValue =
+        results.status === "fulfilled"
+          ? results.value
           : null;
 
-      const assignmentList =
-        assignments.status === "fulfilled"
-          ? (assignments.value.assignments as Assignment[] | undefined) || []
-          : [];
+      const summary = attendanceValue
+        ? (attendanceValue.summary as AttendanceSummary | null)
+        : null;
 
-      const examList =
-        results.status === "fulfilled"
-          ? (results.value.exams as ExamResult[] | undefined) || []
-          : [];
+      const assignmentList = assignmentsValue
+        ? ((assignmentsValue.assignments as Assignment[] | undefined) || [])
+        : [];
+
+      const examList = resultsValue
+        ? ((resultsValue.exams as ExamResult[] | undefined) || [])
+        : [];
 
       const latest = getLatestResult(examList);
 
       return {
         ...child,
+        featureAccess,
         attendancePercentage:
           typeof summary?.attendance_percentage === "number"
             ? summary.attendance_percentage
@@ -259,38 +321,52 @@ export default function ParentDashboardPage() {
     };
   }, [router]);
 
+  const hasFeatureAccess = (featureKey: ParentFeatureKey) =>
+    children.some(
+      (child) => child.featureAccess[featureKey]
+    );
+
+  const attendanceAllowed = hasFeatureAccess("attendance");
+  const assignmentsAllowed = hasFeatureAccess("assignments");
+  const resultsAllowed = hasFeatureAccess("results");
+
   const quickLinks = [
     {
       label: "Attendance",
       description: "Review daily attendance",
       href: "/parent/attendance",
       icon: "attendance" as const,
+      featureKey: "attendance" as const,
     },
     {
       label: "Assignments",
       description: "Check pending work",
       href: "/parent/assignments",
       icon: "assignments" as const,
+      featureKey: "assignments" as const,
     },
     {
       label: "Results",
       description: "View exam performance",
       href: "/parent/results",
       icon: "results" as const,
+      featureKey: "results" as const,
     },
     {
       label: "Fees",
       description: "Track payment status",
       href: "/parent/fees",
       icon: "fees" as const,
+      featureKey: "fees" as const,
     },
     {
       label: "Recorded Courses",
       description: "Browse recorded learning",
       href: "/parent/recorded-courses",
       icon: "courses" as const,
+      featureKey: "recorded_courses" as const,
     },
-  ];
+  ].filter((item) => hasFeatureAccess(item.featureKey));
 
   return (
     <div className="student-dashboard parent-dashboard-polished">
@@ -349,38 +425,44 @@ export default function ParentDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="parent-overview-card">
-                    <span className="parent-overview-icon">
-                      <ParentIcon name="attendance" size={20} />
-                    </span>
-                    <div>
-                      <small>Average Attendance</small>
-                      <strong>{formatPercent(averageAttendance)}</strong>
-                      <span>Across linked children</span>
+                  {attendanceAllowed && (
+                    <div className="parent-overview-card">
+                      <span className="parent-overview-icon">
+                        <ParentIcon name="attendance" size={20} />
+                      </span>
+                      <div>
+                        <small>Average Attendance</small>
+                        <strong>{formatPercent(averageAttendance)}</strong>
+                        <span>Across allowed linked children</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="parent-overview-card">
-                    <span className="parent-overview-icon">
-                      <ParentIcon name="assignments" size={20} />
-                    </span>
-                    <div>
-                      <small>Pending Assignments</small>
-                      <strong>{pendingAssignments}</strong>
-                      <span>Work still awaiting submission</span>
+                  {assignmentsAllowed && (
+                    <div className="parent-overview-card">
+                      <span className="parent-overview-icon">
+                        <ParentIcon name="assignments" size={20} />
+                      </span>
+                      <div>
+                        <small>Pending Assignments</small>
+                        <strong>{pendingAssignments}</strong>
+                        <span>Work still awaiting submission</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="parent-overview-card">
-                    <span className="parent-overview-icon">
-                      <ParentIcon name="results" size={20} />
-                    </span>
-                    <div>
-                      <small>Latest Result</small>
-                      <strong>{latestResult}</strong>
-                      <span>Most recently published performance</span>
+                  {resultsAllowed && (
+                    <div className="parent-overview-card">
+                      <span className="parent-overview-icon">
+                        <ParentIcon name="results" size={20} />
+                      </span>
+                      <div>
+                        <small>Latest Result</small>
+                        <strong>{latestResult}</strong>
+                        <span>Most recently published performance</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </section>
 
                 <section className="parent-dashboard-grid">
@@ -428,42 +510,66 @@ export default function ParentDashboardPage() {
                               </span>
                             </div>
 
-                            <div className="parent-child-stats">
-                              <div className="parent-child-stat">
-                                <span>Attendance</span>
-                                <strong>
-                                  {formatPercent(child.attendancePercentage)}
-                                </strong>
+                            {(child.featureAccess.attendance ||
+                              child.featureAccess.assignments ||
+                              child.featureAccess.results) && (
+                              <div className="parent-child-stats">
+                                {child.featureAccess.attendance && (
+                                  <div className="parent-child-stat">
+                                    <span>Attendance</span>
+                                    <strong>
+                                      {formatPercent(
+                                        child.attendancePercentage
+                                      )}
+                                    </strong>
+                                  </div>
+                                )}
+
+                                {child.featureAccess.assignments && (
+                                  <div className="parent-child-stat">
+                                    <span>Pending Assignments</span>
+                                    <strong>
+                                      {child.pendingAssignments}
+                                    </strong>
+                                  </div>
+                                )}
+
+                                {child.featureAccess.results && (
+                                  <div className="parent-child-stat">
+                                    <span>Latest Result</span>
+                                    <strong>{child.latestResult}</strong>
+                                  </div>
+                                )}
                               </div>
-                              <div className="parent-child-stat">
-                                <span>Pending Assignments</span>
-                                <strong>{child.pendingAssignments}</strong>
-                              </div>
-                              <div className="parent-child-stat">
-                                <span>Latest Result</span>
-                                <strong>{child.latestResult}</strong>
-                              </div>
-                            </div>
+                            )}
 
                             <div className="parent-child-actions">
-                              <Link
-                                className="btn btn-outline-primary btn-sm"
-                                href="/parent/attendance"
-                              >
-                                Attendance
-                              </Link>
-                              <Link
-                                className="btn btn-outline-primary btn-sm"
-                                href="/parent/assignments"
-                              >
-                                Assignments
-                              </Link>
-                              <Link
-                                className="btn btn-outline-primary btn-sm"
-                                href="/parent/results"
-                              >
-                                Results
-                              </Link>
+                              {child.featureAccess.attendance && (
+                                <Link
+                                  className="btn btn-outline-primary btn-sm"
+                                  href="/parent/attendance"
+                                >
+                                  Attendance
+                                </Link>
+                              )}
+
+                              {child.featureAccess.assignments && (
+                                <Link
+                                  className="btn btn-outline-primary btn-sm"
+                                  href="/parent/assignments"
+                                >
+                                  Assignments
+                                </Link>
+                              )}
+
+                              {child.featureAccess.results && (
+                                <Link
+                                  className="btn btn-outline-primary btn-sm"
+                                  href="/parent/results"
+                                >
+                                  Results
+                                </Link>
+                              )}
                             </div>
                           </div>
                         ))
@@ -471,35 +577,37 @@ export default function ParentDashboardPage() {
                     </div>
                   </article>
 
-                  <article className="parent-panel">
-                    <div className="parent-panel-header">
-                      <div>
-                        <h2>Quick Access</h2>
-                        <p>Open the areas parents use most often.</p>
+                  {quickLinks.length > 0 && (
+                    <article className="parent-panel">
+                      <div className="parent-panel-header">
+                        <div>
+                          <h2>Quick Access</h2>
+                          <p>Open the areas parents use most often.</p>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="parent-quick-links">
-                      {quickLinks.map((item) => (
-                        <Link
-                          className="parent-quick-link"
-                          href={item.href}
-                          key={item.href}
-                        >
-                          <span>
-                            <ParentIcon name={item.icon} size={17} />
+                      <div className="parent-quick-links">
+                        {quickLinks.map((item) => (
+                          <Link
+                            className="parent-quick-link"
+                            href={item.href}
+                            key={item.href}
+                          >
                             <span>
-                              {item.label}
-                              <small className="d-block text-muted mt-1">
-                                {item.description}
-                              </small>
+                              <ParentIcon name={item.icon} size={17} />
+                              <span>
+                                {item.label}
+                                <small className="d-block text-muted mt-1">
+                                  {item.description}
+                                </small>
+                              </span>
                             </span>
-                          </span>
-                          <ParentIcon name="arrow" size={15} />
-                        </Link>
-                      ))}
-                    </div>
-                  </article>
+                            <ParentIcon name="arrow" size={15} />
+                          </Link>
+                        ))}
+                      </div>
+                    </article>
+                  )}
                 </section>
 
                 <div className="parent-notice-wrap">
