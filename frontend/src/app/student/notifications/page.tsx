@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
 
@@ -238,7 +239,11 @@ export default function StudentNotificationsPage() {
         <div className="student-dashboard-content">
           <div className="container-fluid">
 
-            <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
+            {isClassFeatureRestricted(error) ? (
+              <StudentFeatureRestricted featureName="Notifications" />
+            ) : (
+              <>
+                <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-4">
               <div>
                 <h2 className="fw-bold mb-1">
                   Notifications
@@ -361,6 +366,8 @@ export default function StudentNotificationsPage() {
                   </div>
                 ))}
               </div>
+            )}
+              </>
             )}
 
           </div>
