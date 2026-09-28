@@ -1,3 +1,5 @@
+from academics.feature_access import StudentClassFeaturePermission
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -752,7 +754,8 @@ class TeacherAssignmentDetailAPIView(APIView):
         })
         
 class StudentAssignmentsAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "assignments"
 
     def get(self, request):
         user = request.user
@@ -862,7 +865,8 @@ class StudentAssignmentsAPIView(APIView):
             "assignments": data,
         })
 class StudentAssignmentSubmitAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "assignments"
 
     parser_classes = [
         MultiPartParser,
