@@ -65,6 +65,11 @@ const menuSections: MenuSection[] = [
         href: "/college-admin/teacher-assignments",
         icon: "assignments",
       },
+      {
+        label: "Class Feature Access",
+        href: "/college-admin/class-feature-access",
+        icon: "assignments",
+      },
     ],
   },
   {
