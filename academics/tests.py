@@ -3,13 +3,14 @@ from datetime import date
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from accounts.models import StudentProfile, User
+from accounts.models import ParentProfile, StudentProfile, User
 from institutions.models import Organization
 
 from .models import (
     AcademicSession,
     ClassFeatureAccess,
     ClassRoom,
+    ParentStudent,
     Section,
     StudentEnrollment,
     Subject,
@@ -308,6 +309,20 @@ class ClassFeatureAccessTests(TestCase):
             user=self.student_user,
             admission_number="FEATURE-A-001",
         )
+        self.parent_user = User.objects.create_user(
+            username="feature-parent-a",
+            password="pass",
+            role="parent",
+            organization=self.org_a,
+        )
+        self.parent_profile = ParentProfile.objects.create(
+            user=self.parent_user,
+        )
+        ParentStudent.objects.create(
+            parent=self.parent_profile,
+            student=self.student_profile,
+            relationship=ParentStudent.Relationship.GUARDIAN,
+        )
         self.session_a = AcademicSession.objects.create(
             organization=self.org_a,
             name="Feature A 2026",
@@ -356,7 +371,7 @@ class ClassFeatureAccessTests(TestCase):
         self.assertTrue(response.data["features"]["attendance"])
         self.assertTrue(response.data["features"]["results"])
 
-    def test_college_admin_can_disable_feature_for_own_class(self):
+    def test_college_admin_can_set_student_and_parent_access_independently(self):
         self.client.force_authenticate(user=self.admin_a)
 
         response = self.client.patch(
@@ -364,21 +379,37 @@ class ClassFeatureAccessTests(TestCase):
             {
                 "class_id": self.classroom_a.id,
                 "features": {
-                    "attendance": False,
-                    "results": True,
+                    "attendance": {
+                        "student_enabled": False,
+                        "parent_enabled": True,
+                    },
+                    "results": {
+                        "student_enabled": True,
+                        "parent_enabled": False,
+                    },
                 },
             },
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertFalse(
-            next(
-                item["enabled"]
-                for item in response.data["features"]
-                if item["key"] == "attendance"
-            )
+
+        attendance = next(
+            item
+            for item in response.data["features"]
+            if item["key"] == "attendance"
         )
+        self.assertFalse(attendance["student_enabled"])
+        self.assertTrue(attendance["parent_enabled"])
+        self.assertTrue(attendance["parent_supported"])
+
+        results = next(
+            item
+            for item in response.data["features"]
+            if item["key"] == "results"
+        )
+        self.assertTrue(results["student_enabled"])
+        self.assertFalse(results["parent_enabled"])
 
         self.client.force_authenticate(user=self.student_user)
         student_response = self.client.get(
@@ -387,6 +418,17 @@ class ClassFeatureAccessTests(TestCase):
         self.assertEqual(student_response.status_code, 200)
         self.assertFalse(student_response.data["features"]["attendance"])
         self.assertTrue(student_response.data["features"]["results"])
+
+        self.client.force_authenticate(user=self.parent_user)
+        parent_response = self.client.get(
+            (
+                "/api/academics/parent/student/"
+                f"{self.student_profile.id}/feature-access/"
+            )
+        )
+        self.assertEqual(parent_response.status_code, 200)
+        self.assertTrue(parent_response.data["features"]["attendance"])
+        self.assertFalse(parent_response.data["features"]["results"])
 
     def test_college_admin_cannot_manage_foreign_class(self):
         self.client.force_authenticate(user=self.admin_a)
@@ -437,5 +479,53 @@ class ClassFeatureAccessTests(TestCase):
         self.assertEqual(
             str(response.data["detail"]),
             "This feature has been restricted for your class.",
+        )
+
+    def test_student_restricted_parent_allowed_for_same_feature(self):
+        ClassFeatureAccess.objects.create(
+            organization=self.org_a,
+            classroom=self.classroom_a,
+            feature_key=ClassFeatureAccess.Feature.ATTENDANCE,
+            is_enabled=False,
+            parent_enabled=True,
+        )
+
+        self.client.force_authenticate(user=self.student_user)
+        student_response = self.client.get("/api/attendance/student/")
+        self.assertEqual(student_response.status_code, 403)
+
+        self.client.force_authenticate(user=self.parent_user)
+        parent_response = self.client.get(
+            (
+                "/api/attendance/parent/student/"
+                f"{self.student_profile.id}/"
+            )
+        )
+        self.assertEqual(parent_response.status_code, 200)
+
+    def test_parent_restricted_student_allowed_for_same_feature(self):
+        ClassFeatureAccess.objects.create(
+            organization=self.org_a,
+            classroom=self.classroom_a,
+            feature_key=ClassFeatureAccess.Feature.ATTENDANCE,
+            is_enabled=True,
+            parent_enabled=False,
+        )
+
+        self.client.force_authenticate(user=self.student_user)
+        student_response = self.client.get("/api/attendance/student/")
+        self.assertEqual(student_response.status_code, 200)
+
+        self.client.force_authenticate(user=self.parent_user)
+        parent_response = self.client.get(
+            (
+                "/api/attendance/parent/student/"
+                f"{self.student_profile.id}/"
+            )
+        )
+        self.assertEqual(parent_response.status_code, 403)
+        self.assertEqual(
+            str(parent_response.data["detail"]),
+            "This feature has been restricted for parents of this class.",
         )
 
