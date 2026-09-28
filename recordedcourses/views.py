@@ -6,7 +6,7 @@ from django.http import FileResponse
 import mimetypes
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from academics.feature_access import StudentClassFeaturePermission
+from academics.feature_access import (\n    StudentClassFeaturePermission,\n    parent_child_feature_is_enabled,\n)
 
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -358,7 +358,19 @@ class ParentRecordedCourseCatalogAPIView(APIView):
         ).prefetch_related("lessons")
         return Response({
             "children": [
-                {"id": link.student_id, "name": str(link.student), "admission_number": link.student.admission_number}
+                {
+                    "id": link.student_id,
+                    "name": str(link.student),
+                    "admission_number": link.student.admission_number,
+                    "parent_feature_enabled": (
+                        parent_child_feature_is_enabled(
+                            request.user,
+                            link.student_id,
+                            "recorded_courses",
+                        )
+                        is not False
+                    ),
+                }
                 for link in children
             ],
             "courses": [serialize_catalog_course(course) for course in courses],
@@ -427,6 +439,22 @@ class ParentRecordedCoursePurchasesAPIView(APIView):
         ).select_related("student__user").first()
         if not link:
             return Response({"detail": "Selected student is not linked to this parent."}, status=403)
+
+        if parent_child_feature_is_enabled(
+            request.user,
+            link.student_id,
+            "recorded_courses",
+        ) is False:
+            return Response(
+                {
+                    "detail": (
+                        "This feature has been restricted for parents "
+                        "of this class."
+                    )
+                },
+                status=403,
+            )
+
         course = RecordedCourse.objects.filter(
             id=request.data.get("course_id"), organization=request.user.organization, is_active=True
         ).first()
