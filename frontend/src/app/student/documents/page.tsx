@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
 
@@ -67,6 +68,8 @@ function formatDate(value: string) {
 }
 
 function formatType(type: string) {
+  const featureRestricted = isClassFeatureRestricted(error);
+
   return (
     DOCUMENT_TYPES.find((item) => item.value === type)?.label ||
     type
@@ -229,7 +232,11 @@ export default function StudentDocumentsPage() {
 
         <div className="student-dashboard-content">
           <div className="container-fluid">
-            <div className="mb-4">
+            {featureRestricted ? (
+              <StudentFeatureRestricted featureName="Documents" />
+            ) : (
+              <>
+                <div className="mb-4">
               <h2 className="fw-bold mb-1">
                 Documents
               </h2>
@@ -374,6 +381,8 @@ export default function StudentDocumentsPage() {
                     ))}
                   </div>
                 )}
+              </>
+            )}
               </>
             )}
           </div>
