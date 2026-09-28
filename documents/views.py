@@ -2,6 +2,8 @@ from pathlib import Path
 
 from django.http import FileResponse
 from django.utils import timezone
+from academics.feature_access import StudentClassFeaturePermission
+
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -612,7 +614,8 @@ class TeacherDocumentDownloadAPIView(APIView):
 
 
 class StudentDocumentListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "documents"
 
     def get(self, request):
         student_profile, enrollment = student_enrollment_for(
@@ -662,7 +665,8 @@ class StudentDocumentListAPIView(APIView):
 
 
 class StudentDocumentDownloadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "documents"
 
     def get(self, request, document_id):
         student_profile, enrollment = student_enrollment_for(
