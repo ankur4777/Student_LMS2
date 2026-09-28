@@ -170,13 +170,13 @@ export default function StudentRecordedClassesPage() {
                   </div>
 
                   {loading && (
-                    <div className="empty-state">Loading recordings...</div>
+                    <div className="empty-state justify-content-start align-items-start text-start py-3">Loading recordings...</div>
                   )}
 
                   {error && <div className="alert alert-danger">{error}</div>}
 
                   {!loading && !error && courses.length === 0 && (
-                    <div className="empty-state">
+                    <div className="empty-state justify-content-start align-items-start text-start py-3">
                       No purchased recorded courses with active access.
                     </div>
                   )}
@@ -231,7 +231,7 @@ export default function StudentRecordedClassesPage() {
                   </div>
 
                   {!loading && !error && classes.length === 0 && (
-                    <div className="empty-state">
+                    <div className="empty-state justify-content-start align-items-start text-start py-3">
                       No class recordings found.
                     </div>
                   )}
