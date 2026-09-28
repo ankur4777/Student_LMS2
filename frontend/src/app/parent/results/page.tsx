@@ -318,7 +318,7 @@ export default function ParentResultsPage() {
               />
             )}
 
-            {loadingResults ? (
+            {featureRestricted ? null : loadingResults ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center text-muted">
                   Loading results...
