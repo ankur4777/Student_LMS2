@@ -422,3 +422,20 @@ class ClassFeatureAccessTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_restricted_feature_blocks_student_backend_endpoint(self):
+        ClassFeatureAccess.objects.create(
+            organization=self.org_a,
+            classroom=self.classroom_a,
+            feature_key=ClassFeatureAccess.Feature.ATTENDANCE,
+            is_enabled=False,
+        )
+        self.client.force_authenticate(user=self.student_user)
+
+        response = self.client.get("/api/attendance/student/")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            str(response.data["detail"]),
+            "This feature has been restricted for your class.",
+        )
+
