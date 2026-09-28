@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
 
@@ -148,7 +149,10 @@ export default function StudentClassesPage() {
 
         <div className="student-dashboard-content">
           <div className="container-fluid">
-            <div className="dashboard-panel">
+            {isClassFeatureRestricted(error) ? (
+              <StudentFeatureRestricted featureName="My Classes" />
+            ) : (
+              <div className="dashboard-panel">
               <div className="panel-heading">
                 <h5>My Classes</h5>
                 <span className="badge bg-primary">{classes.length}</span>
@@ -235,7 +239,8 @@ export default function StudentClassesPage() {
                   ))}
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
