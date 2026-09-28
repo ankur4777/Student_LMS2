@@ -5,7 +5,7 @@ from django.http import HttpResponse
 from django.db.models import Prefetch, Sum
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from academics.feature_access import StudentClassFeaturePermission
+from academics.feature_access import ParentChildFeaturePermission, StudentClassFeaturePermission
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -1226,7 +1226,8 @@ class StudentFeesAPIView(APIView):
 
 
 class ParentStudentFeesAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, ParentChildFeaturePermission]
+    parent_feature_key = "fees"
 
     def get(self, request, student_id):
         user = request.user
