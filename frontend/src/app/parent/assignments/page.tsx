@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import ParentFeatureRestricted, { isParentClassFeatureRestricted } from "@/components/parent/ParentFeatureRestricted";
 
 import "../../student/dashboard/dashboard.css";
 
@@ -282,6 +283,11 @@ export default function ParentAssignmentsPage() {
     return "bg-secondary";
   };
 
+  const selectedChild = children.find(
+    (child) => String(child.student_profile_id) === selectedChildId
+  );
+  const featureRestricted = isParentClassFeatureRestricted(error);
+
   return (
     <div className="student-dashboard">
       <ParentSidebar />
@@ -309,7 +315,7 @@ export default function ParentAssignmentsPage() {
               </p>
             </div>
 
-            {error && (
+            {error && !featureRestricted && (
               <div className="alert alert-danger">
                 {error}
               </div>
@@ -355,6 +361,13 @@ export default function ParentAssignmentsPage() {
                 </div>
               </div>
             </div>
+
+            {featureRestricted && (
+              <ParentFeatureRestricted
+                featureName="Assignments"
+                childName={selectedChild?.name}
+              />
+            )}
 
             {loadingAssignments ? (
               <div className="card border-0 shadow-sm">
