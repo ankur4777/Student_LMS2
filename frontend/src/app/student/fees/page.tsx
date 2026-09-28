@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 import { useCurrency } from "@/hooks/useCurrency";
 import "../dashboard/dashboard.css";
 
@@ -83,6 +84,10 @@ export default function StudentFeesPage() {
     <main className="student-dashboard-main">
       <StudentTopbar name={student.name || student.username || "Student"} organization={student.organization || ""} />
       <div className="student-dashboard-content"><div className="container-fluid">
+        {isClassFeatureRestricted(error) ? (
+          <StudentFeatureRestricted featureName="Fees" />
+        ) : (
+          <>
         <div className="dashboard-panel mb-4">
           <div className="panel-heading"><h5>My Fees</h5></div>
           {loading && <div className="empty-state">Loading fees...</div>}
@@ -111,6 +116,8 @@ export default function StudentFeesPage() {
           <div className="table-responsive"><table className="table align-middle"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Installment</th><th>Reference</th><th>Receipt</th></tr></thead>
           <tbody>{fee.payments?.length ? fee.payments.map(p => <tr key={p.id}><td>{p.payment_date}</td><td>{money(p.amount)}</td><td>{label(p.payment_method)}</td><td>{p.installment?.name || "General"}</td><td>{p.reference_number || "-"}</td><td><button className="btn btn-outline-secondary btn-sm" onClick={() => downloadPdf(`/api/fees/documents/receipt/${p.id}/`, `fee-receipt-${p.id}.pdf`)}>Download</button></td></tr>) : <tr><td colSpan={6} className="text-muted">No payments recorded.</td></tr>}</tbody></table></div>
         </div>)}
+          </>
+        )}
       </div></div>
     </main>
   </div>;
