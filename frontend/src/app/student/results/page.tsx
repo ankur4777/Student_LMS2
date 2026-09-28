@@ -318,6 +318,8 @@ export default function StudentResultsPage() {
                 </div>
               ))
             )}
+              </>
+            )}
 
           </div>
         </div>
