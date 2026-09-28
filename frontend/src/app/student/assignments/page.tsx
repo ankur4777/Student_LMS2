@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
 
@@ -329,7 +330,9 @@ export default function StudentAssignmentsPage() {
     const status = getAssignmentStatus(assignment);
 
     if (status === "graded") {
-      return (
+      const featureRestricted = isClassFeatureRestricted(error);
+
+  return (
         <span className="badge bg-primary">
           Graded
         </span>
@@ -371,7 +374,11 @@ export default function StudentAssignmentsPage() {
         <div className="student-dashboard-content">
           <div className="container-fluid">
 
-            <div className="mb-4">
+            {featureRestricted ? (
+              <StudentFeatureRestricted featureName="Assignments" />
+            ) : (
+              <>
+                <div className="mb-4">
               <h2 className="fw-bold mb-1">
                 Assignments
               </h2>
