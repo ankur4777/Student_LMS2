@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 
 from academics.models import (
     AcademicSession,
+    ClassFeatureAccess,
     ClassRoom,
     ParentStudent,
     Section,
@@ -1666,3 +1667,139 @@ class CollegeAdminDashboardAnalyticsTests(TestCase):
             0,
         )
         self.assertEqual(response.data["assignments"]["pending"], 0)
+
+class StudentDashboardFeatureAccessTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Dashboard Feature College",
+            code="dashboard-feature-college",
+        )
+        self.student_user = User.objects.create_user(
+            username="dashboard-student",
+            password="pass",
+            role="student",
+            organization=self.organization,
+        )
+        self.student = StudentProfile.objects.create(
+            user=self.student_user,
+            admission_number="DASH-001",
+        )
+        self.teacher_user = User.objects.create_user(
+            username="dashboard-teacher",
+            password="pass",
+            role="teacher",
+            organization=self.organization,
+        )
+        self.teacher = TeacherProfile.objects.create(
+            user=self.teacher_user,
+            employee_id="DASH-T-001",
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="Dashboard 2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Grade 12",
+        )
+        self.section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.subject = Subject.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="Physics",
+            code="PHY",
+        )
+        self.assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher,
+            subject=self.subject,
+            section=self.section,
+            is_active=True,
+        )
+        StudentEnrollment.objects.create(
+            student=self.student,
+            section=self.section,
+            roll_number="123",
+            is_active=True,
+        )
+        self.attendance_session = AttendanceSession.objects.create(
+            organization=self.organization,
+            section=self.section,
+            subject=self.subject,
+            teacher=self.teacher,
+            date=timezone.localdate(),
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+        )
+        StudentAttendance.objects.create(
+            attendance_session=self.attendance_session,
+            student=self.student,
+            status=StudentAttendance.Status.PRESENT,
+        )
+        LiveClass.objects.create(
+            organization=self.organization,
+            teacher_assignment=self.assignment,
+            title="Physics Live",
+            class_date=timezone.localdate(),
+            start_time=time(11, 0),
+            end_time=time(12, 0),
+            status=LiveClass.Status.SCHEDULED,
+        )
+        self.client.force_authenticate(user=self.student_user)
+
+    def test_dashboard_features_default_to_enabled(self):
+        response = self.client.get(
+            "/api/accounts/student/dashboard/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["feature_access"]["classes"])
+        self.assertTrue(response.data["feature_access"]["attendance"])
+        self.assertEqual(len(response.data["today_classes"]), 1)
+        self.assertEqual(response.data["attendance"]["total_classes"], 1)
+        self.assertEqual(response.data["attendance"]["present"], 1)
+
+    def test_dashboard_hides_restricted_feature_data(self):
+        ClassFeatureAccess.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            feature_key=ClassFeatureAccess.Feature.CLASSES,
+            is_enabled=False,
+        )
+        ClassFeatureAccess.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            feature_key=ClassFeatureAccess.Feature.RECORDED_CLASSES,
+            is_enabled=False,
+        )
+        ClassFeatureAccess.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            feature_key=ClassFeatureAccess.Feature.ATTENDANCE,
+            is_enabled=False,
+        )
+
+        response = self.client.get(
+            "/api/accounts/student/dashboard/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.data["feature_access"]["classes"])
+        self.assertFalse(
+            response.data["feature_access"]["recorded_classes"]
+        )
+        self.assertFalse(response.data["feature_access"]["attendance"])
+        self.assertEqual(response.data["today_classes"], [])
+        self.assertEqual(response.data["upcoming_classes"], [])
+        self.assertEqual(response.data["recorded_classes"], [])
+        self.assertEqual(response.data["attendance"]["total_classes"], 0)
+        self.assertEqual(response.data["attendance"]["present"], 0)
+
