@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 export default function StudentRecordingPage() {
   const params = useParams();
@@ -69,8 +70,10 @@ export default function StudentRecordingPage() {
         }
 
         if (response.status === 403) {
+          const result = await response.json().catch(() => ({}));
           setError(
-            "Access denied. You are not authorized to view this recording."
+            result?.detail ||
+              "Access denied. You are not authorized to view this recording."
           );
           return;
         }
@@ -118,16 +121,20 @@ export default function StudentRecordingPage() {
   if (error) {
     return (
       <div className="container py-5">
-        <div className="alert alert-danger">
-          {error}
-        </div>
+        {isClassFeatureRestricted(error) ? (
+          <StudentFeatureRestricted featureName="Recorded Classes" />
+        ) : (
+          <>
+            <div className="alert alert-danger">{error}</div>
 
-        <button
-          className="btn btn-primary"
-          onClick={() => router.push("/student/dashboard")}
-        >
-          Back to Dashboard
-        </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => router.push("/student/dashboard")}
+            >
+              Back to Dashboard
+            </button>
+          </>
+        )}
       </div>
     );
   }
