@@ -183,7 +183,7 @@ def parent_child_feature_is_enabled(user, student_id, feature_key):
         return None
 
     if not classroom:
-        return False
+        return None
 
     return feature_map.get(feature_key, True)
 
