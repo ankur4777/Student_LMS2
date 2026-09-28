@@ -24,6 +24,7 @@ from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import TeacherProfile, ParentProfile
+from academics.feature_access import get_student_feature_map
 from academics.models import (
     AcademicSession,
     ClassRoom,
@@ -123,6 +124,14 @@ class StudentDashboardAPIView(APIView):
         ).values('section_id')
         today = timezone.localdate()
 
+        feature_access, _ = get_student_feature_map(user)
+        classes_enabled = feature_access.get("classes", True)
+        recorded_classes_enabled = feature_access.get(
+            "recorded_classes",
+            True,
+        )
+        attendance_enabled = feature_access.get("attendance", True)
+
         # Today's classes
         today_classes = LiveClass.objects.filter(
             organization=user.organization,
@@ -133,6 +142,9 @@ class StudentDashboardAPIView(APIView):
             'teacher_assignment__subject',
             'teacher_assignment__section'
         ).order_by('start_time')
+
+        if not classes_enabled:
+            today_classes = LiveClass.objects.none()
 
         # Upcoming classes
         upcoming_classes = LiveClass.objects.filter(
@@ -149,6 +161,9 @@ class StudentDashboardAPIView(APIView):
             'start_time'
         )[:5]
 
+        if not classes_enabled:
+            upcoming_classes = LiveClass.objects.none()
+
         # Available recorded classes
         recorded_classes = LiveClass.objects.filter(
             organization=user.organization,
@@ -164,11 +179,17 @@ class StudentDashboardAPIView(APIView):
             'recording'
         ).order_by('-class_date')[:5]
 
+        if not recorded_classes_enabled:
+            recorded_classes = LiveClass.objects.none()
+
         # Attendance
         attendance_records = StudentAttendance.objects.filter(
             student=student_profile,
             attendance_session__organization=user.organization
         )
+
+        if not attendance_enabled:
+            attendance_records = StudentAttendance.objects.none()
 
         total_classes = attendance_records.count()
 
@@ -240,6 +261,8 @@ class StudentDashboardAPIView(APIView):
                 recorded_classes,
                 many=True
             ).data,
+
+            'feature_access': feature_access,
         })
 
 
