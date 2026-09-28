@@ -4,14 +4,26 @@ from .views import (
     CollegeAdminAcademicSessionDetailAPIView,
     CollegeAdminAcademicSessionsAPIView,
     CollegeAdminClassDetailAPIView,
+    CollegeAdminClassFeatureAccessAPIView,
     CollegeAdminClassesAPIView,
     CollegeAdminSectionDetailAPIView,
     CollegeAdminSectionsAPIView,
     CollegeAdminSubjectDetailAPIView,
     CollegeAdminSubjectsAPIView,
+    StudentFeatureAccessAPIView,
 )
 
 urlpatterns = [
+    path(
+        "college-admin/class-feature-access/",
+        CollegeAdminClassFeatureAccessAPIView.as_view(),
+        name="college-admin-class-feature-access",
+    ),
+    path(
+        "student/feature-access/",
+        StudentFeatureAccessAPIView.as_view(),
+        name="student-feature-access",
+    ),
     path(
         "college-admin/academic-sessions/",
         CollegeAdminAcademicSessionsAPIView.as_view(),
