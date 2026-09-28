@@ -11,9 +11,15 @@ from .views import (
     CollegeAdminSubjectDetailAPIView,
     CollegeAdminSubjectsAPIView,
     StudentFeatureAccessAPIView,
+    ParentStudentFeatureAccessAPIView,
 )
 
 urlpatterns = [
+    path(
+        "parent/student/<int:student_id>/feature-access/",
+        ParentStudentFeatureAccessAPIView.as_view(),
+        name="parent-student-feature-access",
+    ),
     path(
         "college-admin/class-feature-access/",
         CollegeAdminClassFeatureAccessAPIView.as_view(),
