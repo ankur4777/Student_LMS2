@@ -5,7 +5,11 @@ from django.http import HttpResponse
 from django.db.models import Prefetch, Sum
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from academics.feature_access import (\n    ParentChildFeaturePermission,\n    StudentClassFeaturePermission,\n    parent_child_feature_is_enabled,\n)
+from academics.feature_access import (
+    ParentChildFeaturePermission,
+    StudentClassFeaturePermission,
+    parent_child_feature_is_enabled,
+)
 
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
