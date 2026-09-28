@@ -259,5 +259,8 @@ class ClassFeatureAccess(models.Model):
     def __str__(self):
         student_state = "enabled" if self.is_enabled else "disabled"
         parent_state = "enabled" if self.parent_enabled else "disabled"
-        return (\n            f"{self.classroom} - {self.get_feature_key_display()} - "\n            f"student:{student_state} parent:{parent_state}"\n        )
+        return (
+            f"{self.classroom} - {self.get_feature_key_display()} - "
+            f"student:{student_state} parent:{parent_state}"
+        )
 
