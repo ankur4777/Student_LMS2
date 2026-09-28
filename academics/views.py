@@ -6,8 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .feature_access import FEATURE_DEFINITIONS, get_student_feature_map
-from .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
+from .feature_access import (\n    FEATURE_DEFINITIONS,\n    PARENT_FEATURE_KEYS,\n    get_parent_child_feature_map,\n    get_student_feature_map,\n)\nfrom .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
 
 
 def college_admin_organization(user):
@@ -1004,22 +1003,42 @@ class CollegeAdminSubjectDetailAPIView(APIView):
         })
 
 def serialize_class_feature_access(classroom, organization):
-    access_by_key = dict(
-        ClassFeatureAccess.objects.filter(
+    access_by_key = {
+        item.feature_key: item
+        for item in ClassFeatureAccess.objects.filter(
             organization=organization,
             classroom=classroom,
-        ).values_list("feature_key", "is_enabled")
-    )
+        )
+    }
+
+    features = []
+
+    for definition in FEATURE_DEFINITIONS:
+        access = access_by_key.get(definition["key"])
+        student_enabled = (
+            access.is_enabled
+            if access
+            else True
+        )
+        parent_enabled = (
+            access.parent_enabled
+            if access
+            else True
+        )
+
+        features.append({
+            **definition,
+            "enabled": student_enabled,
+            "student_enabled": student_enabled,
+            "parent_enabled": parent_enabled,
+            "parent_supported": (
+                definition["key"] in PARENT_FEATURE_KEYS
+            ),
+        })
 
     return {
         "class": serialize_classroom(classroom),
-        "features": [
-            {
-                **definition,
-                "enabled": access_by_key.get(definition["key"], True),
-            }
-            for definition in FEATURE_DEFINITIONS
-        ],
+        "features": features,
     }
 
 
@@ -1084,7 +1103,11 @@ class CollegeAdminClassFeatureAccessAPIView(APIView):
 
         if not isinstance(features, dict):
             return Response(
-                {"detail": "features must be an object of feature booleans."},
+                {
+                    "detail": (
+                        "features must be an object keyed by feature name."
+                    )
+                },
                 status=400,
             )
 
@@ -1105,22 +1128,82 @@ class CollegeAdminClassFeatureAccessAPIView(APIView):
                 status=400,
             )
 
-        invalid_values = [
-            key
-            for key, value in features.items()
-            if not isinstance(value, bool)
-        ]
+        normalized = {}
 
-        if invalid_values:
-            return Response(
-                {
-                    "detail": (
-                        "Feature values must be true or false: "
-                        + ", ".join(sorted(invalid_values))
+        for feature_key, value in features.items():
+            if isinstance(value, bool):
+                normalized[feature_key] = {
+                    "student_enabled": value,
+                }
+                continue
+
+            if not isinstance(value, dict):
+                return Response(
+                    {
+                        "detail": (
+                            f"{feature_key} must be a boolean or an "
+                            "object containing access booleans."
+                        )
+                    },
+                    status=400,
+                )
+
+            feature_values = {}
+
+            if "student_enabled" in value:
+                if not isinstance(value["student_enabled"], bool):
+                    return Response(
+                        {
+                            "detail": (
+                                f"{feature_key}.student_enabled must "
+                                "be true or false."
+                            )
+                        },
+                        status=400,
                     )
-                },
-                status=400,
-            )
+                feature_values["student_enabled"] = value[
+                    "student_enabled"
+                ]
+
+            if "parent_enabled" in value:
+                if feature_key not in PARENT_FEATURE_KEYS:
+                    return Response(
+                        {
+                            "detail": (
+                                f"Parent access is not available for "
+                                f"{feature_key}."
+                            )
+                        },
+                        status=400,
+                    )
+
+                if not isinstance(value["parent_enabled"], bool):
+                    return Response(
+                        {
+                            "detail": (
+                                f"{feature_key}.parent_enabled must "
+                                "be true or false."
+                            )
+                        },
+                        status=400,
+                    )
+
+                feature_values["parent_enabled"] = value[
+                    "parent_enabled"
+                ]
+
+            if not feature_values:
+                return Response(
+                    {
+                        "detail": (
+                            f"{feature_key} must include "
+                            "student_enabled or parent_enabled."
+                        )
+                    },
+                    status=400,
+                )
+
+            normalized[feature_key] = feature_values
 
         organization, classroom = self.get_classroom(
             request.user,
@@ -1144,19 +1227,34 @@ class CollegeAdminClassFeatureAccessAPIView(APIView):
             )
 
         with transaction.atomic():
-            for feature_key, is_enabled in features.items():
-                ClassFeatureAccess.objects.update_or_create(
+            for feature_key, values in normalized.items():
+                access, _ = ClassFeatureAccess.objects.get_or_create(
                     organization=organization,
                     classroom=classroom,
                     feature_key=feature_key,
-                    defaults={"is_enabled": is_enabled},
                 )
+
+                update_fields = []
+
+                if "student_enabled" in values:
+                    access.is_enabled = values["student_enabled"]
+                    update_fields.append("is_enabled")
+
+                if "parent_enabled" in values:
+                    access.parent_enabled = values["parent_enabled"]
+                    update_fields.append("parent_enabled")
+
+                if update_fields:
+                    update_fields.append("updated_at")
+                    access.save(update_fields=update_fields)
 
         response_data = serialize_class_feature_access(
             classroom,
             organization,
         )
-        response_data["message"] = "Class feature access updated successfully."
+        response_data["message"] = (
+            "Class feature access updated successfully."
+        )
 
         return Response(response_data)
 
@@ -1189,6 +1287,55 @@ class StudentFeatureAccessAPIView(APIView):
                         "id": classroom.id,
                         "name": classroom.name,
                         "academic_session": classroom.academic_session.name,
+                    }
+                    if classroom
+                    else None
+                ),
+                "features": features,
+            }
+        )
+
+class ParentStudentFeatureAccessAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_id):
+        user = request.user
+
+        if (
+            user.role != "parent"
+            or not user.is_active
+            or not user.organization
+            or not user.organization.is_active
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Only active parents can view child feature access."
+                    )
+                },
+                status=403,
+            )
+
+        features, classroom = get_parent_child_feature_map(
+            user,
+            student_id,
+        )
+
+        if features is None:
+            return Response(
+                {"detail": "Student is not linked to this parent."},
+                status=403,
+            )
+
+        return Response(
+            {
+                "class": (
+                    {
+                        "id": classroom.id,
+                        "name": classroom.name,
+                        "academic_session": (
+                            classroom.academic_session.name
+                        ),
                     }
                     if classroom
                     else None
