@@ -19,12 +19,11 @@ import certifi
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-# mysqlclient can hit Windows TLS/SChannel errors with TiDB Cloud.
-# PyMySQL is supported by django-tidb and works reliably with TiDB TLS.
-if os.environ.get('DB_ENGINE', '').strip() == 'django_tidb':
-    import pymysql
+# Use PyMySQL as Django's MySQL-compatible driver.
+# This avoids native mysqlclient build/TLS issues on Windows and Vercel.
+import pymysql
 
-    pymysql.install_as_MySQLdb()
+pymysql.install_as_MySQLdb()
 PRIVATE_MEDIA_ROOT = Path(os.environ.get('PRIVATE_MEDIA_ROOT', BASE_DIR / 'private_media'))
 
 
