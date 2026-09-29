@@ -13,3 +13,4 @@ reportlab==4.4.4
 openpyxl==3.1.5
 gunicorn
 whitenoise
+django-tidb~=5.2.0
