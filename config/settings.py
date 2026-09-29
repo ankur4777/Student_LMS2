@@ -17,6 +17,13 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
+
+# mysqlclient can hit Windows TLS/SChannel errors with TiDB Cloud.
+# PyMySQL is supported by django-tidb and works reliably with TiDB TLS.
+if os.environ.get('DB_ENGINE', '').strip() == 'django_tidb':
+    import pymysql
+
+    pymysql.install_as_MySQLdb()
 PRIVATE_MEDIA_ROOT = Path(os.environ.get('PRIVATE_MEDIA_ROOT', BASE_DIR / 'private_media'))
 
 
@@ -151,7 +158,6 @@ DB_CA_PATH = os.environ.get('DB_CA_PATH', '').strip()
 # automatically. When an explicit CA path is provided, verify the server
 # identity using that CA certificate.
 if DB_CA_PATH:
-    DATABASES['default']['OPTIONS']['ssl_mode'] = 'VERIFY_IDENTITY'
     DATABASES['default']['OPTIONS']['ssl'] = {
         'ca': DB_CA_PATH,
     }
