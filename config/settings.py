@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import certifi
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -154,12 +155,11 @@ DATABASES = {
 
 DB_CA_PATH = os.environ.get('DB_CA_PATH', '').strip()
 
-# TiDB Cloud Starter requires TLS. mysqlclient normally negotiates TLS
-# automatically. When an explicit CA path is provided, verify the server
-# identity using that CA certificate.
-if DB_CA_PATH:
+# TiDB Cloud Starter requires TLS. Use an explicit local CA path when supplied;
+# otherwise use certifi's portable CA bundle (works well on Vercel/Linux).
+if DATABASES['default']['ENGINE'] == 'django_tidb':
     DATABASES['default']['OPTIONS']['ssl'] = {
-        'ca': DB_CA_PATH,
+        'ca': DB_CA_PATH or certifi.where(),
     }
 
 
