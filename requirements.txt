@@ -15,3 +15,4 @@ gunicorn
 whitenoise
 django-tidb~=5.2.0
 PyMySQL==1.1.2
+certifi
