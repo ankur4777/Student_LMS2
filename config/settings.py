@@ -145,6 +145,11 @@ DATABASES = {
 
 DB_CA_PATH = os.environ.get('DB_CA_PATH', '').strip()
 
+if DATABASES['default']['ENGINE'] == 'django_tidb':
+    # TiDB Cloud Starter requires encrypted transport. Force TLS even on
+    # clients/environments where mysqlclient does not negotiate it by default.
+    DATABASES['default']['OPTIONS']['ssl_mode'] = 'REQUIRED'
+
 if DB_CA_PATH:
     DATABASES['default']['OPTIONS']['ssl_mode'] = 'VERIFY_IDENTITY'
     DATABASES['default']['OPTIONS']['ssl'] = {
