@@ -128,7 +128,10 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
+        'ENGINE': os.environ.get(
+            'DB_ENGINE',
+            'django.db.backends.mysql',
+        ),
         'NAME': os.environ.get('DB_NAME', 'student_lms'),
         'USER': os.environ.get('DB_USER', 'lms_user'),
         'PASSWORD': os.environ.get('DB_PASSWORD', '1234567890'),
@@ -139,6 +142,14 @@ DATABASES = {
         },
     }
 }
+
+DB_CA_PATH = os.environ.get('DB_CA_PATH', '').strip()
+
+if DB_CA_PATH:
+    DATABASES['default']['OPTIONS']['ssl_mode'] = 'VERIFY_IDENTITY'
+    DATABASES['default']['OPTIONS']['ssl'] = {
+        'ca': DB_CA_PATH,
+    }
 
 
 # Password validation
@@ -201,7 +212,7 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
 
-# Render and other reverse proxies terminate HTTPS before forwarding to Django.
+# Hosting platforms such as Vercel and Render terminate HTTPS before forwarding to Django.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 REST_FRAMEWORK = {
