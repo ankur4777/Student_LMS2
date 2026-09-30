@@ -68,6 +68,46 @@ function saveShownIds(key: string, ids: Set<number>) {
   sessionStorage.setItem(key, JSON.stringify(Array.from(ids)));
 }
 
+async function refreshStoredAccessToken(tokenKey: string) {
+  const refreshTokenKey = tokenKey.replace(
+    "_access_token",
+    "_refresh_token"
+  );
+  const refresh = localStorage.getItem(refreshTokenKey);
+
+  if (!refresh) {
+    return "";
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/auth/token/refresh/`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refresh }),
+      }
+    );
+
+    if (!response.ok) {
+      return "";
+    }
+
+    const result = await response.json();
+    const access = String(result.access || "");
+
+    if (access) {
+      localStorage.setItem(tokenKey, access);
+    }
+
+    return access;
+  } catch {
+    return "";
+  }
+}
+
 function timeLabel(value: string) {
   const created = new Date(value).getTime();
   const diffSeconds = Math.max(
@@ -116,16 +156,26 @@ export default function NotificationPopup({
       return;
     }
 
-    const response = await fetch(`${API_BASE}/api/notifications/`, {
+    let response = await fetch(`${API_BASE}/api/notifications/`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
     if (response.status === 401) {
-      stoppedRef.current = true;
-      router.replace(loginPath);
-      return;
+      const refreshedAccess = await refreshStoredAccessToken(tokenKey);
+
+      if (!refreshedAccess) {
+        stoppedRef.current = true;
+        router.replace(loginPath);
+        return;
+      }
+
+      response = await fetch(`${API_BASE}/api/notifications/`, {
+        headers: {
+          Authorization: `Bearer ${refreshedAccess}`,
+        },
+      });
     }
 
     if (response.status === 403) {
