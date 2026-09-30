@@ -122,9 +122,14 @@ export default function NotificationPopup({
       },
     });
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       stoppedRef.current = true;
       router.replace(loginPath);
+      return;
+    }
+
+    if (response.status === 403) {
+      stoppedRef.current = true;
       return;
     }
 
