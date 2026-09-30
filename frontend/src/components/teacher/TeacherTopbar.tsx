@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import RoleSessionKeeper from "@/components/auth/RoleSessionKeeper";
+
 import NotificationPopup from "@/components/notifications/NotificationPopup";
 import TeacherIcon from "@/components/teacher/TeacherIcon";
 
@@ -34,6 +36,13 @@ export default function TeacherTopbar({
 
   return (
     <>
+      <RoleSessionKeeper
+        accessTokenKey="teacher_access_token"
+        refreshTokenKey="teacher_refresh_token"
+        userStorageKey="teacher_user"
+        loginPath="/teacher/login"
+      />
+
       <NotificationPopup
         role="teacher"
         tokenKey="teacher_access_token"
