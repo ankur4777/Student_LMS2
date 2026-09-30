@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import RoleSessionKeeper from "@/components/auth/RoleSessionKeeper";
+
 import NotificationPopup from "@/components/notifications/NotificationPopup";
 import StudentIcon from "@/components/student/StudentIcon";
 
@@ -34,6 +36,13 @@ export default function StudentTopbar({
 
   return (
     <>
+      <RoleSessionKeeper
+        accessTokenKey="student_access_token"
+        refreshTokenKey="student_refresh_token"
+        userStorageKey="student_user"
+        loginPath="/student/login"
+      />
+
       <NotificationPopup
         role="student"
         tokenKey="student_access_token"
