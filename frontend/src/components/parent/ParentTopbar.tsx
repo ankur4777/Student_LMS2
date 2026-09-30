@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import RoleSessionKeeper from "@/components/auth/RoleSessionKeeper";
+
 import NotificationPopup from "@/components/notifications/NotificationPopup";
 import ParentIcon from "@/components/parent/ParentIcon";
 
@@ -34,6 +36,13 @@ export default function ParentTopbar({
 
   return (
     <>
+      <RoleSessionKeeper
+        accessTokenKey="parent_access_token"
+        refreshTokenKey="parent_refresh_token"
+        userStorageKey="parent_user"
+        loginPath="/parent/login"
+      />
+
       <NotificationPopup
         role="parent"
         tokenKey="parent_access_token"
