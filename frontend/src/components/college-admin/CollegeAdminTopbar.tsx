@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import RoleSessionKeeper from "@/components/auth/RoleSessionKeeper";
+
 import NotificationPopup from "@/components/notifications/NotificationPopup";
 
 interface CollegeAdminTopbarProps {
@@ -25,6 +27,13 @@ export default function CollegeAdminTopbar({
 
   return (
     <>
+      <RoleSessionKeeper
+        accessTokenKey="college_admin_access_token"
+        refreshTokenKey="college_admin_refresh_token"
+        userStorageKey="college_admin_user"
+        loginPath="/college-admin/login"
+      />
+
       <NotificationPopup
         role="college_admin"
         tokenKey="college_admin_access_token"
