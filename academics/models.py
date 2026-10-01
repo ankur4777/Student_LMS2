@@ -151,6 +151,36 @@ class TeacherAssignment(models.Model):
         return f"{self.teacher} - {self.subject} - {self.section}"
 
 
+class RollNumberSequence(models.Model):
+    organization = models.ForeignKey(
+        'institutions.Organization',
+        on_delete=models.CASCADE,
+        related_name='roll_number_sequences'
+    )
+
+    academic_session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.CASCADE,
+        related_name='roll_number_sequences'
+    )
+
+    next_number = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('organization', 'academic_session'),
+                name='uniq_roll_sequence_org_session',
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.organization.name} - "
+            f"{self.academic_session.name} - {self.next_number}"
+        )
+
+
 class StudentEnrollment(models.Model):
     student = models.ForeignKey(
         'accounts.StudentProfile',
