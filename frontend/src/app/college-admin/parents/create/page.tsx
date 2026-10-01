@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildUsernameSuggestion } from "@/lib/username";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
@@ -37,6 +38,7 @@ export default function CollegeAdminCreateParentPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [occupation, setOccupation] = useState("");
@@ -44,6 +46,12 @@ export default function CollegeAdminCreateParentPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!usernameManuallyEdited) {
+      setUsername(buildUsernameSuggestion(firstName, lastName));
+    }
+  }, [firstName, lastName, usernameManuallyEdited]);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -86,6 +94,7 @@ export default function CollegeAdminCreateParentPage() {
             first_name: firstName,
             last_name: lastName,
             username,
+            username_auto: !usernameManuallyEdited,
             email,
             phone,
             occupation,
@@ -155,9 +164,15 @@ export default function CollegeAdminCreateParentPage() {
                       <input
                         className="form-control"
                         value={username}
-                        onChange={(event) => setUsername(event.target.value)}
+                        onChange={(event) => {
+                          setUsername(event.target.value);
+                          setUsernameManuallyEdited(true);
+                        }}
                         required
                       />
+                      <div className="form-text">
+                        Auto generated from the parent's name. You can edit it before creating the account.
+                      </div>
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Email</label>
