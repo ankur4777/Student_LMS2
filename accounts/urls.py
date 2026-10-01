@@ -33,9 +33,27 @@ from .views import (
     ParentLoginAPIView,
     ParentChildrenAPIView,
     ParentProfileAPIView,
+    PasswordResetConfirmAPIView,
+    PasswordResetRequestAPIView,
+    ChangePasswordAPIView,
 )
 
 urlpatterns = [
+    path(
+        'change-password/',
+        ChangePasswordAPIView.as_view(),
+        name='change-password',
+    ),
+    path(
+        'password-reset/request/',
+        PasswordResetRequestAPIView.as_view(),
+        name='password-reset-request',
+    ),
+    path(
+        'password-reset/confirm/',
+        PasswordResetConfirmAPIView.as_view(),
+        name='password-reset-confirm',
+    ),
     path(
         'student/dashboard/',
         StudentDashboardAPIView.as_view(),
