@@ -1803,3 +1803,117 @@ class StudentDashboardFeatureAccessTests(TestCase):
         self.assertEqual(response.data["attendance"]["total_classes"], 0)
         self.assertEqual(response.data["attendance"]["present"], 0)
 
+
+
+
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    PASSWORD_RESET_FRONTEND_URL="http://localhost:3000",
+)
+class PasswordManagementTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="password-user",
+            email="password-user@example.com",
+            password="OldPassword123!",
+            role="student",
+        )
+
+    def test_authenticated_user_can_change_password(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/accounts/change-password/",
+            {
+                "current_password": "OldPassword123!",
+                "new_password": "NewPassword456!",
+                "confirm_password": "NewPassword456!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(
+            self.user.check_password("NewPassword456!")
+        )
+
+    def test_change_password_rejects_wrong_current_password(self):
+        self.client.force_authenticate(user=self.user)
+
+        response = self.client.post(
+            "/api/accounts/change-password/",
+            {
+                "current_password": "WrongPassword123!",
+                "new_password": "NewPassword456!",
+                "confirm_password": "NewPassword456!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.user.refresh_from_db()
+        self.assertTrue(
+            self.user.check_password("OldPassword123!")
+        )
+
+    def test_password_reset_request_sends_role_specific_email(self):
+        from django.core import mail
+
+        response = self.client.post(
+            "/api/accounts/password-reset/request/",
+            {
+                "email": "password-user@example.com",
+                "role": "student",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(
+            "/student/reset-password?uid=",
+            mail.outbox[0].body,
+        )
+
+    def test_password_reset_confirm_changes_password(self):
+        from django.contrib.auth.tokens import default_token_generator
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+
+        uid = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+
+        response = self.client.post(
+            "/api/accounts/password-reset/confirm/",
+            {
+                "uid": uid,
+                "token": token,
+                "role": "student",
+                "new_password": "ResetPassword789!",
+                "confirm_password": "ResetPassword789!",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertTrue(
+            self.user.check_password("ResetPassword789!")
+        )
+
+    def test_password_reset_request_does_not_reveal_missing_account(self):
+        from django.core import mail
+
+        response = self.client.post(
+            "/api/accounts/password-reset/request/",
+            {
+                "email": "missing@example.com",
+                "role": "student",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
