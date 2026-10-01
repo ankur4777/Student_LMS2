@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import ChangePasswordCard from "@/components/auth/ChangePasswordCard";
 
 import "../../teacher/dashboard/dashboard.css";
 
@@ -648,6 +649,13 @@ export default function CollegeAdminProfilePage() {
                 )}
               </>
             ) : null}
+      <ChangePasswordCard
+        accessTokenKey="college_admin_access_token"
+        refreshTokenKey="college_admin_refresh_token"
+        userStorageKey="college_admin_user"
+        loginPath="/college-admin/login"
+      />
+
           </div>
         </div>
       </main>
