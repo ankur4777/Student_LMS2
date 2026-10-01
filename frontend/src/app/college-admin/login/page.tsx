@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function CollegeAdminLoginPage() {
   const router = useRouter();
@@ -117,6 +118,12 @@ export default function CollegeAdminLoginPage() {
                 }
                 required
               />
+            </div>
+
+            <div className="text-end mb-3">
+              <Link href="/college-admin/forgot-password" className="text-decoration-none">
+                Forgot password?
+              </Link>
             </div>
 
             <button
