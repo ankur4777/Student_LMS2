@@ -25,6 +25,7 @@ interface Student {
 interface AcademicSession {
   id: number;
   name: string;
+  next_roll_number?: string;
 }
 
 interface ClassRoom {
@@ -69,6 +70,7 @@ export default function CreateEnrollmentPage() {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [rollNumber, setRollNumber] = useState("");
+  const [rollNumberManuallyEdited, setRollNumberManuallyEdited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -187,6 +189,7 @@ export default function CreateEnrollmentPage() {
             student_id: studentId,
             section_id: sectionId,
             roll_number: rollNumber,
+            roll_number_auto: !rollNumberManuallyEdited,
           }),
         }
       );
@@ -262,9 +265,20 @@ export default function CreateEnrollmentPage() {
                           className="form-select"
                           value={sessionId}
                           onChange={(event) => {
-                            setSessionId(event.target.value);
+                            const nextSessionId = event.target.value;
+                            setSessionId(nextSessionId);
                             setClassId("");
                             setSectionId("");
+
+                            if (!rollNumberManuallyEdited) {
+                              const selected = sessions.find(
+                                (item) =>
+                                  item.id === Number(nextSessionId)
+                              );
+                              setRollNumber(
+                                selected?.next_roll_number || ""
+                              );
+                            }
                           }}
                           required
                         >
@@ -318,10 +332,15 @@ export default function CreateEnrollmentPage() {
                         <input
                           className="form-control"
                           value={rollNumber}
-                          onChange={(event) =>
-                            setRollNumber(event.target.value)
-                          }
+                          onChange={(event) => {
+                            setRollNumber(event.target.value);
+                            setRollNumberManuallyEdited(true);
+                          }}
+                          required
                         />
+                        <div className="form-text">
+                          Auto generated for the selected academic session. You can edit it before saving.
+                        </div>
                       </div>
                       <div className="col-12 d-flex gap-2">
                         <button
