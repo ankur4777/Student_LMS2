@@ -2008,7 +2008,20 @@ class CollegeAdminTeachersAPIView(APIView):
                 status=403
             )
 
-        username = request.data.get("username", "").strip()
+        requested_username = str(
+            request.data.get("username", "") or ""
+        ).strip()
+        username_auto = request_boolean(
+            request.data.get(
+                "username_auto",
+                not requested_username,
+            )
+        )
+        username = (
+            None
+            if username_auto or not requested_username
+            else requested_username
+        )
         password = request.data.get("password", "")
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
@@ -2017,12 +2030,6 @@ class CollegeAdminTeachersAPIView(APIView):
         phone = request.data.get("phone", "").strip()
         qualification = request.data.get("qualification", "").strip()
         joining_date = request.data.get("joining_date") or None
-
-        if not username:
-            return Response(
-                {"detail": "Username is required."},
-                status=400
-            )
 
         if not password:
             return Response(
@@ -2036,7 +2043,9 @@ class CollegeAdminTeachersAPIView(APIView):
                 status=400
             )
 
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(
+            username__iexact=username
+        ).exists():
             return Response(
                 {"detail": "Username already exists."},
                 status=400
@@ -2278,7 +2287,20 @@ class CollegeAdminStudentsAPIView(APIView):
                 status=403
             )
 
-        username = request.data.get("username", "").strip()
+        requested_username = str(
+            request.data.get("username", "") or ""
+        ).strip()
+        username_auto = request_boolean(
+            request.data.get(
+                "username_auto",
+                not requested_username,
+            )
+        )
+        username = (
+            None
+            if username_auto or not requested_username
+            else requested_username
+        )
         password = request.data.get("password", "")
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
@@ -2290,12 +2312,6 @@ class CollegeAdminStudentsAPIView(APIView):
         phone = request.data.get("phone", "").strip()
         date_of_birth = request.data.get("date_of_birth") or None
         admission_date = request.data.get("admission_date") or None
-
-        if not username:
-            return Response(
-                {"detail": "Username is required."},
-                status=400
-            )
 
         if not password:
             return Response(
@@ -2309,7 +2325,9 @@ class CollegeAdminStudentsAPIView(APIView):
                 status=400
             )
 
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(
+            username__iexact=username
+        ).exists():
             return Response(
                 {"detail": "Username already exists."},
                 status=400
@@ -2552,7 +2570,20 @@ class CollegeAdminParentsAPIView(APIView):
                 status=403
             )
 
-        username = request.data.get("username", "").strip()
+        requested_username = str(
+            request.data.get("username", "") or ""
+        ).strip()
+        username_auto = request_boolean(
+            request.data.get(
+                "username_auto",
+                not requested_username,
+            )
+        )
+        username = (
+            None
+            if username_auto or not requested_username
+            else requested_username
+        )
         password = request.data.get("password", "")
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
@@ -2560,19 +2591,15 @@ class CollegeAdminParentsAPIView(APIView):
         phone = request.data.get("phone", "").strip()
         occupation = request.data.get("occupation", "").strip()
 
-        if not username:
-            return Response(
-                {"detail": "Username is required."},
-                status=400
-            )
-
         if not password:
             return Response(
                 {"detail": "Password is required."},
                 status=400
             )
 
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(
+            username__iexact=username
+        ).exists():
             return Response(
                 {"detail": "Username already exists."},
                 status=400
