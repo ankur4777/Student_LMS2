@@ -195,7 +195,7 @@ class StudentEnrollment(models.Model):
     )
 
     roll_number = models.CharField(
-        max_length=30,
+        max_length=50,
         blank=True
     )
 
