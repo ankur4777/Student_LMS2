@@ -12,6 +12,7 @@ from academics.models import (
     ClassFeatureAccess,
     ClassRoom,
     ParentStudent,
+    RollNumberSequence,
     Section,
     StudentEnrollment,
     Subject,
@@ -1917,3 +1918,198 @@ class PasswordManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class UsernameAndRollNumberAutomationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Automation College",
+            code="AUTO",
+            roll_number_prefix="AC",
+            roll_number_digits=4,
+            roll_number_start=1,
+        )
+        self.admin = User.objects.create_user(
+            username="college-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="CSE AI",
+        )
+        self.section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def create_student(self, admission_number, first_name="Rahul", last_name="Sharma"):
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            {
+                "username": "preview-value",
+                "username_auto": True,
+                "password": "pass12345",
+                "first_name": first_name,
+                "last_name": last_name,
+                "admission_number": admission_number,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        return response.data["student"]
+
+    def test_auto_username_uses_short_name_format_and_increments(self):
+        first = self.create_student("ADM001")
+        second = self.create_student("ADM002")
+
+        self.assertEqual(first["username"], "rahuls01")
+        self.assertEqual(second["username"], "rahuls02")
+
+    def test_manual_username_override_is_preserved(self):
+        response = self.client.post(
+            "/api/accounts/college-admin/parents/",
+            {
+                "username": "familylogin",
+                "username_auto": False,
+                "password": "pass12345",
+                "first_name": "Neha",
+                "last_name": "Singh",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["parent"]["username"], "familylogin")
+
+    def test_non_platform_manager_generates_username_when_omitted(self):
+        user = User.objects.create_user(
+            username=None,
+            password="pass12345",
+            first_name="Riya",
+            last_name="Gupta",
+            role="teacher",
+            organization=self.organization,
+        )
+
+        self.assertEqual(user.username, "riyag01")
+
+    def test_platform_admin_still_requires_manual_username(self):
+        with self.assertRaisesMessage(
+            ValueError,
+            "Platform admin username must be entered manually.",
+        ):
+            User.objects.create_user(
+                username=None,
+                password="pass12345",
+                role="platform_admin",
+            )
+
+    def test_college_admin_can_change_roll_number_settings(self):
+        response = self.client.patch(
+            "/api/accounts/college-admin/institution-settings/",
+            {
+                "roll_number_prefix": "IGDTUW",
+                "roll_number_digits": 3,
+                "roll_number_start": 25,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        institution = response.data["institution"]
+        self.assertEqual(institution["roll_number_prefix"], "IGDTUW")
+        self.assertEqual(institution["roll_number_digits"], 3)
+        self.assertEqual(institution["roll_number_start"], 25)
+
+        setup = self.client.get(
+            "/api/accounts/college-admin/enrollments/setup/"
+        )
+        self.assertEqual(setup.status_code, 200)
+        session = setup.data["academic_sessions"][0]
+        self.assertEqual(session["next_roll_number"], "IGDTUW-025")
+
+    def test_enrollment_auto_generates_and_increments_roll_number(self):
+        first = self.create_student("ADM101", "Amit", "Kumar")
+        second = self.create_student("ADM102", "Neha", "Singh")
+
+        first_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": first["id"],
+                "section_id": self.section.id,
+                "roll_number": "AC-0001",
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+        second_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": second["id"],
+                "section_id": self.section.id,
+                "roll_number": "AC-0001",
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 201)
+        self.assertEqual(
+            first_response.data["enrollment"]["roll_number"],
+            "AC-0001",
+        )
+        self.assertEqual(
+            second_response.data["enrollment"]["roll_number"],
+            "AC-0002",
+        )
+        sequence = RollNumberSequence.objects.get(
+            organization=self.organization,
+            academic_session=self.session,
+        )
+        self.assertEqual(sequence.next_number, 3)
+
+    def test_manual_roll_number_override_is_allowed_but_duplicate_is_rejected(self):
+        first = self.create_student("ADM201", "Riya", "Gupta")
+        second = self.create_student("ADM202", "Aman", "Verma")
+
+        first_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": first["id"],
+                "section_id": self.section.id,
+                "roll_number": "CUSTOM-9",
+                "roll_number_auto": False,
+            },
+            format="json",
+        )
+        duplicate_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": second["id"],
+                "section_id": self.section.id,
+                "roll_number": "custom-9",
+                "roll_number_auto": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(duplicate_response.status_code, 400)
+        self.assertIn(
+            "already exists",
+            duplicate_response.data["detail"],
+        )
