@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
+import ChangePasswordCard from "@/components/auth/ChangePasswordCard";
 
 import "../../student/dashboard/dashboard.css";
 
@@ -335,6 +336,13 @@ export default function ParentProfilePage() {
                 </div>
               </>
             )}
+
+      <ChangePasswordCard
+        accessTokenKey="parent_access_token"
+        refreshTokenKey="parent_refresh_token"
+        userStorageKey="parent_user"
+        loginPath="/parent/login"
+      />
 
           </div>
         </div>
