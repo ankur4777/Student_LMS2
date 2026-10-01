@@ -11,9 +11,10 @@ export function buildUsernameSuggestion(
 
   const first = clean(firstName);
   const last = clean(lastName);
-  const base = first
-    ? `${first}${last.slice(0, 1)}`
-    : `user${last.slice(0, 1)}`;
+  if (!first) {
+    return "";
+  }
 
-  return `${base || "user"}01`;
+  const base = `${first}${last.slice(0, 1)}`;
+  return `${base}01`;
 }
