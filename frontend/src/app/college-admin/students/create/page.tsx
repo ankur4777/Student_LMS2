@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useCallback, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildUsernameSuggestion } from "@/lib/username";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
@@ -34,6 +35,7 @@ export default function CollegeAdminCreateStudentPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [admissionNumber, setAdmissionNumber] = useState("");
@@ -43,6 +45,12 @@ export default function CollegeAdminCreateStudentPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!usernameManuallyEdited) {
+      setUsername(buildUsernameSuggestion(firstName, lastName));
+    }
+  }, [firstName, lastName, usernameManuallyEdited]);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -86,6 +94,7 @@ export default function CollegeAdminCreateStudentPage() {
             first_name: firstName,
             last_name: lastName,
             username,
+            username_auto: !usernameManuallyEdited,
             email,
             phone,
             admission_number: admissionNumber,
@@ -198,8 +207,18 @@ export default function CollegeAdminCreateStudentPage() {
                   <div className="student-form-grid">
                     <div className="student-form-group">
                       <label htmlFor="username">Username</label>
-                      <input id="username" value={username} onChange={(event) => setUsername(event.target.value)} required />
-                      <small>This username will be used for student login.</small>
+                      <input
+                        id="username"
+                        value={username}
+                        onChange={(event) => {
+                          setUsername(event.target.value);
+                          setUsernameManuallyEdited(true);
+                        }}
+                        required
+                      />
+                      <small>
+                        Auto generated from the student's name. You can edit it before creating the account.
+                      </small>
                     </div>
                     <div className="student-form-group">
                       <label htmlFor="admission-number">Admission Number</label>
