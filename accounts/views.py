@@ -1534,6 +1534,17 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
                 status=403
             )
 
+        if "roll_number_prefix" in request.data:
+            requested_prefix = str(
+                request.data.get("roll_number_prefix") or ""
+            ).strip()
+
+            if len(requested_prefix) > 20:
+                return Response(
+                    {"detail": "Roll number prefix cannot exceed 20 characters."},
+                    status=400,
+                )
+
         if "roll_number_digits" in request.data:
             try:
                 roll_number_digits = int(request.data.get("roll_number_digits"))
