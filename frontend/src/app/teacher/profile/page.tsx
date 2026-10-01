@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import TeacherTopbar from "@/components/teacher/TeacherTopbar";
+import ChangePasswordCard from "@/components/auth/ChangePasswordCard";
 
 import "../dashboard/dashboard.css";
 
@@ -388,6 +389,13 @@ export default function TeacherProfilePage() {
                 </div>
               </>
             )}
+      <ChangePasswordCard
+        accessTokenKey="teacher_access_token"
+        refreshTokenKey="teacher_refresh_token"
+        userStorageKey="teacher_user"
+        loginPath="/teacher/login"
+      />
+
           </div>
         </div>
       </main>
