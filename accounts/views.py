@@ -40,6 +40,7 @@ from academics.models import (
     TeacherAssignment,
     StudentEnrollment,
     ParentStudent,
+    RollNumberSequence,
 )
 
 LOGGER = logging.getLogger(__name__)
