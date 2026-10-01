@@ -1384,6 +1384,12 @@ def serialize_college_admin_profile(user, request):
                 "address": organization.address,
                 "website": organization.website,
                 "domain": organization.domain,
+                "roll_number_prefix": (
+                    organization.roll_number_prefix
+                    or organization.code.upper()
+                ),
+                "roll_number_digits": organization.roll_number_digits,
+                "roll_number_start": organization.roll_number_start,
                 "is_active": organization.is_active,
                 "status": "active" if organization.is_active else "inactive",
                 "logo": (
