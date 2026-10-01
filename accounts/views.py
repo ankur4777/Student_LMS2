@@ -3530,9 +3530,21 @@ class CollegeAdminTeacherAssignmentSetupAPIView(APIView):
                     "id": session.id,
                     "name": session.name,
                     "is_active": session.is_active,
+                    "next_roll_number": format_roll_number(
+                        organization,
+                        roll_sequences.get(
+                            session.id,
+                            organization.roll_number_start,
+                        ),
+                    ),
                 }
                 for session in sessions
             ],
+            "roll_number_settings": {
+                "prefix": roll_number_prefix(organization),
+                "digits": organization.roll_number_digits,
+                "start": organization.roll_number_start,
+            },
             "classes": [
                 {
                     "id": classroom.id,
@@ -3792,6 +3804,14 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
             "name",
         )
 
+        roll_sequences = {
+            sequence.academic_session_id: sequence.next_number
+            for sequence in RollNumberSequence.objects.filter(
+                organization=organization,
+                academic_session__in=sessions,
+            )
+        }
+
         return Response({
             "students": [
                 {
@@ -3890,7 +3910,15 @@ class CollegeAdminEnrollmentsAPIView(APIView):
 
         student_id = request.data.get("student_id")
         section_id = request.data.get("section_id")
-        roll_number = request.data.get("roll_number", "").strip()
+        roll_number = str(
+            request.data.get("roll_number", "") or ""
+        ).strip()
+        roll_number_auto = request_boolean(
+            request.data.get(
+                "roll_number_auto",
+                not roll_number,
+            )
+        )
 
         student = StudentProfile.objects.filter(
             user_id=student_id,
@@ -3917,7 +3945,50 @@ class CollegeAdminEnrollmentsAPIView(APIView):
                 status=404
             )
 
+        academic_session = section.classroom.academic_session
+
         with transaction.atomic():
+            existing_enrollment = StudentEnrollment.objects.filter(
+                student=student,
+                section=section,
+            ).first()
+
+            if roll_number_auto:
+                if (
+                    existing_enrollment
+                    and existing_enrollment.roll_number
+                ):
+                    roll_number = existing_enrollment.roll_number
+                else:
+                    roll_number = generate_roll_number(
+                        organization,
+                        academic_session,
+                    )
+            elif not roll_number:
+                return Response(
+                    {"detail": "Roll number cannot be empty."},
+                    status=400,
+                )
+            elif roll_number_exists(
+                organization,
+                academic_session,
+                roll_number,
+                exclude_enrollment_id=(
+                    existing_enrollment.id
+                    if existing_enrollment
+                    else None
+                ),
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "This roll number already exists in "
+                            "the selected academic session."
+                        )
+                    },
+                    status=400,
+                )
+
             StudentEnrollment.objects.filter(
                 student=student,
                 is_active=True,
@@ -4067,6 +4138,22 @@ class CollegeAdminEnrollmentDetailAPIView(APIView):
                 enrollment.roll_number,
             ).strip()
         )
+
+        if roll_number and roll_number_exists(
+            organization,
+            section.classroom.academic_session,
+            roll_number,
+            exclude_enrollment_id=enrollment.id,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "This roll number already exists in "
+                        "the selected academic session."
+                    )
+                },
+                status=400,
+            )
 
         is_active = enrollment.is_active
 
