@@ -1,5 +1,7 @@
+import logging
 import re
 
+from django.conf import settings
 from django.utils import timezone
 from django.db import IntegrityError, transaction
 from django.db.models import Count, Q
@@ -9,6 +11,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from django.forms import ImageField, ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.mail import send_mail
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from .models import StudentProfile, User
 
@@ -20,7 +26,8 @@ from liveclasses.serializers import LiveClassSerializer
 from notifications.models import Notification
 from studentresults.models import Exam, StudentResult
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, password_validation
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import TeacherProfile, ParentProfile
@@ -34,6 +41,191 @@ from academics.models import (
     StudentEnrollment,
     ParentStudent,
 )
+
+LOGGER = logging.getLogger(__name__)
+
+PORTAL_PASSWORD_RESET_PATHS = {
+    "student": "student",
+    "parent": "parent",
+    "teacher": "teacher",
+    "college_admin": "college-admin",
+}
+
+
+class ChangePasswordAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        current_password = request.data.get("current_password", "")
+        new_password = request.data.get("new_password", "")
+        confirm_password = request.data.get("confirm_password", "")
+
+        if not current_password or not new_password or not confirm_password:
+            return Response(
+                {"detail": "Current password, new password and confirmation are required."},
+                status=400,
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {"detail": "New password and confirmation do not match."},
+                status=400,
+            )
+
+        user = request.user
+
+        if not user.check_password(current_password):
+            return Response(
+                {"detail": "Current password is incorrect."},
+                status=400,
+            )
+
+        try:
+            password_validation.validate_password(new_password, user=user)
+        except DjangoValidationError as exc:
+            return Response(
+                {
+                    "detail": "Please choose a stronger password.",
+                    "errors": list(exc.messages),
+                },
+                status=400,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+
+        return Response({
+            "message": "Password changed successfully. Please sign in again."
+        })
+
+
+class PasswordResetRequestAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        email = str(request.data.get("email", "")).strip()
+        role = str(request.data.get("role", "")).strip()
+
+        if role not in PORTAL_PASSWORD_RESET_PATHS:
+            return Response(
+                {"detail": "Invalid portal."},
+                status=400,
+            )
+
+        generic_message = (
+            "If an active account exists for this email, "
+            "a password reset link has been sent."
+        )
+
+        if not email:
+            return Response(
+                {"detail": "Email address is required."},
+                status=400,
+            )
+
+        users = User.objects.filter(
+            email__iexact=email,
+            role=role,
+            is_active=True,
+        ).order_by("id")[:5]
+
+        frontend_base = settings.PASSWORD_RESET_FRONTEND_URL.rstrip("/")
+        portal_path = PORTAL_PASSWORD_RESET_PATHS[role]
+
+        for user in users:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = (
+                f"{frontend_base}/{portal_path}/reset-password"
+                f"?uid={uid}&token={token}"
+            )
+
+            try:
+                send_mail(
+                    subject="Reset your Student LMS password",
+                    message=(
+                        f"Hello {user.get_full_name().strip() or user.username},\n\n"
+                        "We received a request to reset your Student LMS password.\n"
+                        f"Open this link to set a new password:\n{reset_url}\n\n"
+                        "If you did not request this change, you can ignore this email."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception:
+                LOGGER.exception(
+                    "Unable to send password reset email for user id %s",
+                    user.pk,
+                )
+
+        return Response({"message": generic_message})
+
+
+class PasswordResetConfirmAPIView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def post(self, request):
+        uid = str(request.data.get("uid", "")).strip()
+        token = str(request.data.get("token", "")).strip()
+        role = str(request.data.get("role", "")).strip()
+        new_password = request.data.get("new_password", "")
+        confirm_password = request.data.get("confirm_password", "")
+
+        if role not in PORTAL_PASSWORD_RESET_PATHS:
+            return Response({"detail": "Invalid portal."}, status=400)
+
+        if not uid or not token or not new_password or not confirm_password:
+            return Response(
+                {"detail": "Reset link and new password are required."},
+                status=400,
+            )
+
+        if new_password != confirm_password:
+            return Response(
+                {"detail": "New password and confirmation do not match."},
+                status=400,
+            )
+
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(
+                pk=user_id,
+                role=role,
+                is_active=True,
+            )
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response(
+                {"detail": "This password reset link is invalid or has expired."},
+                status=400,
+            )
+
+        if not default_token_generator.check_token(user, token):
+            return Response(
+                {"detail": "This password reset link is invalid or has expired."},
+                status=400,
+            )
+
+        try:
+            password_validation.validate_password(new_password, user=user)
+        except DjangoValidationError as exc:
+            return Response(
+                {
+                    "detail": "Please choose a stronger password.",
+                    "errors": list(exc.messages),
+                },
+                status=400,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+
+        return Response({
+            "message": "Password reset successfully. You can now sign in."
+        })
+
 
 
 def _college_admin_activity_url(related_url):
