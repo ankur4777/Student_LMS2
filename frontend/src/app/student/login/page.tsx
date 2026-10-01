@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function StudentLoginPage() {
   const router = useRouter();
@@ -138,6 +139,12 @@ export default function StudentLoginPage() {
                 placeholder="Enter your password"
                 required
               />
+            </div>
+
+            <div className="text-end mb-3">
+              <Link href="/student/forgot-password" className="text-decoration-none">
+                Forgot password?
+              </Link>
             </div>
 
             <button
