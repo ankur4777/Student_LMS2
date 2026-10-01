@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import ChangePasswordCard from "@/components/auth/ChangePasswordCard";
 
 import "../dashboard/dashboard.css";
 
@@ -348,6 +349,13 @@ export default function StudentProfilePage() {
                 </div>
               </>
             )}
+      <ChangePasswordCard
+        accessTokenKey="student_access_token"
+        refreshTokenKey="student_refresh_token"
+        userStorageKey="student_user"
+        loginPath="/student/login"
+      />
+
           </div>
         </div>
       </main>
