@@ -3536,21 +3536,9 @@ class CollegeAdminTeacherAssignmentSetupAPIView(APIView):
                     "id": session.id,
                     "name": session.name,
                     "is_active": session.is_active,
-                    "next_roll_number": format_roll_number(
-                        organization,
-                        roll_sequences.get(
-                            session.id,
-                            organization.roll_number_start,
-                        ),
-                    ),
                 }
                 for session in sessions
             ],
-            "roll_number_settings": {
-                "prefix": roll_number_prefix(organization),
-                "digits": organization.roll_number_digits,
-                "start": organization.roll_number_start,
-            },
             "classes": [
                 {
                     "id": classroom.id,
@@ -3842,9 +3830,21 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
                     "id": session.id,
                     "name": session.name,
                     "is_active": session.is_active,
+                    "next_roll_number": format_roll_number(
+                        organization,
+                        roll_sequences.get(
+                            session.id,
+                            organization.roll_number_start,
+                        ),
+                    ),
                 }
                 for session in sessions
             ],
+            "roll_number_settings": {
+                "prefix": roll_number_prefix(organization),
+                "digits": organization.roll_number_digits,
+                "start": organization.roll_number_start,
+            },
             "classes": [
                 {
                     "id": classroom.id,
