@@ -1482,6 +1482,12 @@ def serialize_college_admin_institution(organization, request):
         "address": organization.address,
         "website": organization.website,
         "domain": organization.domain,
+        "roll_number_prefix": (
+            organization.roll_number_prefix
+            or organization.code.upper()
+        ),
+        "roll_number_digits": organization.roll_number_digits,
+        "roll_number_start": organization.roll_number_start,
         "is_active": organization.is_active,
         "status": "active" if organization.is_active else "inactive",
     }
@@ -1522,6 +1528,40 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
                 status=403
             )
 
+        if "roll_number_digits" in request.data:
+            try:
+                roll_number_digits = int(request.data.get("roll_number_digits"))
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "Roll number digits must be a number."},
+                    status=400,
+                )
+
+            if roll_number_digits < 1 or roll_number_digits > 10:
+                return Response(
+                    {"detail": "Roll number digits must be between 1 and 10."},
+                    status=400,
+                )
+        else:
+            roll_number_digits = organization.roll_number_digits
+
+        if "roll_number_start" in request.data:
+            try:
+                roll_number_start = int(request.data.get("roll_number_start"))
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "Roll number starting value must be a number."},
+                    status=400,
+                )
+
+            if roll_number_start < 1:
+                return Response(
+                    {"detail": "Roll number starting value must be at least 1."},
+                    status=400,
+                )
+        else:
+            roll_number_start = organization.roll_number_start
+
         editable_fields = [
             "primary_color",
             "secondary_color",
@@ -1529,6 +1569,7 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
             "phone",
             "address",
             "website",
+            "roll_number_prefix",
         ]
         update_fields = []
 
@@ -1540,6 +1581,14 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
                     str(request.data.get(field) or "").strip(),
                 )
                 update_fields.append(field)
+
+        if "roll_number_digits" in request.data:
+            organization.roll_number_digits = roll_number_digits
+            update_fields.append("roll_number_digits")
+
+        if "roll_number_start" in request.data:
+            organization.roll_number_start = roll_number_start
+            update_fields.append("roll_number_start")
 
         if "logo" in request.FILES:
             logo = request.FILES["logo"]
@@ -1585,6 +1634,86 @@ def college_admin_organization(user):
         return None
 
     return user.organization
+
+
+def request_boolean(value):
+    if isinstance(value, str):
+        return value.lower() in ["true", "1", "yes", "on"]
+    return bool(value)
+
+
+def roll_number_prefix(organization):
+    return (
+        str(organization.roll_number_prefix or "").strip()
+        or str(organization.code or "").strip().upper()
+        or "ROLL"
+    )
+
+
+def format_roll_number(organization, number):
+    digits = max(1, min(int(organization.roll_number_digits or 4), 10))
+    return f"{roll_number_prefix(organization)}-{int(number):0{digits}d}"
+
+
+def get_roll_number_preview(organization, academic_session):
+    sequence = RollNumberSequence.objects.filter(
+        organization=organization,
+        academic_session=academic_session,
+    ).first()
+
+    next_number = (
+        sequence.next_number
+        if sequence
+        else organization.roll_number_start
+    )
+
+    return format_roll_number(organization, next_number)
+
+
+def generate_roll_number(organization, academic_session):
+    sequence, _created = RollNumberSequence.objects.select_for_update().get_or_create(
+        organization=organization,
+        academic_session=academic_session,
+        defaults={"next_number": organization.roll_number_start},
+    )
+
+    number = max(sequence.next_number, 1)
+
+    while True:
+        candidate = format_roll_number(organization, number)
+        duplicate = StudentEnrollment.objects.filter(
+            section__organization=organization,
+            section__classroom__academic_session=academic_session,
+            roll_number__iexact=candidate,
+        ).exists()
+
+        if not duplicate:
+            break
+
+        number += 1
+
+    sequence.next_number = number + 1
+    sequence.save(update_fields=["next_number"])
+
+    return candidate
+
+
+def roll_number_exists(
+    organization,
+    academic_session,
+    roll_number,
+    exclude_enrollment_id=None,
+):
+    query = StudentEnrollment.objects.filter(
+        section__organization=organization,
+        section__classroom__academic_session=academic_session,
+        roll_number__iexact=roll_number,
+    )
+
+    if exclude_enrollment_id:
+        query = query.exclude(id=exclude_enrollment_id)
+
+    return query.exists()
 
 
 def serialize_college_student(user):
