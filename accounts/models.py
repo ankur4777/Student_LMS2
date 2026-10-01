@@ -1,8 +1,53 @@
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
+from django.utils.text import slugify
+
+
+def username_base_from_name(first_name, last_name):
+    first = slugify(str(first_name or "")).replace("-", "")
+    last = slugify(str(last_name or "")).replace("-", "")
+    base = f"{first}{last[:1]}" if first else f"user{last[:1]}"
+    return (base or "user")[:140]
+
+
+def generate_available_username(user_model, first_name, last_name):
+    base = username_base_from_name(first_name, last_name)
+    sequence = 1
+
+    while True:
+        candidate = f"{base}{sequence:02d}"
+        if not user_model.objects.filter(username__iexact=candidate).exists():
+            return candidate
+        sequence += 1
 
 
 class CustomUserManager(UserManager):
+
+    def create_user(
+        self,
+        username=None,
+        email=None,
+        password=None,
+        **extra_fields,
+    ):
+        role = extra_fields.get("role")
+
+        if not username:
+            if role == "platform_admin" or extra_fields.get("is_superuser"):
+                raise ValueError("Platform admin username must be entered manually.")
+
+            username = generate_available_username(
+                self.model,
+                extra_fields.get("first_name", ""),
+                extra_fields.get("last_name", ""),
+            )
+
+        return super().create_user(
+            username,
+            email,
+            password,
+            **extra_fields,
+        )
 
     def create_superuser(self, username, email=None, password=None, **extra_fields):
         extra_fields.setdefault('is_staff', True)
