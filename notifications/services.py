@@ -125,6 +125,99 @@ def create_notification(
     return notification
 
 
+def notify_notice_published(notice):
+    organization = notice.organization
+
+    students = User.objects.filter(
+        role="student",
+        organization=organization,
+        is_active=True,
+    )
+    teachers = User.objects.filter(
+        role="teacher",
+        organization=organization,
+        is_active=True,
+    )
+    parents = User.objects.filter(
+        role="parent",
+        organization=organization,
+        is_active=True,
+    )
+
+    recipients = []
+
+    if notice.audience == "everyone":
+        recipients.extend((user, "/student/dashboard") for user in students)
+        recipients.extend((user, "/teacher/dashboard") for user in teachers)
+        recipients.extend((user, "/parent/dashboard") for user in parents)
+
+    elif notice.audience == "students":
+        recipients.extend((user, "/student/dashboard") for user in students)
+
+    elif notice.audience == "teachers":
+        recipients.extend((user, "/teacher/dashboard") for user in teachers)
+
+    elif notice.audience == "parents":
+        recipients.extend((user, "/parent/dashboard") for user in parents)
+
+    elif notice.audience in {"class", "section"}:
+        enrollment_filters = {
+            "is_active": True,
+            "student__user__organization": organization,
+        }
+
+        if notice.audience == "class":
+            enrollment_filters["section__classroom"] = notice.classroom
+        else:
+            enrollment_filters["section"] = notice.section
+
+        enrollments = StudentEnrollment.objects.filter(
+            **enrollment_filters
+        ).select_related(
+            "student",
+            "student__user",
+        )
+
+        targeted_students = [enrollment.student for enrollment in enrollments]
+
+        recipients.extend(
+            (student.user, "/student/dashboard")
+            for student in targeted_students
+            if student.user.is_active
+        )
+
+        parent_links = ParentStudent.objects.filter(
+            student__in=targeted_students,
+            parent__user__organization=organization,
+            parent__user__is_active=True,
+        ).select_related(
+            "parent",
+            "parent__user",
+        )
+
+        recipients.extend(
+            (link.parent.user, "/parent/dashboard")
+            for link in parent_links
+        )
+
+    seen_user_ids = set()
+
+    for user, related_url in recipients:
+        if user.id in seen_user_ids:
+            continue
+
+        seen_user_ids.add(user.id)
+
+        create_notification(
+            organization=organization,
+            user=user,
+            title="New Notice",
+            message=f'New notice "{notice.title}": {notice.message}',
+            notification_type=Notification.Type.GENERAL,
+            related_url=related_url,
+        )
+
+
 def notify_assignment_published(assignment):
     teacher_assignment = assignment.teacher_assignment
     organization = assignment.organization
