@@ -25,13 +25,16 @@ interface Student {
 interface AcademicSession {
   id: number;
   name: string;
-  next_roll_number?: string;
 }
 
 interface ClassRoom {
   id: number;
   name: string;
   academic_session_id: number;
+  roll_number_prefix: string;
+  roll_number_digits: number;
+  roll_number_start: number;
+  next_roll_number: string;
 }
 
 interface Section {
@@ -270,15 +273,8 @@ export default function CreateEnrollmentPage() {
                             setClassId("");
                             setSectionId("");
 
-                            if (!rollNumberManuallyEdited) {
-                              const selected = sessions.find(
-                                (item) =>
-                                  item.id === Number(nextSessionId)
-                              );
-                              setRollNumber(
-                                selected?.next_roll_number || ""
-                              );
-                            }
+                            setRollNumber("");
+                            setRollNumberManuallyEdited(false);
                           }}
                           required
                         >
@@ -296,8 +292,18 @@ export default function CreateEnrollmentPage() {
                           className="form-select"
                           value={classId}
                           onChange={(event) => {
-                            setClassId(event.target.value);
+                            const nextClassId = event.target.value;
+                            setClassId(nextClassId);
                             setSectionId("");
+
+                            const selectedClass = classes.find(
+                              (item) => item.id === Number(nextClassId)
+                            );
+
+                            setRollNumber(
+                              selectedClass?.next_roll_number || ""
+                            );
+                            setRollNumberManuallyEdited(false);
                           }}
                           required
                         >
@@ -339,7 +345,7 @@ export default function CreateEnrollmentPage() {
                           required
                         />
                         <div className="form-text">
-                          Auto generated for the selected academic session. You can edit it before saving.
+                          Auto generated from the selected class prefix and class sequence. You can edit it before saving.
                         </div>
                       </div>
                       <div className="col-12 d-flex gap-2">
