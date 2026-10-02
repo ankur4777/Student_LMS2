@@ -455,6 +455,7 @@ class CollegeAdminClassesAPIView(APIView):
             classrooms = classrooms.filter(
                 Q(name__icontains=search)
                 | Q(academic_session__name__icontains=search)
+                | Q(roll_number_prefix__icontains=search)
             )
 
         serialized_classes = [
