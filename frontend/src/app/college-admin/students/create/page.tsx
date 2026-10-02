@@ -195,7 +195,12 @@ export default function CollegeAdminCreateStudentPage() {
     }
 
     return existingParents.filter((item) =>
-      [item.name, item.username, item.email]
+      [
+        item.name,
+        item.username,
+        item.email,
+        item.profile?.phone || "",
+      ]
         .join(" ")
         .toLowerCase()
         .includes(search)
@@ -612,8 +617,8 @@ export default function CollegeAdminCreateStudentPage() {
                                 value={parent.relationship}
                                 onChange={(event) =>
                                   updateParent(parent.key, {
-                                    relationship: event.target.value as
-                                      ParentDraft["relationship"],
+                                    relationship:
+                                      event.target.value as ParentDraft["relationship"],
                                   })
                                 }
                               >
@@ -631,7 +636,7 @@ export default function CollegeAdminCreateStudentPage() {
                                 <label>Search Existing Parent</label>
                                 <input
                                   value={parent.existingSearch}
-                                  placeholder="Search by name, username or email"
+                                  placeholder="Search by name, username, email or phone"
                                   onChange={(event) =>
                                     updateParent(parent.key, {
                                       existingSearch: event.target.value,
@@ -669,6 +674,9 @@ export default function CollegeAdminCreateStudentPage() {
                                       {existingParent.username}
                                       {existingParent.email
                                         ? ` · ${existingParent.email}`
+                                        : ""}
+                                      {existingParent.profile?.phone
+                                        ? ` · ${existingParent.profile.phone}`
                                         : ""}
                                     </option>
                                   ))}
