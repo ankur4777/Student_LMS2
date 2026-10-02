@@ -90,13 +90,12 @@ export default function CollegeAdminLoginPage() {
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label className="form-label">
-                Username
-              </label>
+              <label className="form-label">Username or Email</label>
 
               <input
                 type="text"
                 className="form-control"
+                placeholder="Enter your username or email"
                 value={username}
                 onChange={(event) =>
                   setUsername(event.target.value)
