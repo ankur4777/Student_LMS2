@@ -138,7 +138,7 @@ export default function CollegeAdminCreateParentPage() {
 
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} autoComplete="off">
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label">First Name</label>
@@ -161,6 +161,10 @@ export default function CollegeAdminCreateParentPage() {
                       <input
                         className="form-control"
                         value={displayedUsername}
+                        name="generated-username"
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(event) => {
                           setUsername(event.target.value);
                           setUsernameManuallyEdited(true);
@@ -202,7 +206,9 @@ export default function CollegeAdminCreateParentPage() {
                       <label className="form-label">Password</label>
                       <input
                         className="form-control"
+                        name="new-password"
                         type="password"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         required
@@ -212,7 +218,9 @@ export default function CollegeAdminCreateParentPage() {
                       <label className="form-label">Confirm Password</label>
                       <input
                         className="form-control"
+                        name="confirm-new-password"
                         type="password"
+                        autoComplete="new-password"
                         value={confirmPassword}
                         onChange={(event) =>
                           setConfirmPassword(event.target.value)
