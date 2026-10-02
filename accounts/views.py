@@ -4333,6 +4333,29 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
                     "academic_session_id": (
                         classroom.academic_session_id
                     ),
+                    "roll_number_prefix": roll_number_prefix(
+                        organization,
+                        classroom,
+                    ),
+                    "roll_number_digits": roll_number_digits(
+                        organization,
+                        classroom,
+                    ),
+                    "roll_number_start": roll_number_start(
+                        organization,
+                        classroom,
+                    ),
+                    "next_roll_number": format_roll_number(
+                        organization,
+                        classroom,
+                        roll_sequences.get(
+                            classroom.id,
+                            roll_number_start(
+                                organization,
+                                classroom,
+                            ),
+                        ),
+                    ),
                 }
                 for classroom in classrooms
             ],
