@@ -577,6 +577,136 @@
   box-shadow: 0 0 0 3px rgba(239, 68, 68, .08);
 }
 
+.student-form-group select {
+  width: 100%;
+  min-height: 41px;
+  padding: 9px 11px;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  background: #fff;
+  color: #1f2937;
+  font-size: .8rem;
+  outline: none;
+}
+
+.student-form-group select:focus {
+  border-color: #f0a2a2;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .08);
+}
+
+.student-parent-heading {
+  align-items: center;
+}
+
+.student-parent-heading > div {
+  flex: 1;
+}
+
+.student-parent-add,
+.student-parent-remove {
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: .7rem;
+  font-weight: 650;
+}
+
+.student-parent-add {
+  margin-left: auto;
+  border: 1px solid #f4b5b5;
+  background: #fff8f8;
+  color: #b42318;
+}
+
+.student-parent-add:hover {
+  border-color: #ef8f8f;
+  background: #fff2f2;
+}
+
+.student-parent-list {
+  display: grid;
+  gap: 14px;
+}
+
+.student-parent-card {
+  padding: 15px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fafbfc;
+}
+
+.student-parent-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.student-parent-card-head strong,
+.student-parent-card-head small {
+  display: block;
+}
+
+.student-parent-card-head strong {
+  color: #344054;
+  font-size: .8rem;
+  font-weight: 680;
+}
+
+.student-parent-card-head small {
+  margin-top: 2px;
+  color: #8a94a5;
+  font-size: .66rem;
+}
+
+.student-parent-remove {
+  border: 1px solid #e4e7ec;
+  background: #fff;
+  color: #667085;
+}
+
+.student-parent-remove:hover {
+  border-color: #f3b2b2;
+  color: #b42318;
+}
+
+.student-parent-mode {
+  display: inline-flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 14px;
+  border: 1px solid #e2e5e9;
+  border-radius: 9px;
+  background: #fff;
+}
+
+.student-parent-mode button {
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #667085;
+  font-size: .7rem;
+  font-weight: 650;
+}
+
+.student-parent-mode button.active {
+  background: #fff1f1;
+  color: #b42318;
+}
+
+.student-parent-top-grid {
+  margin-bottom: 14px;
+}
+
+.student-existing-parent-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 14px;
+}
+
 .student-form-group small {
   display: block;
   margin-top: 5px;
@@ -854,5 +984,25 @@
   .student-form-submit,
   .student-form-cancel {
     width: 100%;
+  }
+
+  .student-parent-heading,
+  .student-parent-card-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .student-parent-add,
+  .student-parent-remove {
+    width: 100%;
+  }
+
+  .student-parent-mode {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .student-existing-parent-area {
+    grid-template-columns: 1fr;
   }
 }
