@@ -53,6 +53,63 @@ PORTAL_PASSWORD_RESET_PATHS = {
 }
 
 
+def authenticate_portal_user(identifier, password, role):
+    identifier = str(identifier or "").strip()
+
+    if not identifier or not password:
+        return None, "Email/username and password are required."
+
+    email_matches = User.objects.filter(
+        email__iexact=identifier,
+        role=role,
+        is_active=True,
+    ).order_by("id")
+
+    email_match_count = email_matches.count()
+
+    if email_match_count > 1:
+        return (
+            None,
+            (
+                "More than one account uses this email for this portal. "
+                "Please sign in with your username or contact the college admin."
+            ),
+        )
+
+    login_username = (
+        email_matches.first().username
+        if email_match_count == 1
+        else identifier
+    )
+
+    user = authenticate(
+        username=login_username,
+        password=password,
+    )
+
+    if not user or user.role != role:
+        return None, "Invalid email/username or password."
+
+    return user, None
+
+
+def email_in_use_for_role(email, role, exclude_user_id=None):
+    email = str(email or "").strip()
+
+    if not email:
+        return False
+
+    users = User.objects.filter(
+        email__iexact=email,
+        role=role,
+    )
+
+    if exclude_user_id:
+        users = users.exclude(id=exclude_user_id)
+
+    return users.exists()
+
+
 class ChangePasswordAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -536,25 +593,24 @@ class StudentProfileAPIView(APIView):
 class StudentLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
 
-        user = authenticate(
-            username=username,
-            password=password
+        password = request.data.get("password")
+
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "student",
         )
 
         if not user:
             return Response(
-                {'detail': 'Invalid username or password.'},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != 'student':
-            return Response(
-                {'detail': 'Only students can login here.'},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
@@ -836,25 +892,24 @@ class TeacherProfileAPIView(APIView):
 class TeacherLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
 
-        user = authenticate(
-            username=username,
-            password=password
+        password = request.data.get("password")
+
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "teacher",
         )
 
         if not user:
             return Response(
-                {'detail': 'Invalid username or password.'},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != 'teacher':
-            return Response(
-                {'detail': 'Only teachers can login here.'},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
@@ -886,25 +941,24 @@ class TeacherLoginAPIView(APIView):
 class CollegeAdminLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get("username")
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
+
         password = request.data.get("password")
 
-        user = authenticate(
-            username=username,
-            password=password
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "college_admin",
         )
 
         if not user:
             return Response(
-                {"detail": "Invalid username or password."},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != "college_admin":
-            return Response(
-                {"detail": "Only college admins can login here."},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
@@ -4234,25 +4288,24 @@ class CollegeAdminEnrollmentDetailAPIView(APIView):
 class ParentLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get("username")
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
+
         password = request.data.get("password")
 
-        user = authenticate(
-            username=username,
-            password=password
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "parent",
         )
 
         if not user:
             return Response(
-                {"detail": "Invalid username or password."},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != "parent":
-            return Response(
-                {"detail": "Only parents can login here."},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
