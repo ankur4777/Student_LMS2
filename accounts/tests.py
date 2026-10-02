@@ -1964,6 +1964,7 @@ class UsernameAndRollNumberAutomationTests(TestCase):
                 "password": "pass12345",
                 "first_name": first_name,
                 "last_name": last_name,
+                "email": f"{admission_number.lower()}@example.com",
                 "admission_number": admission_number,
             },
             format="json",
@@ -1987,6 +1988,7 @@ class UsernameAndRollNumberAutomationTests(TestCase):
                 "password": "pass12345",
                 "first_name": "Neha",
                 "last_name": "Singh",
+                "email": "family@example.com",
             },
             format="json",
         )
@@ -2112,4 +2114,122 @@ class UsernameAndRollNumberAutomationTests(TestCase):
         self.assertIn(
             "already exists",
             duplicate_response.data["detail"],
+        )
+
+
+class PortalEmailLoginTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Email Login College",
+            code="EMAILLOGIN",
+        )
+        self.password = "PortalPass123!"
+
+        self.student = User.objects.create_user(
+            username="studente01",
+            email="student-login@example.com",
+            password=self.password,
+            role="student",
+            organization=self.organization,
+        )
+        self.teacher = User.objects.create_user(
+            username="teachere01",
+            email="teacher-login@example.com",
+            password=self.password,
+            role="teacher",
+            organization=self.organization,
+        )
+        self.parent = User.objects.create_user(
+            username="parente01",
+            email="parent-login@example.com",
+            password=self.password,
+            role="parent",
+            organization=self.organization,
+        )
+        self.admin = User.objects.create_user(
+            username="admine01",
+            email="admin-login@example.com",
+            password=self.password,
+            role="college_admin",
+            organization=self.organization,
+        )
+
+    def test_all_portals_accept_email_login(self):
+        cases = [
+            (
+                "/api/accounts/student/login/",
+                "student-login@example.com",
+                "student",
+            ),
+            (
+                "/api/accounts/teacher/login/",
+                "teacher-login@example.com",
+                "teacher",
+            ),
+            (
+                "/api/accounts/parent/login/",
+                "parent-login@example.com",
+                "parent",
+            ),
+            (
+                "/api/accounts/college-admin/login/",
+                "admin-login@example.com",
+                "college_admin",
+            ),
+        ]
+
+        for url, email, role in cases:
+            with self.subTest(role=role):
+                response = self.client.post(
+                    url,
+                    {
+                        "username": email,
+                        "password": self.password,
+                    },
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["user"]["role"], role)
+                self.assertIn("access", response.data)
+                self.assertIn("refresh", response.data)
+
+    def test_username_login_still_works(self):
+        response = self.client.post(
+            "/api/accounts/student/login/",
+            {
+                "username": self.student.username,
+                "password": self.password,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["user"]["username"],
+            self.student.username,
+        )
+
+    def test_duplicate_email_in_same_portal_requires_username(self):
+        User.objects.create_user(
+            username="studentduplicate01",
+            email=self.student.email,
+            password=self.password,
+            role="student",
+            organization=self.organization,
+        )
+
+        response = self.client.post(
+            "/api/accounts/student/login/",
+            {
+                "username": self.student.email,
+                "password": self.password,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn(
+            "More than one account uses this email",
+            response.data["detail"],
         )
