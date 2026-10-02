@@ -2248,3 +2248,232 @@ class PortalEmailLoginTests(TestCase):
 
         self.assertIsNotNone(user)
         self.assertEqual(user.id, self.platform_admin.id)
+
+
+class StudentParentCreationFlowTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Family Flow College",
+            code="FAMILY",
+        )
+        self.other_organization = Organization.objects.create(
+            name="Other Family College",
+            code="OTHERFAMILY",
+        )
+        self.admin = User.objects.create_user(
+            username="family-admin",
+            email="family-admin@example.com",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        self.existing_parent_user = User.objects.create_user(
+            username="existingp01",
+            email="existing-parent@example.com",
+            password="pass12345",
+            first_name="Existing",
+            last_name="Parent",
+            role="parent",
+            organization=self.organization,
+        )
+        self.existing_parent = ParentProfile.objects.create(
+            user=self.existing_parent_user,
+            phone="1111111111",
+            occupation="Teacher",
+        )
+
+        self.foreign_parent_user = User.objects.create_user(
+            username="foreignp01",
+            email="foreign-parent@example.com",
+            password="pass12345",
+            first_name="Foreign",
+            last_name="Parent",
+            role="parent",
+            organization=self.other_organization,
+        )
+        self.foreign_parent = ParentProfile.objects.create(
+            user=self.foreign_parent_user,
+        )
+
+    def student_payload(self, admission_number):
+        return {
+            "first_name": "Aarav",
+            "last_name": "Sharma",
+            "email": f"{admission_number.lower()}@example.com",
+            "password": "StudentPass123!",
+            "admission_number": admission_number,
+            "username_auto": True,
+        }
+
+    def test_student_creation_can_create_and_link_new_parent(self):
+        payload = self.student_payload("ADM-FAMILY-1")
+        payload["parents"] = [
+            {
+                "mode": "new",
+                "relationship": ParentStudent.Relationship.FATHER,
+                "first_name": "Rahul",
+                "last_name": "Sharma",
+                "email": "rahul-parent@example.com",
+                "phone": "9999999999",
+                "occupation": "Engineer",
+                "password": "ParentPass123!",
+                "username_auto": True,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data["parents"]), 1)
+
+        student = StudentProfile.objects.get(
+            admission_number="ADM-FAMILY-1"
+        )
+        parent_user = User.objects.get(
+            email="rahul-parent@example.com",
+            role="parent",
+        )
+        parent = parent_user.parent_profile
+        link = ParentStudent.objects.get(
+            parent=parent,
+            student=student,
+        )
+
+        self.assertEqual(parent_user.organization, self.organization)
+        self.assertEqual(parent_user.username, "rahuls01")
+        self.assertEqual(parent.phone, "9999999999")
+        self.assertEqual(parent.occupation, "Engineer")
+        self.assertEqual(
+            link.relationship,
+            ParentStudent.Relationship.FATHER,
+        )
+
+    def test_student_creation_can_link_existing_parent(self):
+        payload = self.student_payload("ADM-FAMILY-2")
+        payload["parents"] = [
+            {
+                "mode": "existing",
+                "parent_profile_id": self.existing_parent.id,
+                "relationship": ParentStudent.Relationship.MOTHER,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        student = StudentProfile.objects.get(
+            admission_number="ADM-FAMILY-2"
+        )
+        self.assertTrue(
+            ParentStudent.objects.filter(
+                parent=self.existing_parent,
+                student=student,
+                relationship=ParentStudent.Relationship.MOTHER,
+            ).exists()
+        )
+        self.assertEqual(
+            User.objects.filter(
+                email="existing-parent@example.com",
+                role="parent",
+            ).count(),
+            1,
+        )
+
+    def test_student_creation_supports_multiple_parents(self):
+        payload = self.student_payload("ADM-FAMILY-3")
+        payload["parents"] = [
+            {
+                "mode": "existing",
+                "parent_profile_id": self.existing_parent.id,
+                "relationship": ParentStudent.Relationship.FATHER,
+            },
+            {
+                "mode": "new",
+                "relationship": ParentStudent.Relationship.MOTHER,
+                "first_name": "Neha",
+                "last_name": "Sharma",
+                "email": "neha-parent@example.com",
+                "password": "ParentPass123!",
+                "username_auto": True,
+            },
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        student = StudentProfile.objects.get(
+            admission_number="ADM-FAMILY-3"
+        )
+        self.assertEqual(
+            ParentStudent.objects.filter(student=student).count(),
+            2,
+        )
+
+    def test_cross_college_existing_parent_cannot_be_linked_during_student_creation(self):
+        payload = self.student_payload("ADM-FAMILY-4")
+        payload["parents"] = [
+            {
+                "mode": "existing",
+                "parent_profile_id": self.foreign_parent.id,
+                "relationship": ParentStudent.Relationship.GUARDIAN,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            StudentProfile.objects.filter(
+                admission_number="ADM-FAMILY-4"
+            ).exists()
+        )
+
+    def test_existing_parent_email_must_be_selected_instead_of_creating_duplicate(self):
+        payload = self.student_payload("ADM-FAMILY-5")
+        payload["parents"] = [
+            {
+                "mode": "new",
+                "relationship": ParentStudent.Relationship.GUARDIAN,
+                "first_name": "Existing",
+                "last_name": "Parent",
+                "email": "existing-parent@example.com",
+                "password": "ParentPass123!",
+                "username_auto": True,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(
+            "Select Existing Parent instead",
+            response.data["detail"],
+        )
+        self.assertFalse(
+            StudentProfile.objects.filter(
+                admission_number="ADM-FAMILY-5"
+            ).exists()
+        )
