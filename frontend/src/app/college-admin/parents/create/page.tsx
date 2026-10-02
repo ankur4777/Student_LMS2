@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { buildUsernameSuggestion } from "@/lib/username";
 
@@ -47,11 +47,8 @@ export default function CollegeAdminCreateParentPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!usernameManuallyEdited) {
-      setUsername(buildUsernameSuggestion(firstName, lastName));
-    }
-  }, [firstName, lastName, usernameManuallyEdited]);
+  const autoUsername = buildUsernameSuggestion(firstName, lastName);
+  const displayedUsername = usernameManuallyEdited ? username : autoUsername;
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -93,7 +90,7 @@ export default function CollegeAdminCreateParentPage() {
           body: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
-            username,
+            username: displayedUsername,
             username_auto: !usernameManuallyEdited,
             email,
             phone,
@@ -163,7 +160,7 @@ export default function CollegeAdminCreateParentPage() {
                       <label className="form-label">Username</label>
                       <input
                         className="form-control"
-                        value={username}
+                        value={displayedUsername}
                         onChange={(event) => {
                           setUsername(event.target.value);
                           setUsernameManuallyEdited(true);
