@@ -267,12 +267,26 @@ class CollegeAdminAcademicSessionDetailAPIView(APIView):
         })
 
 
+def classroom_roll_prefix(classroom):
+    organization = classroom.organization
+
+    return (
+        str(classroom.roll_number_prefix or "").strip()
+        or str(organization.roll_number_prefix or "").strip()
+        or str(organization.code or "").strip().upper()
+        or "ROLL"
+    )
+
+
 def serialize_classroom(classroom):
     return {
         "id": classroom.id,
         "name": classroom.name,
         "academic_session_id": classroom.academic_session_id,
         "academic_session": classroom.academic_session.name,
+        "roll_number_prefix": classroom_roll_prefix(classroom),
+        "roll_number_digits": classroom.roll_number_digits,
+        "roll_number_start": classroom.roll_number_start,
     }
 
 
@@ -295,6 +309,24 @@ def get_college_academic_session(session_id, organization):
 def validate_classroom_payload(data, organization, classroom=None):
     name = classroom.name if classroom else ""
     academic_session = classroom.academic_session if classroom else None
+    roll_number_prefix = (
+        classroom.roll_number_prefix
+        if classroom
+        else (
+            organization.roll_number_prefix
+            or organization.code.upper()
+        )
+    )
+    roll_number_digits = (
+        classroom.roll_number_digits
+        if classroom
+        else organization.roll_number_digits
+    )
+    roll_number_start = (
+        classroom.roll_number_start
+        if classroom
+        else organization.roll_number_start
+    )
 
     if "name" in data or not classroom:
         name = data.get("name", "").strip()
@@ -310,6 +342,62 @@ def validate_classroom_payload(data, organization, classroom=None):
 
         if not academic_session:
             return None, {"detail": "Academic session not found."}, 404
+
+    if "roll_number_prefix" in data or not classroom:
+        roll_number_prefix = str(
+            data.get("roll_number_prefix", roll_number_prefix) or ""
+        ).strip().upper()
+
+        if not roll_number_prefix:
+            roll_number_prefix = (
+                organization.roll_number_prefix
+                or organization.code.upper()
+            )
+
+        if len(roll_number_prefix) > 20:
+            return (
+                None,
+                {"detail": "Roll number prefix cannot exceed 20 characters."},
+                400,
+            )
+
+    if "roll_number_digits" in data or not classroom:
+        try:
+            roll_number_digits = int(
+                data.get("roll_number_digits", roll_number_digits)
+            )
+        except (TypeError, ValueError):
+            return (
+                None,
+                {"detail": "Roll number digits must be a number."},
+                400,
+            )
+
+        if roll_number_digits < 1 or roll_number_digits > 10:
+            return (
+                None,
+                {"detail": "Roll number digits must be between 1 and 10."},
+                400,
+            )
+
+    if "roll_number_start" in data or not classroom:
+        try:
+            roll_number_start = int(
+                data.get("roll_number_start", roll_number_start)
+            )
+        except (TypeError, ValueError):
+            return (
+                None,
+                {"detail": "Roll number starting value must be a number."},
+                400,
+            )
+
+        if roll_number_start < 1:
+            return (
+                None,
+                {"detail": "Roll number starting value must be at least 1."},
+                400,
+            )
 
     duplicate = ClassRoom.objects.filter(
         organization=organization,
@@ -335,6 +423,9 @@ def validate_classroom_payload(data, organization, classroom=None):
     return {
         "name": name,
         "academic_session": academic_session,
+        "roll_number_prefix": roll_number_prefix,
+        "roll_number_digits": roll_number_digits,
+        "roll_number_start": roll_number_start,
     }, None, None
 
 
@@ -366,11 +457,36 @@ class CollegeAdminClassesAPIView(APIView):
                 | Q(academic_session__name__icontains=search)
             )
 
+        serialized_classes = [
+            serialize_classroom(classroom)
+            for classroom in classrooms
+        ]
+
+        prefix_options = {
+            str(organization.roll_number_prefix or "").strip().upper(),
+            str(organization.code or "").strip().upper(),
+        }
+        prefix_options.update(
+            item["roll_number_prefix"]
+            for item in serialized_classes
+            if item["roll_number_prefix"]
+        )
+
         return Response({
-            "classes": [
-                serialize_classroom(classroom)
-                for classroom in classrooms
-            ]
+            "classes": serialized_classes,
+            "roll_number_prefixes": sorted(
+                prefix
+                for prefix in prefix_options
+                if prefix
+            ),
+            "roll_number_defaults": {
+                "prefix": (
+                    organization.roll_number_prefix
+                    or organization.code.upper()
+                ),
+                "digits": organization.roll_number_digits,
+                "start": organization.roll_number_start,
+            },
         })
 
     def post(self, request):
@@ -471,12 +587,18 @@ class CollegeAdminClassDetailAPIView(APIView):
 
         classroom.name = values["name"]
         classroom.academic_session = values["academic_session"]
+        classroom.roll_number_prefix = values["roll_number_prefix"]
+        classroom.roll_number_digits = values["roll_number_digits"]
+        classroom.roll_number_start = values["roll_number_start"]
 
         try:
             classroom.save(
                 update_fields=[
                     "name",
                     "academic_session",
+                    "roll_number_prefix",
+                    "roll_number_digits",
+                    "roll_number_start",
                 ]
             )
         except IntegrityError:
