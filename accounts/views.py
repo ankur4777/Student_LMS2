@@ -2443,6 +2443,200 @@ class CollegeAdminStudentsAPIView(APIView):
         phone = request.data.get("phone", "").strip()
         date_of_birth = request.data.get("date_of_birth") or None
         admission_date = request.data.get("admission_date") or None
+        parents_payload = request.data.get("parents", [])
+
+        if parents_payload is None:
+            parents_payload = []
+
+        if not isinstance(parents_payload, list):
+            return Response(
+                {"detail": "Parents must be provided as a list."},
+                status=400,
+            )
+
+        valid_relationships = {
+            choice[0]
+            for choice in ParentStudent.Relationship.choices
+        }
+        prepared_parents = []
+        seen_existing_parent_ids = set()
+        seen_new_parent_emails = set()
+
+        for index, parent_data in enumerate(parents_payload, start=1):
+            if not isinstance(parent_data, dict):
+                return Response(
+                    {"detail": f"Parent {index} details are invalid."},
+                    status=400,
+                )
+
+            mode = str(
+                parent_data.get("mode", "new") or "new"
+            ).strip().lower()
+            relationship = str(
+                parent_data.get(
+                    "relationship",
+                    ParentStudent.Relationship.GUARDIAN,
+                )
+            ).strip()
+
+            if relationship not in valid_relationships:
+                return Response(
+                    {"detail": f"Parent {index} relationship is invalid."},
+                    status=400,
+                )
+
+            if mode == "existing":
+                parent_profile_id = parent_data.get(
+                    "parent_profile_id"
+                )
+
+                parent_profile = ParentProfile.objects.filter(
+                    id=parent_profile_id,
+                    user__role="parent",
+                    user__organization=organization,
+                    user__is_active=True,
+                ).select_related("user").first()
+
+                if not parent_profile:
+                    return Response(
+                        {
+                            "detail": (
+                                f"Parent {index} was not found in "
+                                "this institution."
+                            )
+                        },
+                        status=400,
+                    )
+
+                if parent_profile.id in seen_existing_parent_ids:
+                    return Response(
+                        {
+                            "detail": (
+                                "The same existing parent cannot be "
+                                "selected more than once."
+                            )
+                        },
+                        status=400,
+                    )
+
+                seen_existing_parent_ids.add(parent_profile.id)
+                prepared_parents.append(
+                    {
+                        "mode": "existing",
+                        "relationship": relationship,
+                        "profile": parent_profile,
+                    }
+                )
+                continue
+
+            if mode != "new":
+                return Response(
+                    {"detail": f"Parent {index} mode is invalid."},
+                    status=400,
+                )
+
+            parent_first_name = str(
+                parent_data.get("first_name", "") or ""
+            ).strip()
+            parent_last_name = str(
+                parent_data.get("last_name", "") or ""
+            ).strip()
+            parent_email = str(
+                parent_data.get("email", "") or ""
+            ).strip()
+            parent_phone = str(
+                parent_data.get("phone", "") or ""
+            ).strip()
+            parent_occupation = str(
+                parent_data.get("occupation", "") or ""
+            ).strip()
+            parent_password = str(
+                parent_data.get("password", "") or ""
+            )
+            parent_requested_username = str(
+                parent_data.get("username", "") or ""
+            ).strip()
+            parent_username_auto = request_boolean(
+                parent_data.get(
+                    "username_auto",
+                    not parent_requested_username,
+                )
+            )
+            parent_username = (
+                None
+                if parent_username_auto or not parent_requested_username
+                else parent_requested_username
+            )
+
+            if not parent_first_name:
+                return Response(
+                    {"detail": f"Parent {index} first name is required."},
+                    status=400,
+                )
+
+            if not parent_email:
+                return Response(
+                    {"detail": f"Parent {index} email is required."},
+                    status=400,
+                )
+
+            normalized_parent_email = parent_email.lower()
+
+            if normalized_parent_email in seen_new_parent_emails:
+                return Response(
+                    {
+                        "detail": (
+                            "The same new parent email cannot be "
+                            "used more than once."
+                        )
+                    },
+                    status=400,
+                )
+
+            if email_in_use_for_role(parent_email, "parent"):
+                return Response(
+                    {
+                        "detail": (
+                            f'A parent account already uses "{parent_email}". '
+                            "Select Existing Parent instead."
+                        )
+                    },
+                    status=400,
+                )
+
+            if not parent_password:
+                return Response(
+                    {"detail": f"Parent {index} password is required."},
+                    status=400,
+                )
+
+            if parent_username and User.objects.filter(
+                username__iexact=parent_username
+            ).exists():
+                return Response(
+                    {
+                        "detail": (
+                            f'Parent username "{parent_username}" '
+                            "already exists."
+                        )
+                    },
+                    status=400,
+                )
+
+            seen_new_parent_emails.add(normalized_parent_email)
+            prepared_parents.append(
+                {
+                    "mode": "new",
+                    "relationship": relationship,
+                    "username": parent_username,
+                    "email": parent_email,
+                    "password": parent_password,
+                    "first_name": parent_first_name,
+                    "last_name": parent_last_name,
+                    "phone": parent_phone,
+                    "occupation": parent_occupation,
+                }
+            )
 
         if not password:
             return Response(
@@ -2483,7 +2677,7 @@ class CollegeAdminStudentsAPIView(APIView):
                 organization=organization,
             )
 
-            StudentProfile.objects.create(
+            student_profile = StudentProfile.objects.create(
                 user=student,
                 admission_number=admission_number,
                 phone=phone,
@@ -2491,10 +2685,61 @@ class CollegeAdminStudentsAPIView(APIView):
                 admission_date=admission_date,
             )
 
+            linked_parents = []
+
+            for parent_data in prepared_parents:
+                if parent_data["mode"] == "existing":
+                    parent_profile = parent_data["profile"]
+                else:
+                    parent_user = User.objects.create_user(
+                        username=parent_data["username"],
+                        email=parent_data["email"],
+                        password=parent_data["password"],
+                        first_name=parent_data["first_name"],
+                        last_name=parent_data["last_name"],
+                        role="parent",
+                        organization=organization,
+                    )
+
+                    parent_profile = ParentProfile.objects.create(
+                        user=parent_user,
+                        phone=parent_data["phone"],
+                        occupation=parent_data["occupation"],
+                    )
+
+                link = ParentStudent.objects.create(
+                    parent=parent_profile,
+                    student=student_profile,
+                    relationship=parent_data["relationship"],
+                )
+
+                linked_parents.append(
+                    {
+                        "link_id": link.id,
+                        "relationship": link.relationship,
+                        "parent_profile_id": parent_profile.id,
+                        "parent_id": parent_profile.user_id,
+                        "name": (
+                            parent_profile.user.get_full_name().strip()
+                            or parent_profile.user.username
+                        ),
+                        "username": parent_profile.user.username,
+                        "email": parent_profile.user.email,
+                    }
+                )
+
         return Response(
             {
-                "message": "Student created successfully.",
+                "message": (
+                    "Student created successfully"
+                    + (
+                        " and parent account(s) linked."
+                        if linked_parents
+                        else "."
+                    )
+                ),
                 "student": serialize_college_student(student),
+                "parents": linked_parents,
             },
             status=201
         )
