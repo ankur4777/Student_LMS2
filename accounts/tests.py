@@ -2,6 +2,7 @@ import shutil
 import tempfile
 from datetime import date, time
 
+from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -2154,6 +2155,11 @@ class PortalEmailLoginTests(TestCase):
             role="college_admin",
             organization=self.organization,
         )
+        self.platform_admin = User.objects.create_superuser(
+            username="platformmanual",
+            email="platform-login@example.com",
+            password=self.password,
+        )
 
     def test_all_portals_accept_email_login(self):
         cases = [
@@ -2233,3 +2239,12 @@ class PortalEmailLoginTests(TestCase):
             "More than one account uses this email",
             response.data["detail"],
         )
+
+    def test_platform_admin_can_authenticate_with_email(self):
+        user = authenticate(
+            username="platform-login@example.com",
+            password=self.password,
+        )
+
+        self.assertIsNotNone(user)
+        self.assertEqual(user.id, self.platform_admin.id)
