@@ -104,9 +104,7 @@ export default function StudentLoginPage() {
               <label
                 htmlFor="username"
                 className="form-label fw-medium"
-              >
-                Username
-              </label>
+              >Username or Email</label>
 
               <input
                 id="username"
@@ -116,7 +114,7 @@ export default function StudentLoginPage() {
                 onChange={(event) =>
                   setUsername(event.target.value)
                 }
-                placeholder="Enter your username"
+                placeholder="Enter your username or email"
                 required
               />
             </div>
