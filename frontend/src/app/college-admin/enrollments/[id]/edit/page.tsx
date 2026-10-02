@@ -39,6 +39,10 @@ interface ClassRoom {
   id: number;
   name: string;
   academic_session_id: number;
+  roll_number_prefix: string;
+  roll_number_digits: number;
+  roll_number_start: number;
+  next_roll_number: string;
 }
 
 interface Section {
@@ -290,6 +294,7 @@ export default function EditEnrollmentPage() {
                             setSessionId(event.target.value);
                             setClassId("");
                             setSectionId("");
+                            setRollNumber("");
                           }}
                           required
                         >
@@ -307,8 +312,17 @@ export default function EditEnrollmentPage() {
                           className="form-select"
                           value={classId}
                           onChange={(event) => {
-                            setClassId(event.target.value);
+                            const nextClassId = event.target.value;
+                            setClassId(nextClassId);
                             setSectionId("");
+
+                            const selectedClass = classes.find(
+                              (item) => item.id === Number(nextClassId)
+                            );
+
+                            setRollNumber(
+                              selectedClass?.next_roll_number || ""
+                            );
                           }}
                           required
                         >
@@ -347,6 +361,9 @@ export default function EditEnrollmentPage() {
                             setRollNumber(event.target.value)
                           }
                         />
+                        <div className="form-text">
+                          The class-based roll number is suggested automatically and remains editable.
+                        </div>
                       </div>
                       <div className="col-12">
                         <div className="form-check">
