@@ -37,6 +37,22 @@ class LMSUserCreationForm(UserCreationForm):
                 )
             return cleaned_data
 
+        email = str(cleaned_data.get("email") or "").strip()
+
+        if not email:
+            self.add_error(
+                "email",
+                "Email is required for portal users.",
+            )
+        elif User.objects.filter(
+            email__iexact=email,
+            role=role,
+        ).exists():
+            self.add_error(
+                "email",
+                "This email is already used by another account in this portal.",
+            )
+
         if not username:
             generated = generate_available_username(
                 User,
