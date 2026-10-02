@@ -181,6 +181,7 @@ export default function CollegeAdminCreateParentPage() {
                         className="form-control"
                         type="email"
                         value={email}
+                        required
                         onChange={(event) => setEmail(event.target.value)}
                       />
                     </div>
