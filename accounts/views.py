@@ -2097,6 +2097,18 @@ class CollegeAdminTeachersAPIView(APIView):
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         email = request.data.get("email", "").strip()
+
+        if not email:
+            return Response(
+                {"detail": "Email is required for teacher accounts."},
+                status=400,
+            )
+
+        if email_in_use_for_role(email, "teacher"):
+            return Response(
+                {"detail": "This email is already used by another teacher account."},
+                status=400,
+            )
         employee_id = request.data.get("employee_id", "").strip()
         phone = request.data.get("phone", "").strip()
         qualification = request.data.get("qualification", "").strip()
@@ -2243,7 +2255,25 @@ class CollegeAdminTeacherDetailAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            teacher.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "teacher",
+                exclude_user_id=teacher.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another teacher account."},
+                    status=400,
+                )
+
+            teacher.email = email
 
         if "is_active" in request.data:
             value = request.data.get("is_active")
@@ -2376,6 +2406,18 @@ class CollegeAdminStudentsAPIView(APIView):
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         email = request.data.get("email", "").strip()
+
+        if not email:
+            return Response(
+                {"detail": "Email is required for student accounts."},
+                status=400,
+            )
+
+        if email_in_use_for_role(email, "student"):
+            return Response(
+                {"detail": "This email is already used by another student account."},
+                status=400,
+            )
         admission_number = request.data.get(
             "admission_number",
             ""
@@ -2527,7 +2569,25 @@ class CollegeAdminStudentDetailAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            student.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "student",
+                exclude_user_id=student.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another student account."},
+                    status=400,
+                )
+
+            student.email = email
 
         if "is_active" in request.data:
             student.is_active = bool(request.data.get("is_active"))
@@ -2659,6 +2719,18 @@ class CollegeAdminParentsAPIView(APIView):
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         email = request.data.get("email", "").strip()
+
+        if not email:
+            return Response(
+                {"detail": "Email is required for parent accounts."},
+                status=400,
+            )
+
+        if email_in_use_for_role(email, "parent"):
+            return Response(
+                {"detail": "This email is already used by another parent account."},
+                status=400,
+            )
         phone = request.data.get("phone", "").strip()
         occupation = request.data.get("occupation", "").strip()
 
@@ -2792,7 +2864,25 @@ class CollegeAdminParentDetailAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            parent.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "parent",
+                exclude_user_id=parent.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another parent account."},
+                    status=400,
+                )
+
+            parent.email = email
 
         if "is_active" in request.data:
             value = request.data.get("is_active")
