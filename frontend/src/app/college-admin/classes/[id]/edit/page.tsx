@@ -116,7 +116,11 @@ export default function EditClassPage() {
             ),
           ]);
 
-        if (classResponse.status === 401 || sessionsResponse.status === 401) {
+        if (
+          classResponse.status === 401 ||
+          sessionsResponse.status === 401 ||
+          classesResponse.status === 401
+        ) {
           clearSession();
           router.replace("/college-admin/login");
           return;
