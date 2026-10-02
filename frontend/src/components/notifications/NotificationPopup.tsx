@@ -218,12 +218,25 @@ export default function NotificationPopup({
 
     void fetchNotifications();
 
+    const handleNotificationsUpdated = () => {
+      void fetchNotifications();
+    };
+
+    window.addEventListener(
+      "lms:notifications-updated",
+      handleNotificationsUpdated
+    );
+
     const intervalId = window.setInterval(() => {
       void fetchNotifications();
     }, POLL_INTERVAL_MS);
 
     return () => {
       stoppedRef.current = true;
+      window.removeEventListener(
+        "lms:notifications-updated",
+        handleNotificationsUpdated
+      );
       window.clearInterval(intervalId);
     };
   }, [fetchNotifications, role, userStorageKey]);
@@ -290,7 +303,9 @@ export default function NotificationPopup({
           <div className="card-body p-3">
             <div className="d-flex align-items-start justify-content-between gap-3 mb-2">
               <div className="fw-semibold">
-                New Notification
+                {item.title === "New Notice"
+                  ? "New Notice & Announcement"
+                  : "New Notification"}
               </div>
               <button
                 type="button"
