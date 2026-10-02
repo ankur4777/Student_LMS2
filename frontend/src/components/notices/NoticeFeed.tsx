@@ -86,6 +86,10 @@ export default function NoticeFeed({
 
         if (active) {
           setNotices(Array.isArray(result) ? result : []);
+
+          window.dispatchEvent(
+            new Event("lms:notifications-updated")
+          );
         }
       } catch (err) {
         if (active) {
