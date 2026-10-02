@@ -1731,7 +1731,15 @@ def request_boolean(value):
     return bool(value)
 
 
-def roll_number_prefix(organization):
+def roll_number_prefix(organization, classroom=None):
+    if classroom:
+        class_prefix = str(
+            classroom.roll_number_prefix or ""
+        ).strip()
+
+        if class_prefix:
+            return class_prefix
+
     return (
         str(organization.roll_number_prefix or "").strip()
         or str(organization.code or "").strip().upper()
@@ -1739,40 +1747,79 @@ def roll_number_prefix(organization):
     )
 
 
-def format_roll_number(organization, number):
-    digits = max(1, min(int(organization.roll_number_digits or 4), 10))
-    return f"{roll_number_prefix(organization)}-{int(number):0{digits}d}"
+def roll_number_digits(organization, classroom=None):
+    value = (
+        classroom.roll_number_digits
+        if classroom
+        else organization.roll_number_digits
+    )
+    return max(1, min(int(value or 4), 10))
 
 
-def get_roll_number_preview(organization, academic_session):
+def roll_number_start(organization, classroom=None):
+    value = (
+        classroom.roll_number_start
+        if classroom
+        else organization.roll_number_start
+    )
+    return max(1, int(value or 1))
+
+
+def format_roll_number(organization, classroom, number):
+    digits = roll_number_digits(organization, classroom)
+    return (
+        f"{roll_number_prefix(organization, classroom)}-"
+        f"{int(number):0{digits}d}"
+    )
+
+
+def get_roll_number_preview(organization, classroom):
     sequence = RollNumberSequence.objects.filter(
         organization=organization,
-        academic_session=academic_session,
+        classroom=classroom,
     ).first()
 
     next_number = (
         sequence.next_number
         if sequence
-        else organization.roll_number_start
+        else roll_number_start(organization, classroom)
     )
 
-    return format_roll_number(organization, next_number)
+    return format_roll_number(
+        organization,
+        classroom,
+        next_number,
+    )
 
 
-def generate_roll_number(organization, academic_session):
-    sequence, _created = RollNumberSequence.objects.select_for_update().get_or_create(
-        organization=organization,
-        academic_session=academic_session,
-        defaults={"next_number": organization.roll_number_start},
+def generate_roll_number(organization, classroom):
+    academic_session = classroom.academic_session
+
+    sequence, _created = (
+        RollNumberSequence.objects.select_for_update().get_or_create(
+            organization=organization,
+            academic_session=academic_session,
+            classroom=classroom,
+            defaults={
+                "next_number": roll_number_start(
+                    organization,
+                    classroom,
+                )
+            },
+        )
     )
 
     number = max(sequence.next_number, 1)
 
     while True:
-        candidate = format_roll_number(organization, number)
+        candidate = format_roll_number(
+            organization,
+            classroom,
+            number,
+        )
         duplicate = StudentEnrollment.objects.filter(
             section__organization=organization,
-            section__classroom__academic_session=academic_session,
+            section__classroom=classroom,
             roll_number__iexact=candidate,
         ).exists()
 
@@ -1789,13 +1836,13 @@ def generate_roll_number(organization, academic_session):
 
 def roll_number_exists(
     organization,
-    academic_session,
+    classroom,
     roll_number,
     exclude_enrollment_id=None,
 ):
     query = StudentEnrollment.objects.filter(
         section__organization=organization,
-        section__classroom__academic_session=academic_session,
+        section__classroom=classroom,
         roll_number__iexact=roll_number,
     )
 
@@ -3964,6 +4011,29 @@ class CollegeAdminTeacherAssignmentSetupAPIView(APIView):
                     "academic_session_id": (
                         classroom.academic_session_id
                     ),
+                    "roll_number_prefix": roll_number_prefix(
+                        organization,
+                        classroom,
+                    ),
+                    "roll_number_digits": roll_number_digits(
+                        organization,
+                        classroom,
+                    ),
+                    "roll_number_start": roll_number_start(
+                        organization,
+                        classroom,
+                    ),
+                    "next_roll_number": format_roll_number(
+                        organization,
+                        classroom,
+                        roll_sequences.get(
+                            classroom.id,
+                            roll_number_start(
+                                organization,
+                                classroom,
+                            ),
+                        ),
+                    ),
                 }
                 for classroom in classrooms
             ],
@@ -4217,11 +4287,11 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
         )
 
         roll_sequences = {
-            sequence.academic_session_id: sequence.next_number
+            sequence.classroom_id: sequence.next_number
             for sequence in RollNumberSequence.objects.filter(
                 organization=organization,
-                academic_session__in=sessions,
-            )
+                classroom__in=classrooms,
+            ).exclude(classroom_id=None)
         }
 
         return Response({
@@ -4248,13 +4318,6 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
                     "id": session.id,
                     "name": session.name,
                     "is_active": session.is_active,
-                    "next_roll_number": format_roll_number(
-                        organization,
-                        roll_sequences.get(
-                            session.id,
-                            organization.roll_number_start,
-                        ),
-                    ),
                 }
                 for session in sessions
             ],
@@ -4369,7 +4432,7 @@ class CollegeAdminEnrollmentsAPIView(APIView):
                 status=404
             )
 
-        academic_session = section.classroom.academic_session
+        classroom = section.classroom
 
         with transaction.atomic():
             existing_enrollment = StudentEnrollment.objects.filter(
@@ -4386,7 +4449,7 @@ class CollegeAdminEnrollmentsAPIView(APIView):
                 else:
                     roll_number = generate_roll_number(
                         organization,
-                        academic_session,
+                        classroom,
                     )
             elif not roll_number:
                 return Response(
@@ -4395,7 +4458,7 @@ class CollegeAdminEnrollmentsAPIView(APIView):
                 )
             elif roll_number_exists(
                 organization,
-                academic_session,
+                classroom,
                 roll_number,
                 exclude_enrollment_id=(
                     existing_enrollment.id
@@ -4407,7 +4470,7 @@ class CollegeAdminEnrollmentsAPIView(APIView):
                     {
                         "detail": (
                             "This roll number already exists in "
-                            "the selected academic session."
+                            "the selected class."
                         )
                     },
                     status=400,
@@ -4565,7 +4628,7 @@ class CollegeAdminEnrollmentDetailAPIView(APIView):
 
         if roll_number and roll_number_exists(
             organization,
-            section.classroom.academic_session,
+            section.classroom,
             roll_number,
             exclude_enrollment_id=enrollment.id,
         ):
@@ -4573,7 +4636,7 @@ class CollegeAdminEnrollmentDetailAPIView(APIView):
                 {
                     "detail": (
                         "This roll number already exists in "
-                        "the selected academic session."
+                        "the selected class."
                     )
                 },
                 status=400,
