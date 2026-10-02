@@ -437,6 +437,21 @@ def notify_live_class_scheduled(live_class):
     teacher_assignment = live_class.teacher_assignment
     organization = live_class.organization
 
+    teacher_user = teacher_assignment.teacher.user
+    if teacher_user.organization_id == organization.id:
+        create_notification(
+            organization=organization,
+            user=teacher_user,
+            title="Live Class Scheduled",
+            message=(
+                f'Live class "{live_class.title}" has been scheduled '
+                f"for {teacher_assignment.subject.name} on "
+                f"{live_class.class_date} at {live_class.start_time}."
+            ),
+            notification_type=Notification.Type.LIVE_CLASS,
+            related_url="/teacher/classes",
+        )
+
     enrollments = StudentEnrollment.objects.filter(
         section=teacher_assignment.section,
         is_active=True,
