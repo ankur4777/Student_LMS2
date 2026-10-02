@@ -240,6 +240,10 @@ PASSWORD_RESET_FRONTEND_URL = os.environ.get(
 PASSWORD_RESET_TIMEOUT = int(
     os.environ.get('PASSWORD_RESET_TIMEOUT', '3600')
 )
+LMS_FRONTEND_URL = os.environ.get(
+    'LMS_FRONTEND_URL',
+    PASSWORD_RESET_FRONTEND_URL,
+)
 
 MEDIA_URL = '/media/'
 
