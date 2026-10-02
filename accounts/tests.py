@@ -2041,8 +2041,8 @@ class UsernameAndRollNumberAutomationTests(TestCase):
             "/api/accounts/college-admin/enrollments/setup/"
         )
         self.assertEqual(setup.status_code, 200)
-        session = setup.data["academic_sessions"][0]
-        self.assertEqual(session["next_roll_number"], "IGDTUW-025")
+        class_data = setup.data["classes"][0]
+        self.assertEqual(class_data["next_roll_number"], "AC-0001")
 
     def test_enrollment_auto_generates_and_increments_roll_number(self):
         first = self.create_student("ADM101", "Amit", "Kumar")
@@ -2081,7 +2081,7 @@ class UsernameAndRollNumberAutomationTests(TestCase):
         )
         sequence = RollNumberSequence.objects.get(
             organization=self.organization,
-            academic_session=self.session,
+            classroom=self.classroom,
         )
         self.assertEqual(sequence.next_number, 3)
 
@@ -2115,6 +2115,98 @@ class UsernameAndRollNumberAutomationTests(TestCase):
         self.assertIn(
             "already exists",
             duplicate_response.data["detail"],
+        )
+
+
+    def test_class_can_define_its_own_roll_prefix_digits_and_start(self):
+        response = self.client.patch(
+            f"/api/academics/college-admin/classes/{self.classroom.id}/",
+            {
+                "roll_number_prefix": "CSE",
+                "roll_number_digits": 3,
+                "roll_number_start": 101,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        class_data = response.data["class"]
+        self.assertEqual(class_data["roll_number_prefix"], "CSE")
+        self.assertEqual(class_data["roll_number_digits"], 3)
+        self.assertEqual(class_data["roll_number_start"], 101)
+
+        setup = self.client.get(
+            "/api/accounts/college-admin/enrollments/setup/"
+        )
+        self.assertEqual(setup.status_code, 200)
+        selected = next(
+            item
+            for item in setup.data["classes"]
+            if item["id"] == self.classroom.id
+        )
+        self.assertEqual(selected["next_roll_number"], "CSE-101")
+
+    def test_roll_sequences_are_independent_for_each_class(self):
+        other_class = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="BBA",
+            roll_number_prefix="BBA",
+            roll_number_digits=3,
+            roll_number_start=1,
+        )
+        other_section = Section.objects.create(
+            organization=self.organization,
+            classroom=other_class,
+            name="A",
+        )
+
+        first = self.create_student("ADM301", "Kabir", "Singh")
+        second = self.create_student("ADM302", "Meera", "Shah")
+
+        first_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": first["id"],
+                "section_id": self.section.id,
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+        second_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": second["id"],
+                "section_id": other_section.id,
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 201)
+        self.assertEqual(
+            first_response.data["enrollment"]["roll_number"],
+            "AC-0001",
+        )
+        self.assertEqual(
+            second_response.data["enrollment"]["roll_number"],
+            "BBA-001",
+        )
+
+        self.assertEqual(
+            RollNumberSequence.objects.get(
+                organization=self.organization,
+                classroom=self.classroom,
+            ).next_number,
+            2,
+        )
+        self.assertEqual(
+            RollNumberSequence.objects.get(
+                organization=self.organization,
+                classroom=other_class,
+            ).next_number,
+            2,
         )
 
 
