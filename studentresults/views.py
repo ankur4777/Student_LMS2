@@ -18,7 +18,7 @@ from academics.models import (
 from datetime import datetime
 
 from studentresults.models import Exam, StudentResult
-from notifications.services import notify_exam_published
+from notifications.services import notify_exam_created, notify_exam_published
 
 
 def _display_name(user):
@@ -550,6 +550,8 @@ class TeacherExamCreateAPIView(APIView):
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        notify_exam_created(exam, assignment)
 
         return Response(
             {
