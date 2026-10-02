@@ -650,10 +650,10 @@ export default function CollegeAdminProfilePage() {
                           <div className="col-12">
                             <hr className="my-2" />
                             <h6 className="fw-bold mb-1">
-                              Student Roll Number Settings
+                              Default Roll Number Settings
                             </h6>
                             <p className="text-muted small mb-3">
-                              New enrollments use these settings. Existing roll numbers are not changed.
+                              These values are used as defaults when creating a new class. Each class can select or create its own roll number prefix. Existing class settings and roll numbers are not changed.
                             </p>
                           </div>
                           <div className="col-md-4">
