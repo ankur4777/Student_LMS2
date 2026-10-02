@@ -7,6 +7,7 @@ import { buildUsernameSuggestion } from "@/lib/username";
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
 import AdminIcon from "@/components/college-admin/AdminIcon";
+import PasswordField from "@/components/auth/PasswordField";
 
 import "../../../teacher/dashboard/dashboard.css";
 import "../students.css";
@@ -498,33 +499,23 @@ export default function CollegeAdminCreateStudentPage() {
                       />
                     </div>
 
-                    <div className="student-form-group">
-                      <label htmlFor="password">Password</label>
-                      <input
-                        id="password"
-                        name="student-new-password"
-                        type="password"
-                        autoComplete="new-password"
-                        value={password}
-                        onChange={(event) => setPassword(event.target.value)}
-                        required
-                      />
-                    </div>
+                    <PasswordField
+                      id="password"
+                      label="Password"
+                      value={password}
+                      onChange={setPassword}
+                      autoComplete="new-password"
+                      className="student-form-group"
+                    />
 
-                    <div className="student-form-group">
-                      <label htmlFor="confirm-password">Confirm Password</label>
-                      <input
-                        id="confirm-password"
-                        name="student-confirm-new-password"
-                        type="password"
-                        autoComplete="new-password"
-                        value={confirmPassword}
-                        onChange={(event) =>
-                          setConfirmPassword(event.target.value)
-                        }
-                        required
-                      />
-                    </div>
+                    <PasswordField
+                      id="confirm-password"
+                      label="Confirm Password"
+                      value={confirmPassword}
+                      onChange={setConfirmPassword}
+                      autoComplete="new-password"
+                      className="student-form-group"
+                    />
                   </div>
                 </section>
 
@@ -774,37 +765,31 @@ export default function CollegeAdminCreateStudentPage() {
                                 />
                               </div>
 
-                              <div className="student-form-group">
-                                <label>Password</label>
-                                <input
-                                  name={`parent-new-password-${parent.key}`}
-                                  type="password"
-                                  autoComplete="new-password"
-                                  value={parent.password}
-                                  onChange={(event) =>
-                                    updateParent(parent.key, {
-                                      password: event.target.value,
-                                    })
-                                  }
-                                  required
-                                />
-                              </div>
+                              <PasswordField
+                                id={`parent-password-${parent.key}`}
+                                label="Password"
+                                value={parent.password}
+                                onChange={(value) =>
+                                  updateParent(parent.key, {
+                                    password: value,
+                                  })
+                                }
+                                autoComplete="new-password"
+                                className="student-form-group"
+                              />
 
-                              <div className="student-form-group">
-                                <label>Confirm Password</label>
-                                <input
-                                  name={`parent-confirm-password-${parent.key}`}
-                                  type="password"
-                                  autoComplete="new-password"
-                                  value={parent.confirmPassword}
-                                  onChange={(event) =>
-                                    updateParent(parent.key, {
-                                      confirmPassword: event.target.value,
-                                    })
-                                  }
-                                  required
-                                />
-                              </div>
+                              <PasswordField
+                                id={`parent-confirm-password-${parent.key}`}
+                                label="Confirm Password"
+                                value={parent.confirmPassword}
+                                onChange={(value) =>
+                                  updateParent(parent.key, {
+                                    confirmPassword: value,
+                                  })
+                                }
+                                autoComplete="new-password"
+                                className="student-form-group"
+                              />
                             </div>
                           )}
                         </div>
