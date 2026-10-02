@@ -152,7 +152,7 @@ export default function CollegeAdminCreateTeacherPage() {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <form onSubmit={handleSubmit} className="teacher-form-shell">
+            <form onSubmit={handleSubmit} className="teacher-form-shell" autoComplete="off">
               <div className="teacher-form-card">
                 <section className="teacher-form-section">
                   <div className="teacher-section-heading">
@@ -223,6 +223,10 @@ export default function CollegeAdminCreateTeacherPage() {
                       <input
                         id="username"
                         value={displayedUsername}
+                        name="generated-username"
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
                         onChange={(event) => {
                           setUsername(event.target.value);
                           setUsernameManuallyEdited(true);
@@ -235,11 +239,11 @@ export default function CollegeAdminCreateTeacherPage() {
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="password">Password</label>
-                      <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+                      <input id="password" name="new-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="confirm-password">Confirm Password</label>
-                      <input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+                      <input id="confirm-password" name="confirm-new-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
                     </div>
                   </div>
                 </section>
