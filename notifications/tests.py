@@ -336,7 +336,11 @@ class NotificationEmailTests(APITestCase):
         recipients = sorted(message.to[0] for message in mail.outbox)
         self.assertEqual(
             recipients,
-            ["parent@example.com", "student@example.com"],
+            [
+                "parent@example.com",
+                "student@example.com",
+                "teacher@example.com",
+            ],
         )
         self.assertTrue(
             all("Live Class Scheduled" in message.subject for message in mail.outbox)
