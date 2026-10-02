@@ -25,7 +25,10 @@ from .serializers import (
     TeacherRecordingUploadSerializer,
     TeacherRecordingUpdateSerializer,
 )
-from notifications.services import notify_recording_available
+from notifications.services import (
+    notify_live_class_scheduled,
+    notify_recording_available,
+)
 
 
 def college_admin_organization(user):
@@ -418,6 +421,8 @@ class CollegeAdminLiveClassesAPIView(APIView):
             organization=organization,
             **values,
         )
+
+        notify_live_class_scheduled(live_class)
 
         return Response(
             {
