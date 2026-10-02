@@ -1510,7 +1510,25 @@ class CollegeAdminProfileAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            user.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "college_admin",
+                exclude_user_id=user.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another college admin account."},
+                    status=400,
+                )
+
+            user.email = email
 
         user.save(
             update_fields=[
