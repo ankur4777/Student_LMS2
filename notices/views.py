@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from academics.models import ParentStudent, StudentEnrollment
-from notifications.services import notify_notice_published
+from notifications.services import notify_notice_published, notify_notice_user
 from .models import Notice
 from .serializers import NoticeSerializer
 
@@ -178,9 +178,15 @@ class RelevantNoticesAPIView(APIView):
         if not request.user.organization_id:
             return Response([])
 
-        notices = current_notice_queryset(request.user).select_related(
-            "classroom", "section", "created_by"
+        notices = list(
+            current_notice_queryset(request.user).select_related(
+                "classroom", "section", "created_by"
+            )
         )
+
+        for notice in notices:
+            notify_notice_user(notice, request.user)
+
         return Response(
             NoticeSerializer(notices, many=True, context={"request": request}).data
         )
