@@ -174,7 +174,7 @@ export default function CollegeAdminCreateTeacherPage() {
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="email">Email</label>
-                      <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                      <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="phone">Phone</label>
