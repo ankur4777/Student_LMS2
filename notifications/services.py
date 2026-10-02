@@ -125,6 +125,27 @@ def create_notification(
     return notification
 
 
+def notify_notice_user(notice, user):
+    related_urls = {
+        "student": "/student/dashboard",
+        "teacher": "/teacher/dashboard",
+        "parent": "/parent/dashboard",
+    }
+
+    related_url = related_urls.get(user.role)
+    if not related_url:
+        return None
+
+    return create_notification(
+        organization=notice.organization,
+        user=user,
+        title="New Notice",
+        message=f'New notice "{notice.title}": {notice.message}',
+        notification_type=Notification.Type.GENERAL,
+        related_url=related_url,
+    )
+
+
 def notify_notice_published(notice):
     organization = notice.organization
 
@@ -208,14 +229,7 @@ def notify_notice_published(notice):
 
         seen_user_ids.add(user.id)
 
-        create_notification(
-            organization=organization,
-            user=user,
-            title="New Notice",
-            message=f'New notice "{notice.title}": {notice.message}',
-            notification_type=Notification.Type.GENERAL,
-            related_url=related_url,
-        )
+        notify_notice_user(notice, user)
 
 
 def notify_assignment_published(assignment):
