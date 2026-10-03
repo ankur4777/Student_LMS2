@@ -28,6 +28,15 @@ class LiveClassSerializer(serializers.ModelSerializer):
     # Secure playback endpoint
     recording_playback_url = serializers.SerializerMethodField()
 
+    # Students can join only after the assigned teacher starts the class.
+    can_join = serializers.SerializerMethodField()
+
+    def get_can_join(self, obj):
+        return bool(
+            obj.meeting_link
+            and obj.status == LiveClass.Status.LIVE
+        )
+
     def get_recording_playback_url(self, obj):
         try:
             recording = obj.recording
@@ -51,6 +60,7 @@ class LiveClassSerializer(serializers.ModelSerializer):
             'end_time',
             'meeting_link',
             'status',
+            'can_join',
 
             'teacher_name',
             'subject_name',
