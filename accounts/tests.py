@@ -17,6 +17,7 @@ from academics.models import (
     Section,
     StudentEnrollment,
     Subject,
+    SubjectStudentAccess,
     TeacherAssignment,
 )
 from assignments.models import Assignment, AssignmentSubmission
@@ -2569,3 +2570,165 @@ class StudentParentCreationFlowTests(TestCase):
                 admission_number="ADM-FAMILY-5"
             ).exists()
         )
+
+
+class TeacherStudentsPageTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Teacher Students College",
+            code="TSC",
+        )
+        self.teacher_user = User.objects.create_user(
+            username="teacherstudents01",
+            email="teacherstudents@example.com",
+            password="pass12345",
+            role="teacher",
+            organization=self.organization,
+        )
+        self.teacher = TeacherProfile.objects.create(
+            user=self.teacher_user,
+            employee_id="TS-001",
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 10",
+        )
+        self.section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.maths = Subject.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="Maths",
+            code="MATH",
+        )
+        self.history = Subject.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="History",
+            code="HIST",
+        )
+        TeacherAssignment.objects.create(
+            teacher=self.teacher,
+            subject=self.maths,
+            section=self.section,
+            is_active=True,
+        )
+        TeacherAssignment.objects.create(
+            teacher=self.teacher,
+            subject=self.history,
+            section=self.section,
+            is_active=True,
+        )
+
+        self.student_one_user = User.objects.create_user(
+            username="studentone01",
+            email="studentone@example.com",
+            password="pass12345",
+            first_name="Aman",
+            last_name="Sharma",
+            role="student",
+            organization=self.organization,
+        )
+        self.student_one = StudentProfile.objects.create(
+            user=self.student_one_user,
+            admission_number="TS-S-001",
+            phone="1111111111",
+        )
+        StudentEnrollment.objects.create(
+            student=self.student_one,
+            section=self.section,
+            roll_number="TEN-001",
+            is_active=True,
+        )
+
+        self.student_two_user = User.objects.create_user(
+            username="studenttwo01",
+            email="studenttwo@example.com",
+            password="pass12345",
+            first_name="Riya",
+            last_name="Gupta",
+            role="student",
+            organization=self.organization,
+        )
+        self.student_two = StudentProfile.objects.create(
+            user=self.student_two_user,
+            admission_number="TS-S-002",
+        )
+        StudentEnrollment.objects.create(
+            student=self.student_two,
+            section=self.section,
+            roll_number="TEN-002",
+            is_active=True,
+        )
+
+        SubjectStudentAccess.objects.create(
+            subject=self.maths,
+            student=self.student_two,
+            is_enrolled=False,
+        )
+        SubjectStudentAccess.objects.create(
+            subject=self.history,
+            student=self.student_two,
+            is_enrolled=False,
+        )
+
+        self.client.force_authenticate(user=self.teacher_user)
+
+    def test_teacher_students_returns_only_students_teacher_actually_teaches(self):
+        response = self.client.get(
+            "/api/accounts/teacher/students/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(
+            response.data["students"][0]["student_profile_id"],
+            self.student_one.id,
+        )
+        self.assertEqual(
+            set(response.data["students"][0]["subjects"]),
+            {"Maths", "History"},
+        )
+
+    def test_teacher_students_respects_subject_specific_access(self):
+        SubjectStudentAccess.objects.filter(
+            subject=self.history,
+            student=self.student_two,
+        ).delete()
+
+        response = self.client.get(
+            "/api/accounts/teacher/students/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        students = {
+            item["student_profile_id"]: item
+            for item in response.data["students"]
+        }
+        self.assertIn(self.student_two.id, students)
+        self.assertEqual(
+            students[self.student_two.id]["subjects"],
+            ["History"],
+        )
+
+    def test_non_teacher_cannot_use_teacher_students_endpoint(self):
+        student_user = self.student_one_user
+        self.client.force_authenticate(user=student_user)
+
+        response = self.client.get(
+            "/api/accounts/teacher/students/"
+        )
+
+        self.assertEqual(response.status_code, 403)

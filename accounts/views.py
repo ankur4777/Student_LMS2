@@ -32,7 +32,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import TeacherProfile, ParentProfile
 from academics.feature_access import get_student_feature_map
-from academics.subject_access import subject_access_filter
+from academics.subject_access import eligible_enrollments_for_subject, subject_access_filter
 from academics.models import (
     AcademicSession,
     ClassRoom,
@@ -909,6 +909,137 @@ class TeacherProfileAPIView(APIView):
                 "active_assignments": len(assignment_data),
             },
         })
+
+
+class TeacherStudentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+
+        if user.role != "teacher":
+            return Response(
+                {"detail": "Only teachers can view assigned students."},
+                status=403,
+            )
+
+        organization = user.organization
+        teacher = TeacherProfile.objects.filter(
+            user=user,
+            user__organization=organization,
+        ).first()
+
+        if not organization or not teacher:
+            return Response(
+                {"detail": "Teacher profile or organization not found."},
+                status=404,
+            )
+
+        assignments = TeacherAssignment.objects.filter(
+            teacher=teacher,
+            is_active=True,
+            subject__organization=organization,
+            section__organization=organization,
+            section__classroom__organization=organization,
+        ).select_related(
+            "subject",
+            "subject__classroom",
+            "subject__classroom__academic_session",
+            "section",
+            "section__classroom",
+            "section__classroom__academic_session",
+        ).order_by(
+            "section__classroom__name",
+            "section__name",
+            "subject__name",
+        )
+
+        students_by_id = {}
+
+        for assignment in assignments:
+            enrollments = eligible_enrollments_for_subject(
+                assignment.subject,
+                section=assignment.section,
+                organization=organization,
+            ).select_related(
+                "student",
+                "student__user",
+                "section",
+                "section__classroom",
+                "section__classroom__academic_session",
+            )
+
+            for enrollment in enrollments:
+                student = enrollment.student
+                student_user = student.user
+                classroom = enrollment.section.classroom
+                academic_session = classroom.academic_session
+
+                item = students_by_id.setdefault(
+                    student.id,
+                    {
+                        "student_profile_id": student.id,
+                        "student_user_id": student_user.id,
+                        "name": (
+                            student_user.get_full_name().strip()
+                            or student_user.username
+                        ),
+                        "username": student_user.username,
+                        "email": student_user.email,
+                        "phone": student.phone,
+                        "admission_number": student.admission_number,
+                        "roll_number": enrollment.roll_number,
+                        "classroom_name": classroom.name,
+                        "section_name": enrollment.section.name,
+                        "academic_session": (
+                            academic_session.name
+                            if academic_session
+                            else ""
+                        ),
+                        "subjects": [],
+                    },
+                )
+
+                if assignment.subject.name not in item["subjects"]:
+                    item["subjects"].append(assignment.subject.name)
+
+        students = sorted(
+            students_by_id.values(),
+            key=lambda item: (
+                item["classroom_name"].lower(),
+                item["section_name"].lower(),
+                item["name"].lower(),
+            ),
+        )
+
+        search = str(
+            request.query_params.get("search", "") or ""
+        ).strip().lower()
+
+        if search:
+            students = [
+                item
+                for item in students
+                if search in " ".join(
+                    [
+                        item["name"],
+                        item["username"],
+                        item["email"],
+                        item["admission_number"],
+                        item["roll_number"],
+                        item["classroom_name"],
+                        item["section_name"],
+                        " ".join(item["subjects"]),
+                    ]
+                ).lower()
+            ]
+
+        return Response(
+            {
+                "count": len(students),
+                "students": students,
+            }
+        )
 
 
 class TeacherLoginAPIView(APIView):
