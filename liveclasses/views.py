@@ -841,7 +841,8 @@ class StudentRecordingPlaybackAPIView(APIView):
         recording = get_object_or_404(
             LiveClassRecording.objects.select_related(
                 'live_class',
-                'live_class__teacher_assignment__section'
+                'live_class__teacher_assignment__section',
+                'live_class__teacher_assignment__subject'
             ),
             public_id=public_id,
             is_available=True
@@ -875,6 +876,15 @@ class StudentRecordingPlaybackAPIView(APIView):
             return Response(
                 {'detail': 'You are not enrolled in this class.'},
                 status=403
+            )
+
+        if not student_studies_subject(
+            student_profile,
+            live_class.teacher_assignment.subject,
+        ):
+            return Response(
+                {'detail': 'You are not enrolled in this subject.'},
+                status=403,
             )
 
         if not recording.video:
