@@ -69,22 +69,25 @@ def _assignment_summary(assignment):
     classroom = section.classroom
     academic_session = classroom.academic_session
 
-    eligible_students = eligible_enrollments_for_subject(
+    eligible_enrollments = eligible_enrollments_for_subject(
         subject,
         section=section,
         organization=assignment.organization,
-    ).count()
+    )
+    eligible_student_ids = eligible_enrollments.values_list(
+        "student_id",
+        flat=True,
+    )
+    eligible_students = eligible_enrollments.count()
 
     submission_count = assignment.submissions.filter(
+        student_id__in=eligible_student_ids,
         student__user__organization=assignment.organization,
-        student__enrollments__section=section,
-        student__enrollments__is_active=True,
     ).distinct().count()
 
     graded_count = assignment.submissions.filter(
+        student_id__in=eligible_student_ids,
         student__user__organization=assignment.organization,
-        student__enrollments__section=section,
-        student__enrollments__is_active=True,
         status=AssignmentSubmission.Status.GRADED,
     ).distinct().count()
 
