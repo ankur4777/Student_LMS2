@@ -23,6 +23,7 @@ interface TeacherStudent {
   username: string;
   email: string;
   phone: string;
+  address: string;
   admission_number: string;
   roll_number: string;
   classroom_name: string;
@@ -172,7 +173,7 @@ export default function TeacherStudentsPage() {
                     style={{ minWidth: "240px" }}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by student, username, admission no., roll no., class or subject"
+                    placeholder="Search by student, username, address, admission no., roll no., class or subject"
                   />
                   <button className="btn btn-primary" type="submit">
                     Search
@@ -263,8 +264,11 @@ export default function TeacherStudentsPage() {
                           </td>
                           <td>
                             <div>{student.email || "-"}</div>
-                            <small className="text-muted">
+                            <small className="text-muted d-block">
                               {student.phone || ""}
+                            </small>
+                            <small className="text-muted d-block">
+                              {student.address || "-"}
                             </small>
                           </td>
                         </tr>
