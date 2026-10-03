@@ -21,6 +21,7 @@ interface CollegeAdminUser {
 interface StudentProfile {
   admission_number: string;
   phone: string;
+  address: string;
   date_of_birth: string | null;
   admission_date: string | null;
 }
@@ -64,6 +65,7 @@ export default function CollegeAdminEditStudentPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [admissionNumber, setAdmissionNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [admissionDate, setAdmissionDate] = useState("");
@@ -122,6 +124,7 @@ export default function CollegeAdminEditStudentPage() {
           setUsername(student.username || "");
           setEmail(student.email || "");
           setPhone(student.profile?.phone || "");
+          setAddress(student.profile?.address || "");
           setAdmissionNumber(student.profile?.admission_number || "");
           setDateOfBirth(student.profile?.date_of_birth || "");
           setAdmissionDate(student.profile?.admission_date || "");
@@ -165,6 +168,7 @@ export default function CollegeAdminEditStudentPage() {
             username,
             email,
             phone,
+            address,
             admission_number: admissionNumber,
             date_of_birth: dateOfBirth || null,
             admission_date: admissionDate || null,
@@ -270,6 +274,10 @@ export default function CollegeAdminEditStudentPage() {
                         <div className="student-form-group">
                           <label htmlFor="phone">Phone</label>
                           <input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                        </div>
+                        <div className="student-form-group">
+                          <label htmlFor="address">Address</label>
+                          <input id="address" value={address} onChange={(event) => setAddress(event.target.value)} />
                         </div>
                         <div className="student-form-group">
                           <label htmlFor="dob">Date of Birth</label>
