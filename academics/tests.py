@@ -620,3 +620,112 @@ class ClassCreationWithSectionsTests(TestCase):
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["sections"], [])
+
+
+class SectionRemovalTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Section Removal College",
+            code="REMOVE",
+        )
+        self.admin = User.objects.create_user(
+            username="remove-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 9",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_unused_section_can_be_removed(self):
+        section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="C",
+        )
+
+        response = self.client.delete(
+            f"/api/academics/college-admin/sections/{section.id}/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            Section.objects.filter(id=section.id).exists()
+        )
+
+    def test_section_with_student_enrollment_cannot_be_removed(self):
+        section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        student_user = User.objects.create_user(
+            username="remove-student",
+            password="pass12345",
+            role="student",
+            organization=self.organization,
+        )
+        student = StudentProfile.objects.create(
+            user=student_user,
+            admission_number="REMOVE-001",
+        )
+        StudentEnrollment.objects.create(
+            student=student,
+            section=section,
+            roll_number="REMOVE-001",
+            is_active=True,
+        )
+
+        response = self.client.delete(
+            f"/api/academics/college-admin/sections/{section.id}/"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("student enrollments", response.data["detail"])
+        self.assertTrue(
+            Section.objects.filter(id=section.id).exists()
+        )
+
+    def test_college_admin_cannot_remove_foreign_section(self):
+        other_organization = Organization.objects.create(
+            name="Other Section College",
+            code="OTHERREMOVE",
+        )
+        other_session = AcademicSession.objects.create(
+            organization=other_organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        other_class = ClassRoom.objects.create(
+            organization=other_organization,
+            academic_session=other_session,
+            name="Foreign Class",
+        )
+        other_section = Section.objects.create(
+            organization=other_organization,
+            classroom=other_class,
+            name="Z",
+        )
+
+        response = self.client.delete(
+            f"/api/academics/college-admin/sections/{other_section.id}/"
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(
+            Section.objects.filter(id=other_section.id).exists()
+        )
