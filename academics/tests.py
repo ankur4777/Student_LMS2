@@ -529,3 +529,94 @@ class ClassFeatureAccessTests(TestCase):
             "This feature has been restricted for parents of this class.",
         )
 
+
+
+class ClassCreationWithSectionsTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Section Setup College",
+            code="SSC",
+        )
+        self.admin = User.objects.create_user(
+            username="section-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_class_creation_can_create_multiple_sections_together(self):
+        response = self.client.post(
+            "/api/academics/college-admin/classes/",
+            {
+                "name": "Class 10",
+                "academic_session_id": self.session.id,
+                "roll_number_prefix": "TEN",
+                "roll_number_digits": 3,
+                "roll_number_start": 1,
+                "sections": ["A", "B", "C"],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        classroom = ClassRoom.objects.get(
+            organization=self.organization,
+            name="Class 10",
+        )
+        self.assertEqual(
+            list(
+                Section.objects.filter(
+                    organization=self.organization,
+                    classroom=classroom,
+                ).order_by("name").values_list("name", flat=True)
+            ),
+            ["A", "B", "C"],
+        )
+        self.assertEqual(len(response.data["sections"]), 3)
+
+    def test_repeated_section_name_rejects_entire_class_creation(self):
+        response = self.client.post(
+            "/api/academics/college-admin/classes/",
+            {
+                "name": "Class 11",
+                "academic_session_id": self.session.id,
+                "roll_number_prefix": "ELEVEN",
+                "roll_number_digits": 3,
+                "roll_number_start": 1,
+                "sections": ["A", "a"],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            ClassRoom.objects.filter(
+                organization=self.organization,
+                name="Class 11",
+            ).exists()
+        )
+
+    def test_class_creation_without_sections_still_supported_by_api(self):
+        response = self.client.post(
+            "/api/academics/college-admin/classes/",
+            {
+                "name": "Class 12",
+                "academic_session_id": self.session.id,
+                "roll_number_prefix": "TWELVE",
+                "roll_number_digits": 3,
+                "roll_number_start": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["sections"], [])
