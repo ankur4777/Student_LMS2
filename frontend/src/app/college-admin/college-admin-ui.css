@@ -681,3 +681,380 @@
     padding-bottom: 8px;
   }
 }
+
+
+/* -------------------------------------------------------------------------- */
+/* College Admin visual refinement — UI only                                  */
+/* -------------------------------------------------------------------------- */
+
+.college-admin-ui-scope {
+  --ca-bg: #f6f8fb;
+  --ca-card: #ffffff;
+  --ca-text: #172033;
+  --ca-muted: #6f7b8f;
+  --ca-soft-muted: #98a2b3;
+  --ca-border: #e4e8ef;
+  --ca-border-strong: #d7dde7;
+  --ca-shadow:
+    0 1px 2px rgba(16, 24, 40, .025),
+    0 8px 24px rgba(16, 24, 40, .045);
+  --ca-shadow-hover:
+    0 2px 5px rgba(16, 24, 40, .035),
+    0 12px 28px rgba(16, 24, 40, .06);
+}
+
+/* Sidebar: cleaner spacing, clearer hierarchy, smaller visual noise */
+.college-admin-ui-scope .teacher-sidebar {
+  padding: 20px 12px 16px;
+  border-right-color: #e8ebf0;
+}
+
+.college-admin-ui-scope .teacher-sidebar-brand {
+  padding: 3px 10px 14px;
+  margin-bottom: 14px;
+  font-size: 1.12rem;
+  line-height: 1.22;
+}
+
+.college-admin-ui-scope .college-admin-dashboard-link,
+.college-admin-ui-scope .college-admin-menu-group-toggle {
+  min-height: 42px;
+}
+
+.college-admin-ui-scope .college-admin-menu-group-toggle {
+  padding: 9px 10px;
+  font-size: .81rem;
+}
+
+.college-admin-ui-scope .college-admin-submenu-inner {
+  padding-left: 17px;
+}
+
+.college-admin-ui-scope .college-admin-submenu a {
+  min-height: 36px;
+  padding: 8px 10px 8px 12px;
+  font-size: .76rem;
+}
+
+.college-admin-ui-scope .college-admin-submenu a.active {
+  background: #fff2f2;
+}
+
+.college-admin-ui-scope .sidebar-product-credit {
+  margin-top: 14px;
+}
+
+/* Topbar: lighter and more balanced */
+.college-admin-ui-scope .teacher-topbar {
+  min-height: 74px;
+  padding: 14px 26px;
+  background: rgba(255, 255, 255, .985);
+  border-bottom-color: #e9ecf1;
+  box-shadow: 0 1px 0 rgba(16, 24, 40, .015);
+}
+
+.college-admin-ui-scope .teacher-topbar h4 {
+  font-size: 1.22rem;
+  font-weight: 700;
+}
+
+.college-admin-ui-scope .teacher-topbar .d-flex.align-items-center.gap-3 {
+  gap: 14px !important;
+}
+
+.college-admin-ui-scope .teacher-topbar .d-flex.align-items-center.gap-3 > div {
+  text-align: right;
+  line-height: 1.25;
+}
+
+.college-admin-ui-scope .teacher-topbar .d-flex.align-items-center.gap-3 > div > strong {
+  color: #263246;
+  font-size: .82rem;
+  font-weight: 700;
+}
+
+/* Main page rhythm */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content {
+  padding: 26px 24px 42px;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid {
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+/* Fix duplicate COLLEGE ADMIN kicker on flex headers */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid > .d-flex.mb-4:first-child::before {
+  content: none !important;
+  display: none !important;
+}
+
+/* Consistent page headers */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid > .mb-4:first-child,
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid > .d-flex.mb-4:first-child {
+  min-height: 76px;
+  margin-bottom: 18px !important;
+  padding: 2px 0 8px;
+  align-items: flex-end !important;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid > .d-flex.mb-4:first-child > div:first-child::before {
+  margin-bottom: 6px;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content h2 {
+  margin-bottom: 4px !important;
+  color: #172033;
+  font-size: clamp(1.65rem, 2vw, 2rem);
+  line-height: 1.15;
+  font-weight: 730 !important;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content h2 + p {
+  color: #7a8598 !important;
+  font-size: .88rem;
+  line-height: 1.5;
+}
+
+/* Buttons */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .btn {
+  min-height: 39px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: .78rem;
+  font-weight: 650;
+  transition:
+    transform .15s ease,
+    box-shadow .15s ease,
+    border-color .15s ease,
+    background-color .15s ease,
+    color .15s ease;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(239, 68, 68, .18);
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .btn-sm {
+  min-height: 33px;
+  padding: 6px 10px;
+  font-size: .71rem;
+}
+
+/* Cards */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .card {
+  border-color: var(--ca-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--ca-shadow) !important;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .card-body {
+  padding: 20px !important;
+}
+
+/* Inputs: consistent height, spacing, and focus */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .form-control,
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .form-select {
+  min-height: 44px;
+  padding: 9px 12px;
+  border-color: #dce2ea;
+  border-radius: 9px;
+  color: #344054;
+  font-size: .82rem;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .form-control::placeholder {
+  color: #a0a8b5;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .form-control:focus,
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .form-select:focus {
+  border-color: #ee9a9a;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, .075);
+}
+
+/* Tables */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .table {
+  font-size: .78rem;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .table thead th {
+  padding: 12px 14px;
+  background: #f8fafc;
+  color: #667085;
+  font-size: .68rem;
+  letter-spacing: .035em;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .table tbody td {
+  padding: 14px;
+}
+
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .table tbody tr {
+  transition: background-color .15s ease;
+}
+
+/* Empty/loading states */
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .card-body.py-5.text-center,
+.college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .text-center.text-muted.py-5 {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Attendance page */
+.college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 > [class*="col-"] > .card {
+  position: relative;
+  min-height: 108px;
+  overflow: hidden;
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+
+.college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 > [class*="col-"] > .card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #ef4444;
+  opacity: .75;
+}
+
+.college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 > [class*="col-"] > .card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ca-shadow-hover) !important;
+}
+
+.college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 17px 18px 17px 20px !important;
+}
+
+.college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 .text-muted.small {
+  margin-bottom: 7px;
+  color: #7b8494 !important;
+  font-size: .72rem;
+  font-weight: 550;
+}
+
+.college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 .fs-4 {
+  color: #1f2937;
+  font-size: 1.55rem !important;
+  line-height: 1;
+  font-weight: 750 !important;
+}
+
+.college-admin-ui-scope .ca-attendance-page .card.mb-4 .row.g-3 {
+  align-items: end;
+}
+
+.college-admin-ui-scope .ca-attendance-page .card.mb-4 .col-12:last-child {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.college-admin-ui-scope .ca-attendance-page .card.mb-4 .col-12:last-child .btn {
+  min-width: 118px;
+}
+
+/* Live classes page */
+.college-admin-ui-scope .ca-live-classes-page .card.mb-4 .card-body {
+  padding: 16px 18px !important;
+}
+
+.college-admin-ui-scope .ca-live-classes-page .card.mb-4 .row.g-2 {
+  align-items: center;
+  --bs-gutter-x: .7rem;
+  --bs-gutter-y: .7rem;
+}
+
+.college-admin-ui-scope .ca-live-classes-page .card.mb-4 .form-control,
+.college-admin-ui-scope .ca-live-classes-page .card.mb-4 .form-select,
+.college-admin-ui-scope .ca-live-classes-page .card.mb-4 .btn {
+  min-height: 46px;
+}
+
+.college-admin-ui-scope .ca-live-classes-page .card.mb-4 .col-md-1.d-grid .btn {
+  white-space: nowrap;
+}
+
+.college-admin-ui-scope .ca-live-classes-page .table td:first-child {
+  min-width: 170px;
+}
+
+.college-admin-ui-scope .ca-live-classes-page .table td:last-child {
+  min-width: 150px;
+}
+
+.college-admin-ui-scope .ca-live-classes-page .badge {
+  line-height: 1.15;
+}
+
+/* Tablet/mobile */
+@media (max-width: 1199px) {
+  .college-admin-ui-scope .ca-live-classes-page .card.mb-4 .col-md-1 {
+    flex: 0 0 auto;
+    width: 16.666667%;
+  }
+
+  .college-admin-ui-scope .ca-live-classes-page .card.mb-4 .col-md-3 {
+    width: 33.333333%;
+  }
+}
+
+@media (max-width: 991px) {
+  .college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content {
+    padding: 20px 16px 34px;
+  }
+
+  .college-admin-ui-scope .teacher-topbar {
+    min-height: 68px;
+  }
+
+  .college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 > [class*="col-"] > .card {
+    min-height: 96px;
+  }
+}
+
+@media (max-width: 767px) {
+  .college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid > .d-flex.mb-4:first-child {
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content .container-fluid > .d-flex.mb-4:first-child .btn {
+    width: 100%;
+  }
+
+  .college-admin-ui-scope .ca-live-classes-page .card.mb-4 [class*="col-md-"] {
+    width: 100%;
+  }
+
+  .college-admin-ui-scope .ca-attendance-page .card.mb-4 .col-12:last-child .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .college-admin-ui-scope .teacher-topbar .d-flex.align-items-center.gap-3 > div {
+    text-align: left;
+  }
+
+  .college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content {
+    padding: 16px 12px 28px;
+  }
+
+  .college-admin-ui-scope .teacher-dashboard:not(.college-admin-dashboard-redesign):not(.college-admin-students-ui):not(.college-admin-teachers-ui) .teacher-dashboard-content h2 {
+    font-size: 1.5rem;
+  }
+
+  .college-admin-ui-scope .ca-attendance-page .row.g-3.mb-4 > [class*="col-"] {
+    width: 100%;
+  }
+}
