@@ -28,6 +28,7 @@ interface LinkedStudent {
   student_profile_id: number;
   name: string;
   username: string;
+  address: string;
   admission_number: string;
   roll_number: string;
   relationship: string;
@@ -444,6 +445,9 @@ export default function CollegeAdminParentDetailPage() {
                                   </div>
                                   <div className="text-muted small">
                                     {student.admission_number}
+                                  </div>
+                                  <div className="text-muted small">
+                                    {student.address || "-"}
                                   </div>
                                 </td>
                                 <td>{student.roll_number || "-"}</td>
