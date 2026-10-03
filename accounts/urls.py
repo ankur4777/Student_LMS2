@@ -7,6 +7,7 @@ from .views import (
     TeacherDashboardView,
     TeacherProfileAPIView,
     TeacherStudentsAPIView,
+    TeacherStudentDetailAPIView,
     TeacherLoginAPIView,
     CollegeAdminDashboardAPIView,
     CollegeAdminEnrollmentDetailAPIView,
@@ -84,6 +85,11 @@ urlpatterns = [
         "teacher/students/",
         TeacherStudentsAPIView.as_view(),
         name="teacher-students",
+    ),
+    path(
+        "teacher/students/<int:student_profile_id>/",
+        TeacherStudentDetailAPIView.as_view(),
+        name="teacher-student-detail",
     ),
     path(
     "teacher/login/",
