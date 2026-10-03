@@ -32,6 +32,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import TeacherProfile, ParentProfile
 from academics.feature_access import get_student_feature_map
+from academics.subject_access import subject_access_filter
 from academics.models import (
     AcademicSession,
     ClassRoom,
@@ -387,6 +388,11 @@ class StudentDashboardAPIView(APIView):
             organization=user.organization,
             teacher_assignment__section_id__in=active_sections,
             class_date=today
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             'teacher_assignment__teacher__user',
             'teacher_assignment__subject',
@@ -402,6 +408,11 @@ class StudentDashboardAPIView(APIView):
             teacher_assignment__section_id__in=active_sections,
             class_date__gt=today,
             status=LiveClass.Status.SCHEDULED
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             'teacher_assignment__teacher__user',
             'teacher_assignment__subject',
@@ -420,6 +431,11 @@ class StudentDashboardAPIView(APIView):
             teacher_assignment__section_id__in=active_sections,
             status=LiveClass.Status.COMPLETED,
             recording__is_available=True
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).exclude(
             recording__video=''
         ).select_related(
@@ -436,6 +452,11 @@ class StudentDashboardAPIView(APIView):
         attendance_records = StudentAttendance.objects.filter(
             student=student_profile,
             attendance_session__organization=user.organization
+        ).filter(
+            subject_access_filter(
+                "attendance_session__subject",
+                student_profile,
+            )
         )
 
         if not attendance_enabled:
