@@ -7,6 +7,10 @@ from django.db.models import Q
 from django.utils.dateparse import parse_date, parse_time
 
 from academics.feature_access import StudentClassFeaturePermission
+from academics.subject_access import (
+    student_studies_subject,
+    subject_access_filter,
+)
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -156,6 +160,11 @@ def student_live_class_queryset(user, student_profile):
         organization=user.organization,
         teacher_assignment__section__student_enrollments__student=student_profile,
         teacher_assignment__section__student_enrollments__is_active=True,
+    ).filter(
+        subject_access_filter(
+            "teacher_assignment__subject",
+            student_profile,
+        )
     ).select_related(
         'teacher_assignment__teacher__user',
         'teacher_assignment__subject',
