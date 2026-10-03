@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import PasswordField from "@/components/auth/PasswordField";
 
 export default function ParentLoginPage() {
   const router = useRouter();
@@ -110,9 +111,7 @@ export default function ParentLoginPage() {
               <label
                 htmlFor="username"
                 className="form-label fw-medium"
-              >
-                Username
-              </label>
+              >Username or Email</label>
 
               <input
                 id="username"
@@ -122,31 +121,20 @@ export default function ParentLoginPage() {
                 onChange={(event) =>
                   setUsername(event.target.value)
                 }
-                placeholder="Enter your username"
+                placeholder="Enter your username or email"
                 required
               />
             </div>
 
-            <div className="mb-4">
-              <label
-                htmlFor="password"
-                className="form-label fw-medium"
-              >
-                Password
-              </label>
-
-              <input
-                id="password"
-                type="password"
-                className="form-control"
-                value={password}
-                onChange={(event) =>
-                  setPassword(event.target.value)
-                }
-                placeholder="Enter your password"
-                required
-              />
-            </div>
+            <PasswordField
+              id="password"
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              className="mb-4"
+            />
 
             <div className="text-end mb-3">
               <Link href="/parent/forgot-password" className="text-decoration-none">

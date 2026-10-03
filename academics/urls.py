@@ -9,6 +9,7 @@ from .views import (
     CollegeAdminSectionDetailAPIView,
     CollegeAdminSectionsAPIView,
     CollegeAdminSubjectDetailAPIView,
+    CollegeAdminSubjectStudentsAPIView,
     CollegeAdminSubjectsAPIView,
     StudentFeatureAccessAPIView,
     ParentStudentFeatureAccessAPIView,
@@ -69,5 +70,10 @@ urlpatterns = [
         "college-admin/subjects/<int:subject_id>/",
         CollegeAdminSubjectDetailAPIView.as_view(),
         name="college-admin-subject-detail",
+    ),
+    path(
+        "college-admin/subjects/<int:subject_id>/students/",
+        CollegeAdminSubjectStudentsAPIView.as_view(),
+        name="college-admin-subject-students",
     ),
 ]

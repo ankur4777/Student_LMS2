@@ -2,6 +2,7 @@ import shutil
 import tempfile
 from datetime import date, time
 
+from django.contrib.auth import authenticate
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -12,6 +13,7 @@ from academics.models import (
     ClassFeatureAccess,
     ClassRoom,
     ParentStudent,
+    RollNumberSequence,
     Section,
     StudentEnrollment,
     Subject,
@@ -1917,3 +1919,653 @@ class PasswordManagementTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(mail.outbox), 0)
+
+
+class UsernameAndRollNumberAutomationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Automation College",
+            code="AUTO",
+            roll_number_prefix="AC",
+            roll_number_digits=4,
+            roll_number_start=1,
+        )
+        self.admin = User.objects.create_user(
+            username="college-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="CSE AI",
+        )
+        self.section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def create_student(self, admission_number, first_name="Rahul", last_name="Sharma"):
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            {
+                "username": "preview-value",
+                "username_auto": True,
+                "password": "pass12345",
+                "first_name": first_name,
+                "last_name": last_name,
+                "email": f"{admission_number.lower()}@example.com",
+                "admission_number": admission_number,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        return response.data["student"]
+
+    def test_auto_username_uses_short_name_format_and_increments(self):
+        first = self.create_student("ADM001")
+        second = self.create_student("ADM002")
+
+        self.assertEqual(first["username"], "rahuls01")
+        self.assertEqual(second["username"], "rahuls02")
+
+    def test_manual_username_override_is_preserved(self):
+        response = self.client.post(
+            "/api/accounts/college-admin/parents/",
+            {
+                "username": "familylogin",
+                "username_auto": False,
+                "password": "pass12345",
+                "first_name": "Neha",
+                "last_name": "Singh",
+                "email": "family@example.com",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["parent"]["username"], "familylogin")
+
+    def test_non_platform_manager_generates_username_when_omitted(self):
+        user = User.objects.create_user(
+            username=None,
+            password="pass12345",
+            first_name="Riya",
+            last_name="Gupta",
+            role="teacher",
+            organization=self.organization,
+        )
+
+        self.assertEqual(user.username, "riyag01")
+
+    def test_platform_admin_still_requires_manual_username(self):
+        with self.assertRaisesMessage(
+            ValueError,
+            "Platform admin username must be entered manually.",
+        ):
+            User.objects.create_user(
+                username=None,
+                password="pass12345",
+                role="platform_admin",
+            )
+
+    def test_college_admin_can_change_roll_number_settings(self):
+        response = self.client.patch(
+            "/api/accounts/college-admin/institution-settings/",
+            {
+                "roll_number_prefix": "IGDTUW",
+                "roll_number_digits": 3,
+                "roll_number_start": 25,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        institution = response.data["institution"]
+        self.assertEqual(institution["roll_number_prefix"], "IGDTUW")
+        self.assertEqual(institution["roll_number_digits"], 3)
+        self.assertEqual(institution["roll_number_start"], 25)
+
+        setup = self.client.get(
+            "/api/accounts/college-admin/enrollments/setup/"
+        )
+        self.assertEqual(setup.status_code, 200)
+        class_data = setup.data["classes"][0]
+        self.assertEqual(class_data["next_roll_number"], "AC-0001")
+
+    def test_enrollment_auto_generates_and_increments_roll_number(self):
+        first = self.create_student("ADM101", "Amit", "Kumar")
+        second = self.create_student("ADM102", "Neha", "Singh")
+
+        first_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": first["id"],
+                "section_id": self.section.id,
+                "roll_number": "AC-0001",
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+        second_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": second["id"],
+                "section_id": self.section.id,
+                "roll_number": "AC-0001",
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 201)
+        self.assertEqual(
+            first_response.data["enrollment"]["roll_number"],
+            "AC-0001",
+        )
+        self.assertEqual(
+            second_response.data["enrollment"]["roll_number"],
+            "AC-0002",
+        )
+        sequence = RollNumberSequence.objects.get(
+            organization=self.organization,
+            classroom=self.classroom,
+        )
+        self.assertEqual(sequence.next_number, 3)
+
+    def test_manual_roll_number_override_is_allowed_but_duplicate_is_rejected(self):
+        first = self.create_student("ADM201", "Riya", "Gupta")
+        second = self.create_student("ADM202", "Aman", "Verma")
+
+        first_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": first["id"],
+                "section_id": self.section.id,
+                "roll_number": "CUSTOM-9",
+                "roll_number_auto": False,
+            },
+            format="json",
+        )
+        duplicate_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": second["id"],
+                "section_id": self.section.id,
+                "roll_number": "custom-9",
+                "roll_number_auto": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(duplicate_response.status_code, 400)
+        self.assertIn(
+            "already exists",
+            duplicate_response.data["detail"],
+        )
+
+
+    def test_class_can_define_its_own_roll_prefix_digits_and_start(self):
+        response = self.client.patch(
+            f"/api/academics/college-admin/classes/{self.classroom.id}/",
+            {
+                "roll_number_prefix": "CSE",
+                "roll_number_digits": 3,
+                "roll_number_start": 101,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        class_data = response.data["class"]
+        self.assertEqual(class_data["roll_number_prefix"], "CSE")
+        self.assertEqual(class_data["roll_number_digits"], 3)
+        self.assertEqual(class_data["roll_number_start"], 101)
+
+        setup = self.client.get(
+            "/api/accounts/college-admin/enrollments/setup/"
+        )
+        self.assertEqual(setup.status_code, 200)
+        selected = next(
+            item
+            for item in setup.data["classes"]
+            if item["id"] == self.classroom.id
+        )
+        self.assertEqual(selected["next_roll_number"], "CSE-101")
+
+    def test_roll_sequences_are_independent_for_each_class(self):
+        other_class = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="BBA",
+            roll_number_prefix="BBA",
+            roll_number_digits=3,
+            roll_number_start=1,
+        )
+        other_section = Section.objects.create(
+            organization=self.organization,
+            classroom=other_class,
+            name="A",
+        )
+
+        first = self.create_student("ADM301", "Kabir", "Singh")
+        second = self.create_student("ADM302", "Meera", "Shah")
+
+        first_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": first["id"],
+                "section_id": self.section.id,
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+        second_response = self.client.post(
+            "/api/accounts/college-admin/enrollments/",
+            {
+                "student_id": second["id"],
+                "section_id": other_section.id,
+                "roll_number_auto": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(first_response.status_code, 201)
+        self.assertEqual(second_response.status_code, 201)
+        self.assertEqual(
+            first_response.data["enrollment"]["roll_number"],
+            "AC-0001",
+        )
+        self.assertEqual(
+            second_response.data["enrollment"]["roll_number"],
+            "BBA-001",
+        )
+
+        self.assertEqual(
+            RollNumberSequence.objects.get(
+                organization=self.organization,
+                classroom=self.classroom,
+            ).next_number,
+            2,
+        )
+        self.assertEqual(
+            RollNumberSequence.objects.get(
+                organization=self.organization,
+                classroom=other_class,
+            ).next_number,
+            2,
+        )
+
+
+class PortalEmailLoginTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Email Login College",
+            code="EMAILLOGIN",
+        )
+        self.password = "PortalPass123!"
+
+        self.student = User.objects.create_user(
+            username="studente01",
+            email="student-login@example.com",
+            password=self.password,
+            role="student",
+            organization=self.organization,
+        )
+        self.teacher = User.objects.create_user(
+            username="teachere01",
+            email="teacher-login@example.com",
+            password=self.password,
+            role="teacher",
+            organization=self.organization,
+        )
+        self.parent = User.objects.create_user(
+            username="parente01",
+            email="parent-login@example.com",
+            password=self.password,
+            role="parent",
+            organization=self.organization,
+        )
+        self.admin = User.objects.create_user(
+            username="admine01",
+            email="admin-login@example.com",
+            password=self.password,
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.platform_admin = User.objects.create_superuser(
+            username="platformmanual",
+            email="platform-login@example.com",
+            password=self.password,
+        )
+
+    def test_all_portals_accept_email_login(self):
+        cases = [
+            (
+                "/api/accounts/student/login/",
+                "student-login@example.com",
+                "student",
+            ),
+            (
+                "/api/accounts/teacher/login/",
+                "teacher-login@example.com",
+                "teacher",
+            ),
+            (
+                "/api/accounts/parent/login/",
+                "parent-login@example.com",
+                "parent",
+            ),
+            (
+                "/api/accounts/college-admin/login/",
+                "admin-login@example.com",
+                "college_admin",
+            ),
+        ]
+
+        for url, email, role in cases:
+            with self.subTest(role=role):
+                response = self.client.post(
+                    url,
+                    {
+                        "username": email,
+                        "password": self.password,
+                    },
+                    format="json",
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["user"]["role"], role)
+                self.assertIn("access", response.data)
+                self.assertIn("refresh", response.data)
+
+    def test_username_login_still_works(self):
+        response = self.client.post(
+            "/api/accounts/student/login/",
+            {
+                "username": self.student.username,
+                "password": self.password,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["user"]["username"],
+            self.student.username,
+        )
+
+    def test_duplicate_email_in_same_portal_requires_username(self):
+        User.objects.create_user(
+            username="studentduplicate01",
+            email=self.student.email,
+            password=self.password,
+            role="student",
+            organization=self.organization,
+        )
+
+        response = self.client.post(
+            "/api/accounts/student/login/",
+            {
+                "username": self.student.email,
+                "password": self.password,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertIn(
+            "More than one account uses this email",
+            response.data["detail"],
+        )
+
+    def test_platform_admin_can_authenticate_with_email(self):
+        user = authenticate(
+            username="platform-login@example.com",
+            password=self.password,
+        )
+
+        self.assertIsNotNone(user)
+        self.assertEqual(user.id, self.platform_admin.id)
+
+
+class StudentParentCreationFlowTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Family Flow College",
+            code="FAMILY",
+        )
+        self.other_organization = Organization.objects.create(
+            name="Other Family College",
+            code="OTHERFAMILY",
+        )
+        self.admin = User.objects.create_user(
+            username="family-admin",
+            email="family-admin@example.com",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+        self.existing_parent_user = User.objects.create_user(
+            username="existingp01",
+            email="existing-parent@example.com",
+            password="pass12345",
+            first_name="Existing",
+            last_name="Parent",
+            role="parent",
+            organization=self.organization,
+        )
+        self.existing_parent = ParentProfile.objects.create(
+            user=self.existing_parent_user,
+            phone="1111111111",
+            occupation="Teacher",
+        )
+
+        self.foreign_parent_user = User.objects.create_user(
+            username="foreignp01",
+            email="foreign-parent@example.com",
+            password="pass12345",
+            first_name="Foreign",
+            last_name="Parent",
+            role="parent",
+            organization=self.other_organization,
+        )
+        self.foreign_parent = ParentProfile.objects.create(
+            user=self.foreign_parent_user,
+        )
+
+    def student_payload(self, admission_number):
+        return {
+            "first_name": "Aarav",
+            "last_name": "Sharma",
+            "email": f"{admission_number.lower()}@example.com",
+            "password": "StudentPass123!",
+            "admission_number": admission_number,
+            "username_auto": True,
+        }
+
+    def test_student_creation_can_create_and_link_new_parent(self):
+        payload = self.student_payload("ADM-FAMILY-1")
+        payload["parents"] = [
+            {
+                "mode": "new",
+                "relationship": ParentStudent.Relationship.FATHER,
+                "first_name": "Rahul",
+                "last_name": "Sharma",
+                "email": "rahul-parent@example.com",
+                "phone": "9999999999",
+                "occupation": "Engineer",
+                "password": "ParentPass123!",
+                "username_auto": True,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(len(response.data["parents"]), 1)
+
+        student = StudentProfile.objects.get(
+            admission_number="ADM-FAMILY-1"
+        )
+        parent_user = User.objects.get(
+            email="rahul-parent@example.com",
+            role="parent",
+        )
+        parent = parent_user.parent_profile
+        link = ParentStudent.objects.get(
+            parent=parent,
+            student=student,
+        )
+
+        self.assertEqual(parent_user.organization, self.organization)
+        self.assertEqual(parent_user.username, "rahuls01")
+        self.assertEqual(parent.phone, "9999999999")
+        self.assertEqual(parent.occupation, "Engineer")
+        self.assertEqual(
+            link.relationship,
+            ParentStudent.Relationship.FATHER,
+        )
+
+    def test_student_creation_can_link_existing_parent(self):
+        payload = self.student_payload("ADM-FAMILY-2")
+        payload["parents"] = [
+            {
+                "mode": "existing",
+                "parent_profile_id": self.existing_parent.id,
+                "relationship": ParentStudent.Relationship.MOTHER,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        student = StudentProfile.objects.get(
+            admission_number="ADM-FAMILY-2"
+        )
+        self.assertTrue(
+            ParentStudent.objects.filter(
+                parent=self.existing_parent,
+                student=student,
+                relationship=ParentStudent.Relationship.MOTHER,
+            ).exists()
+        )
+        self.assertEqual(
+            User.objects.filter(
+                email="existing-parent@example.com",
+                role="parent",
+            ).count(),
+            1,
+        )
+
+    def test_student_creation_supports_multiple_parents(self):
+        payload = self.student_payload("ADM-FAMILY-3")
+        payload["parents"] = [
+            {
+                "mode": "existing",
+                "parent_profile_id": self.existing_parent.id,
+                "relationship": ParentStudent.Relationship.FATHER,
+            },
+            {
+                "mode": "new",
+                "relationship": ParentStudent.Relationship.MOTHER,
+                "first_name": "Neha",
+                "last_name": "Sharma",
+                "email": "neha-parent@example.com",
+                "password": "ParentPass123!",
+                "username_auto": True,
+            },
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        student = StudentProfile.objects.get(
+            admission_number="ADM-FAMILY-3"
+        )
+        self.assertEqual(
+            ParentStudent.objects.filter(student=student).count(),
+            2,
+        )
+
+    def test_cross_college_existing_parent_cannot_be_linked_during_student_creation(self):
+        payload = self.student_payload("ADM-FAMILY-4")
+        payload["parents"] = [
+            {
+                "mode": "existing",
+                "parent_profile_id": self.foreign_parent.id,
+                "relationship": ParentStudent.Relationship.GUARDIAN,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            StudentProfile.objects.filter(
+                admission_number="ADM-FAMILY-4"
+            ).exists()
+        )
+
+    def test_existing_parent_email_must_be_selected_instead_of_creating_duplicate(self):
+        payload = self.student_payload("ADM-FAMILY-5")
+        payload["parents"] = [
+            {
+                "mode": "new",
+                "relationship": ParentStudent.Relationship.GUARDIAN,
+                "first_name": "Existing",
+                "last_name": "Parent",
+                "email": "existing-parent@example.com",
+                "password": "ParentPass123!",
+                "username_auto": True,
+            }
+        ]
+
+        response = self.client.post(
+            "/api/accounts/college-admin/students/",
+            payload,
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(
+            "Select Existing Parent instead",
+            response.data["detail"],
+        )
+        self.assertFalse(
+            StudentProfile.objects.filter(
+                admission_number="ADM-FAMILY-5"
+            ).exists()
+        )

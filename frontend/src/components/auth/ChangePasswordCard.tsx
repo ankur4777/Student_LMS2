@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordField from "@/components/auth/PasswordField";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -108,47 +109,29 @@ export default function ChangePasswordCard({
 
         <form onSubmit={handleSubmit}>
           <div className="row g-3">
-            <div className="col-12">
-              <label className="form-label">Current Password</label>
-              <input
-                className="form-control"
-                type="password"
-                value={currentPassword}
-                onChange={(event) =>
-                  setCurrentPassword(event.target.value)
-                }
-                autoComplete="current-password"
-                required
-              />
-            </div>
+            <PasswordField
+              label="Current Password"
+              value={currentPassword}
+              onChange={setCurrentPassword}
+              autoComplete="current-password"
+              className="col-12"
+            />
 
-            <div className="col-md-6">
-              <label className="form-label">New Password</label>
-              <input
-                className="form-control"
-                type="password"
-                value={newPassword}
-                onChange={(event) =>
-                  setNewPassword(event.target.value)
-                }
-                autoComplete="new-password"
-                required
-              />
-            </div>
+            <PasswordField
+              label="New Password"
+              value={newPassword}
+              onChange={setNewPassword}
+              autoComplete="new-password"
+              className="col-md-6"
+            />
 
-            <div className="col-md-6">
-              <label className="form-label">Confirm New Password</label>
-              <input
-                className="form-control"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) =>
-                  setConfirmPassword(event.target.value)
-                }
-                autoComplete="new-password"
-                required
-              />
-            </div>
+            <PasswordField
+              label="Confirm New Password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              autoComplete="new-password"
+              className="col-md-6"
+            />
 
             <div className="col-12">
               <button

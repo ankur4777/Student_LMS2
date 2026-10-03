@@ -31,6 +31,10 @@ interface ClassRoom {
   id: number;
   name: string;
   academic_session_id: number;
+  roll_number_prefix: string;
+  roll_number_digits: number;
+  roll_number_start: number;
+  next_roll_number: string;
 }
 
 interface Section {
@@ -69,6 +73,7 @@ export default function CreateEnrollmentPage() {
   const [classId, setClassId] = useState("");
   const [sectionId, setSectionId] = useState("");
   const [rollNumber, setRollNumber] = useState("");
+  const [rollNumberManuallyEdited, setRollNumberManuallyEdited] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -187,6 +192,7 @@ export default function CreateEnrollmentPage() {
             student_id: studentId,
             section_id: sectionId,
             roll_number: rollNumber,
+            roll_number_auto: !rollNumberManuallyEdited,
           }),
         }
       );
@@ -262,9 +268,13 @@ export default function CreateEnrollmentPage() {
                           className="form-select"
                           value={sessionId}
                           onChange={(event) => {
-                            setSessionId(event.target.value);
+                            const nextSessionId = event.target.value;
+                            setSessionId(nextSessionId);
                             setClassId("");
                             setSectionId("");
+
+                            setRollNumber("");
+                            setRollNumberManuallyEdited(false);
                           }}
                           required
                         >
@@ -282,8 +292,18 @@ export default function CreateEnrollmentPage() {
                           className="form-select"
                           value={classId}
                           onChange={(event) => {
-                            setClassId(event.target.value);
+                            const nextClassId = event.target.value;
+                            setClassId(nextClassId);
                             setSectionId("");
+
+                            const selectedClass = classes.find(
+                              (item) => item.id === Number(nextClassId)
+                            );
+
+                            setRollNumber(
+                              selectedClass?.next_roll_number || ""
+                            );
+                            setRollNumberManuallyEdited(false);
                           }}
                           required
                         >
@@ -318,10 +338,15 @@ export default function CreateEnrollmentPage() {
                         <input
                           className="form-control"
                           value={rollNumber}
-                          onChange={(event) =>
-                            setRollNumber(event.target.value)
-                          }
+                          onChange={(event) => {
+                            setRollNumber(event.target.value);
+                            setRollNumberManuallyEdited(true);
+                          }}
+                          required
                         />
+                        <div className="form-text">
+                          Auto generated from the selected class prefix and class sequence. You can edit it before saving.
+                        </div>
                       </div>
                       <div className="col-12 d-flex gap-2">
                         <button

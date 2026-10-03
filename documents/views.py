@@ -3,6 +3,7 @@ from pathlib import Path
 from django.http import FileResponse
 from django.utils import timezone
 from academics.feature_access import StudentClassFeaturePermission
+from academics.subject_access import subject_access_filter, student_studies_subject
 
 from rest_framework import status
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -339,6 +340,15 @@ class CollegeAdminDocumentDownloadAPIView(CollegeAdminDocumentDetailAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if not student_studies_subject(
+            student_profile,
+            document.teacher_assignment.subject,
+        ):
+            return Response(
+                {"detail": "You are not enrolled in this subject."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         filename = Path(document.file.name).name
 
         return FileResponse(
@@ -645,6 +655,11 @@ class StudentDocumentListAPIView(APIView):
             is_published=True,
             teacher_assignment__section=enrollment.section,
             teacher_assignment__section__organization=request.user.organization,
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             "teacher_assignment",
             "teacher_assignment__subject",
@@ -699,6 +714,7 @@ class StudentDocumentDownloadAPIView(APIView):
             teacher_assignment__section__organization=request.user.organization,
         ).select_related(
             "teacher_assignment",
+            "teacher_assignment__subject",
             "teacher_assignment__section",
         ).first()
 
@@ -706,6 +722,15 @@ class StudentDocumentDownloadAPIView(APIView):
             return Response(
                 {"detail": "Document not found."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not student_studies_subject(
+            student_profile,
+            document.teacher_assignment.subject,
+        ):
+            return Response(
+                {"detail": "You are not enrolled in this subject."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         filename = Path(document.file.name).name

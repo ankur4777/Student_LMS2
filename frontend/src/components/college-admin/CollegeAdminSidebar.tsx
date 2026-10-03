@@ -35,11 +35,6 @@ const menuSections: MenuSection[] = [
       { label: "Students", href: "/college-admin/students", icon: "students" },
       { label: "Teachers", href: "/college-admin/teachers", icon: "teachers" },
       { label: "Parents", href: "/college-admin/parents", icon: "parents" },
-      {
-        label: "Parent-Student Links",
-        href: "/college-admin/parent-student-links",
-        icon: "enrollments",
-      },
     ],
   },
   {

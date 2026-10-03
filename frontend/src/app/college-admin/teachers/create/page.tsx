@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildUsernameSuggestion } from "@/lib/username";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
@@ -33,6 +34,7 @@ export default function CollegeAdminCreateTeacherPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
   const [email, setEmail] = useState("");
   const [employeeId, setEmployeeId] = useState("");
   const [phone, setPhone] = useState("");
@@ -42,6 +44,9 @@ export default function CollegeAdminCreateTeacherPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const autoUsername = buildUsernameSuggestion(firstName, lastName);
+  const displayedUsername = usernameManuallyEdited ? username : autoUsername;
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -84,7 +89,8 @@ export default function CollegeAdminCreateTeacherPage() {
           body: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
-            username,
+            username: displayedUsername,
+            username_auto: !usernameManuallyEdited,
             email,
             employee_id: employeeId,
             phone,
@@ -146,7 +152,7 @@ export default function CollegeAdminCreateTeacherPage() {
 
             {error && <div className="alert alert-danger">{error}</div>}
 
-            <form onSubmit={handleSubmit} className="teacher-form-shell">
+            <form onSubmit={handleSubmit} className="teacher-form-shell" autoComplete="off">
               <div className="teacher-form-card">
                 <section className="teacher-form-section">
                   <div className="teacher-section-heading">
@@ -168,7 +174,7 @@ export default function CollegeAdminCreateTeacherPage() {
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="email">Email</label>
-                      <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                      <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="phone">Phone</label>
@@ -214,16 +220,30 @@ export default function CollegeAdminCreateTeacherPage() {
                   <div className="teacher-form-grid">
                     <div className="teacher-form-group">
                       <label htmlFor="username">Username</label>
-                      <input id="username" value={username} onChange={(event) => setUsername(event.target.value)} required />
-                      <small>This username will be used for teacher login.</small>
+                      <input
+                        id="username"
+                        value={displayedUsername}
+                        name="generated-username"
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        onChange={(event) => {
+                          setUsername(event.target.value);
+                          setUsernameManuallyEdited(true);
+                        }}
+                        required
+                      />
+                      <small>
+                        Auto generated from the teacher's name. You can edit it before creating the account.
+                      </small>
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="password">Password</label>
-                      <input id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+                      <input id="password" name="new-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="confirm-password">Confirm Password</label>
-                      <input id="confirm-password" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+                      <input id="confirm-password" name="confirm-new-password" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
                     </div>
                   </div>
                 </section>

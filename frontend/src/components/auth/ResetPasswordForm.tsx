@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
+import PasswordField from "@/components/auth/PasswordField";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -117,35 +118,21 @@ export default function ResetPasswordForm({
 
           {!invalidLink && ready && !message && (
             <form onSubmit={handleSubmit}>
-              <div className="mb-3">
-                <label className="form-label">New Password</label>
-                <input
-                  className="form-control"
-                  type="password"
-                  value={newPassword}
-                  onChange={(event) =>
-                    setNewPassword(event.target.value)
-                  }
-                  autoComplete="new-password"
-                  required
-                />
-              </div>
+              <PasswordField
+                label="New Password"
+                value={newPassword}
+                onChange={setNewPassword}
+                autoComplete="new-password"
+                className="mb-3"
+              />
 
-              <div className="mb-4">
-                <label className="form-label">
-                  Confirm New Password
-                </label>
-                <input
-                  className="form-control"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(event) =>
-                    setConfirmPassword(event.target.value)
-                  }
-                  autoComplete="new-password"
-                  required
-                />
-              </div>
+              <PasswordField
+                label="Confirm New Password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                autoComplete="new-password"
+                className="mb-4"
+              />
 
               <button
                 type="submit"

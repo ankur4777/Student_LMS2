@@ -21,6 +21,9 @@ interface ClassRoom {
   name: string;
   academic_session_id: number;
   academic_session: string;
+  roll_number_prefix: string;
+  roll_number_digits: number;
+  roll_number_start: number;
 }
 
 interface AcademicSession {
@@ -52,6 +55,10 @@ export default function EditClassPage() {
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [name, setName] = useState("");
   const [academicSessionId, setAcademicSessionId] = useState("");
+  const [rollNumberPrefix, setRollNumberPrefix] = useState("");
+  const [rollNumberDigits, setRollNumberDigits] = useState("4");
+  const [rollNumberStart, setRollNumberStart] = useState("1");
+  const [prefixOptions, setPrefixOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -81,26 +88,39 @@ export default function EditClassPage() {
       }
 
       try {
-        const [classResponse, sessionsResponse] = await Promise.all([
-          fetch(
-            `${API_BASE}/api/academics/college-admin/classes/${params.id}/`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          ),
-          fetch(
-            `${API_BASE}/api/academics/college-admin/academic-sessions/`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          ),
-        ]);
+        const [classResponse, sessionsResponse, classesResponse] =
+          await Promise.all([
+            fetch(
+              `${API_BASE}/api/academics/college-admin/classes/${params.id}/`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+            fetch(
+              `${API_BASE}/api/academics/college-admin/academic-sessions/`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+            fetch(
+              `${API_BASE}/api/academics/college-admin/classes/`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+          ]);
 
-        if (classResponse.status === 401 || sessionsResponse.status === 401) {
+        if (
+          classResponse.status === 401 ||
+          sessionsResponse.status === 401 ||
+          classesResponse.status === 401
+        ) {
           clearSession();
           router.replace("/college-admin/login");
           return;
@@ -108,6 +128,7 @@ export default function EditClassPage() {
 
         const classResult = await classResponse.json();
         const sessionsResult = await sessionsResponse.json();
+        const classesResult = await classesResponse.json();
 
         if (!classResponse.ok) {
           throw new Error(classResult?.detail || "Unable to load class.");
@@ -119,12 +140,22 @@ export default function EditClassPage() {
           );
         }
 
+        if (!classesResponse.ok) {
+          throw new Error(
+            classesResult?.detail || "Unable to load roll number settings."
+          );
+        }
+
         const current = classResult.class as ClassRoom;
 
         if (isMounted) {
           setClassroom(current);
           setName(current.name);
           setAcademicSessionId(String(current.academic_session_id));
+          setRollNumberPrefix(current.roll_number_prefix || "");
+          setRollNumberDigits(String(current.roll_number_digits || 4));
+          setRollNumberStart(String(current.roll_number_start || 1));
+          setPrefixOptions(classesResult.roll_number_prefixes || []);
           setSessions(sessionsResult.academic_sessions || []);
         }
       } catch (err) {
@@ -168,6 +199,9 @@ export default function EditClassPage() {
           body: JSON.stringify({
             name,
             academic_session_id: academicSessionId,
+            roll_number_prefix: rollNumberPrefix,
+            roll_number_digits: Number(rollNumberDigits),
+            roll_number_start: Number(rollNumberStart),
           }),
         }
       );
@@ -205,7 +239,7 @@ export default function EditClassPage() {
             <div className="mb-4">
               <h2 className="fw-bold mb-1">Edit Class</h2>
               <p className="text-muted mb-0">
-                Update class name and academic session.
+                Update class, academic session, and roll number settings.
               </p>
             </div>
 
@@ -249,6 +283,78 @@ export default function EditClassPage() {
                             </option>
                           ))}
                         </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">
+                          Roll Number Prefix
+                        </label>
+                        <input
+                          className="form-control"
+                          list="roll-prefix-options"
+                          value={rollNumberPrefix}
+                          onChange={(event) =>
+                            setRollNumberPrefix(
+                              event.target.value.toUpperCase()
+                            )
+                          }
+                          maxLength={20}
+                          required
+                        />
+                        <datalist id="roll-prefix-options">
+                          {prefixOptions.map((prefix) => (
+                            <option key={prefix} value={prefix} />
+                          ))}
+                        </datalist>
+                        <div className="form-text">
+                          Select an existing prefix or type a new one for this class.
+                        </div>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Number Digits</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={rollNumberDigits}
+                          onChange={(event) =>
+                            setRollNumberDigits(event.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Starting Number</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min="1"
+                          value={rollNumberStart}
+                          onChange={(event) =>
+                            setRollNumberStart(event.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="col-12">
+                        <div className="alert alert-light border mb-0">
+                          Roll number preview:{" "}
+                          <strong>
+                            {rollNumberPrefix || "ROLL"}-
+                            {String(
+                              Math.max(1, Number(rollNumberStart) || 1)
+                            ).padStart(
+                              Math.max(
+                                1,
+                                Math.min(
+                                  10,
+                                  Number(rollNumberDigits) || 4
+                                )
+                              ),
+                              "0"
+                            )}
+                          </strong>
+                        </div>
                       </div>
                       <div className="col-12 d-flex gap-2">
                         <button

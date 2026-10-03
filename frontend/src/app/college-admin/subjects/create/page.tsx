@@ -285,6 +285,15 @@ export default function CreateSubjectPage() {
                           onChange={(event) => setCode(event.target.value)}
                         />
                       </div>
+                      <div className="col-12">
+                        <div className="alert alert-light border mb-0">
+                          <strong>Student assignment:</strong>{" "}
+                          This subject will initially apply to all students in
+                          the selected class. After saving, use{" "}
+                          <strong>Manage Students</strong> on the Subjects page
+                          to exclude students or make it an optional subject.
+                        </div>
+                      </div>
                       <div className="col-12 d-flex gap-2">
                         <button
                           className="btn btn-primary"

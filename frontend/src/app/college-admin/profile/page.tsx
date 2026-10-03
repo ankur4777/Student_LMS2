@@ -37,6 +37,9 @@ interface OrganizationInfo {
   address: string;
   website: string;
   domain: string;
+  roll_number_prefix: string;
+  roll_number_digits: number;
+  roll_number_start: number;
   is_active: boolean;
   status: string;
   logo: string;
@@ -91,6 +94,9 @@ export default function CollegeAdminProfilePage() {
   const [institutionWebsite, setInstitutionWebsite] = useState("");
   const [primaryColor, setPrimaryColor] = useState("#0d6efd");
   const [secondaryColor, setSecondaryColor] = useState("#6c757d");
+  const [rollNumberPrefix, setRollNumberPrefix] = useState("");
+  const [rollNumberDigits, setRollNumberDigits] = useState("4");
+  const [rollNumberStart, setRollNumberStart] = useState("1");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -125,6 +131,13 @@ export default function CollegeAdminProfilePage() {
     setInstitutionWebsite(result.organization?.website || "");
     setPrimaryColor(result.organization?.primary_color || "#0d6efd");
     setSecondaryColor(result.organization?.secondary_color || "#6c757d");
+    setRollNumberPrefix(result.organization?.roll_number_prefix || "");
+    setRollNumberDigits(
+      String(result.organization?.roll_number_digits || 4)
+    );
+    setRollNumberStart(
+      String(result.organization?.roll_number_start || 1)
+    );
 
     setAdmin((currentAdmin) => {
       const nextAdmin = {
@@ -288,6 +301,9 @@ export default function CollegeAdminProfilePage() {
       payload.append("phone", institutionPhone);
       payload.append("address", institutionAddress);
       payload.append("website", institutionWebsite);
+      payload.append("roll_number_prefix", rollNumberPrefix);
+      payload.append("roll_number_digits", rollNumberDigits);
+      payload.append("roll_number_start", rollNumberStart);
       if (logoFile) {
         payload.append("logo", logoFile);
       }
@@ -630,6 +646,85 @@ export default function CollegeAdminProfilePage() {
                                 setInstitutionAddress(event.target.value)
                               }
                             />
+                          </div>
+                          <div className="col-12">
+                            <hr className="my-2" />
+                            <h6 className="fw-bold mb-1">
+                              Default Roll Number Settings
+                            </h6>
+                            <p className="text-muted small mb-3">
+                              These values are used as defaults when creating a new class. Each class can select or create its own roll number prefix. Existing class settings and roll numbers are not changed.
+                            </p>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">
+                              Roll Number Prefix
+                            </label>
+                            <input
+                              className="form-control"
+                              value={rollNumberPrefix}
+                              onChange={(event) =>
+                                setRollNumberPrefix(event.target.value)
+                              }
+                              placeholder={organization.code.toUpperCase()}
+                              maxLength={20}
+                            />
+                            <div className="form-text">
+                              Example: IGDTUW
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">
+                              Number Digits
+                            </label>
+                            <input
+                              className="form-control"
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={rollNumberDigits}
+                              onChange={(event) =>
+                                setRollNumberDigits(event.target.value)
+                              }
+                              required
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">
+                              Starting Number
+                            </label>
+                            <input
+                              className="form-control"
+                              type="number"
+                              min="1"
+                              value={rollNumberStart}
+                              onChange={(event) =>
+                                setRollNumberStart(event.target.value)
+                              }
+                              required
+                            />
+                          </div>
+                          <div className="col-12">
+                            <div className="alert alert-light border mb-0">
+                              Preview:{" "}
+                              <strong>
+                                {(rollNumberPrefix.trim() ||
+                                  organization.code.toUpperCase())}
+                                -
+                                {String(
+                                  Math.max(1, Number(rollNumberStart) || 1)
+                                ).padStart(
+                                  Math.max(
+                                    1,
+                                    Math.min(
+                                      10,
+                                      Number(rollNumberDigits) || 4
+                                    )
+                                  ),
+                                  "0"
+                                )}
+                              </strong>
+                            </div>
                           </div>
                           <div className="col-12">
                             <button

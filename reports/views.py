@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from academics.models import AcademicSession, ClassRoom, Section, StudentEnrollment, Subject
+from academics.subject_access import eligible_enrollments_for_subject
 from accounts.models import StudentProfile, TeacherProfile
 from assignments.models import Assignment, AssignmentSubmission
 from attendance.models import StudentAttendance
@@ -177,10 +178,14 @@ class CollegeAdminOverviewAPIView(APIView):
         attendance, assignments, submissions, live, fees, payments, exams, results = scoped_data(org, filters)
         att = attendance_summary(attendance)
         expected_submissions = 0
-        for assignment in assignments.select_related("teacher_assignment__section"):
-            expected_submissions += StudentEnrollment.objects.filter(
-                section=assignment.teacher_assignment.section, is_active=True,
-                student__user__organization=org,
+        for assignment in assignments.select_related(
+            "teacher_assignment__section",
+            "teacher_assignment__subject",
+        ):
+            expected_submissions += eligible_enrollments_for_subject(
+                assignment.teacher_assignment.subject,
+                section=assignment.teacher_assignment.section,
+                organization=org,
             ).count()
         expected = decimal_or_zero(fees.aggregate(total=Sum("payable_amount"))["total"])
         collected = decimal_or_zero(payments.aggregate(total=Sum("amount"))["total"])

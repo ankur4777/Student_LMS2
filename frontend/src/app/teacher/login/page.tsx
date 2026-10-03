@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import PasswordField from "@/components/auth/PasswordField";
 
 export default function TeacherLoginPage() {
   const router = useRouter();
@@ -102,13 +103,12 @@ export default function TeacherLoginPage() {
           <form onSubmit={handleSubmit}>
 
             <div className="mb-3">
-              <label className="form-label">
-                Username
-              </label>
+              <label className="form-label">Username or Email</label>
 
               <input
                 type="text"
                 className="form-control"
+                placeholder="Enter your username or email"
                 value={username}
                 onChange={(event) =>
                   setUsername(
@@ -119,23 +119,13 @@ export default function TeacherLoginPage() {
               />
             </div>
 
-            <div className="mb-4">
-              <label className="form-label">
-                Password
-              </label>
-
-              <input
-                type="password"
-                className="form-control"
-                value={password}
-                onChange={(event) =>
-                  setPassword(
-                    event.target.value
-                  )
-                }
-                required
-              />
-            </div>
+            <PasswordField
+              label="Password"
+              value={password}
+              onChange={setPassword}
+              autoComplete="current-password"
+              className="mb-4"
+            />
 
             <div className="text-end mb-3">
               <Link href="/teacher/forgot-password" className="text-decoration-none">

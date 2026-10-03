@@ -152,6 +152,14 @@ export default function CreateTeacherAssignmentPage() {
           return;
         }
 
+        const contentType = response.headers.get("content-type") || "";
+
+        if (!contentType.includes("application/json")) {
+          throw new Error(
+            "Teacher assignment setup is temporarily unavailable."
+          );
+        }
+
         const result = await response.json();
         if (!response.ok) {
           throw new Error(result?.detail || "Unable to load setup data.");
@@ -213,6 +221,13 @@ export default function CreateTeacherAssignmentPage() {
       if (response.status === 401) {
         clearSession();
         router.replace("/college-admin/login");
+        return;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        setError("Teacher assignment service is temporarily unavailable.");
         return;
       }
 

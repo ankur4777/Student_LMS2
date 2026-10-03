@@ -22,6 +22,9 @@ interface ClassRoom {
   name: string;
   academic_session_id: number;
   academic_session: string;
+  roll_number_prefix: string;
+  roll_number_digits: number;
+  roll_number_start: number;
 }
 
 function getSavedAdmin() {
@@ -232,6 +235,7 @@ export default function CollegeAdminClassesPage() {
                       <tr>
                         <th>Class</th>
                         <th>Academic Session</th>
+                        <th>Roll Prefix</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -240,6 +244,11 @@ export default function CollegeAdminClassesPage() {
                         <tr key={item.id}>
                           <td className="fw-semibold">{item.name}</td>
                           <td>{item.academic_session}</td>
+                          <td>
+                            <span className="badge bg-light text-dark border">
+                              {item.roll_number_prefix}
+                            </span>
+                          </td>
                           <td>
                             <Link
                               className="btn btn-outline-primary btn-sm"

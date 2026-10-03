@@ -12,7 +12,16 @@ from .feature_access import (
     get_parent_child_feature_map,
     get_student_feature_map,
 )
-from .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
+from .subject_access import eligible_enrollments_for_subject
+from .models import (
+    AcademicSession,
+    ClassFeatureAccess,
+    ClassRoom,
+    Section,
+    StudentEnrollment,
+    Subject,
+    SubjectStudentAccess,
+)
 
 
 def college_admin_organization(user):
@@ -267,12 +276,26 @@ class CollegeAdminAcademicSessionDetailAPIView(APIView):
         })
 
 
+def classroom_roll_prefix(classroom):
+    organization = classroom.organization
+
+    return (
+        str(classroom.roll_number_prefix or "").strip()
+        or str(organization.roll_number_prefix or "").strip()
+        or str(organization.code or "").strip().upper()
+        or "ROLL"
+    )
+
+
 def serialize_classroom(classroom):
     return {
         "id": classroom.id,
         "name": classroom.name,
         "academic_session_id": classroom.academic_session_id,
         "academic_session": classroom.academic_session.name,
+        "roll_number_prefix": classroom_roll_prefix(classroom),
+        "roll_number_digits": classroom.roll_number_digits,
+        "roll_number_start": classroom.roll_number_start,
     }
 
 
@@ -295,6 +318,24 @@ def get_college_academic_session(session_id, organization):
 def validate_classroom_payload(data, organization, classroom=None):
     name = classroom.name if classroom else ""
     academic_session = classroom.academic_session if classroom else None
+    roll_number_prefix = (
+        classroom.roll_number_prefix
+        if classroom
+        else (
+            organization.roll_number_prefix
+            or organization.code.upper()
+        )
+    )
+    roll_number_digits = (
+        classroom.roll_number_digits
+        if classroom
+        else organization.roll_number_digits
+    )
+    roll_number_start = (
+        classroom.roll_number_start
+        if classroom
+        else organization.roll_number_start
+    )
 
     if "name" in data or not classroom:
         name = data.get("name", "").strip()
@@ -310,6 +351,62 @@ def validate_classroom_payload(data, organization, classroom=None):
 
         if not academic_session:
             return None, {"detail": "Academic session not found."}, 404
+
+    if "roll_number_prefix" in data or not classroom:
+        roll_number_prefix = str(
+            data.get("roll_number_prefix", roll_number_prefix) or ""
+        ).strip().upper()
+
+        if not roll_number_prefix:
+            roll_number_prefix = (
+                organization.roll_number_prefix
+                or organization.code.upper()
+            )
+
+        if len(roll_number_prefix) > 20:
+            return (
+                None,
+                {"detail": "Roll number prefix cannot exceed 20 characters."},
+                400,
+            )
+
+    if "roll_number_digits" in data or not classroom:
+        try:
+            roll_number_digits = int(
+                data.get("roll_number_digits", roll_number_digits)
+            )
+        except (TypeError, ValueError):
+            return (
+                None,
+                {"detail": "Roll number digits must be a number."},
+                400,
+            )
+
+        if roll_number_digits < 1 or roll_number_digits > 10:
+            return (
+                None,
+                {"detail": "Roll number digits must be between 1 and 10."},
+                400,
+            )
+
+    if "roll_number_start" in data or not classroom:
+        try:
+            roll_number_start = int(
+                data.get("roll_number_start", roll_number_start)
+            )
+        except (TypeError, ValueError):
+            return (
+                None,
+                {"detail": "Roll number starting value must be a number."},
+                400,
+            )
+
+        if roll_number_start < 1:
+            return (
+                None,
+                {"detail": "Roll number starting value must be at least 1."},
+                400,
+            )
 
     duplicate = ClassRoom.objects.filter(
         organization=organization,
@@ -335,6 +432,9 @@ def validate_classroom_payload(data, organization, classroom=None):
     return {
         "name": name,
         "academic_session": academic_session,
+        "roll_number_prefix": roll_number_prefix,
+        "roll_number_digits": roll_number_digits,
+        "roll_number_start": roll_number_start,
     }, None, None
 
 
@@ -364,13 +464,39 @@ class CollegeAdminClassesAPIView(APIView):
             classrooms = classrooms.filter(
                 Q(name__icontains=search)
                 | Q(academic_session__name__icontains=search)
+                | Q(roll_number_prefix__icontains=search)
             )
 
+        serialized_classes = [
+            serialize_classroom(classroom)
+            for classroom in classrooms
+        ]
+
+        prefix_options = {
+            str(organization.roll_number_prefix or "").strip().upper(),
+            str(organization.code or "").strip().upper(),
+        }
+        prefix_options.update(
+            item["roll_number_prefix"]
+            for item in serialized_classes
+            if item["roll_number_prefix"]
+        )
+
         return Response({
-            "classes": [
-                serialize_classroom(classroom)
-                for classroom in classrooms
-            ]
+            "classes": serialized_classes,
+            "roll_number_prefixes": sorted(
+                prefix
+                for prefix in prefix_options
+                if prefix
+            ),
+            "roll_number_defaults": {
+                "prefix": (
+                    organization.roll_number_prefix
+                    or organization.code.upper()
+                ),
+                "digits": organization.roll_number_digits,
+                "start": organization.roll_number_start,
+            },
         })
 
     def post(self, request):
@@ -390,17 +516,68 @@ class CollegeAdminClassesAPIView(APIView):
         if error:
             return Response(error, status=status_code)
 
-        try:
-            classroom = ClassRoom.objects.create(
-                organization=organization,
-                **values
+        raw_sections = request.data.get("sections", [])
+
+        if raw_sections is None:
+            raw_sections = []
+
+        if not isinstance(raw_sections, list):
+            return Response(
+                {"detail": "Sections must be provided as a list."},
+                status=400,
             )
+
+        section_names = []
+        seen_section_names = set()
+
+        for index, section_value in enumerate(raw_sections, start=1):
+            section_name = str(section_value or "").strip()
+
+            if not section_name:
+                return Response(
+                    {
+                        "detail": (
+                            f"Section {index} name cannot be empty."
+                        )
+                    },
+                    status=400,
+                )
+
+            normalized_name = section_name.casefold()
+
+            if normalized_name in seen_section_names:
+                return Response(
+                    {
+                        "detail": (
+                            f'Section "{section_name}" is repeated.'
+                        )
+                    },
+                    status=400,
+                )
+
+            seen_section_names.add(normalized_name)
+            section_names.append(section_name)
+
+        try:
+            with transaction.atomic():
+                classroom = ClassRoom.objects.create(
+                    organization=organization,
+                    **values
+                )
+
+                created_sections = [
+                    Section.objects.create(
+                        organization=organization,
+                        classroom=classroom,
+                        name=section_name,
+                    )
+                    for section_name in section_names
+                ]
         except IntegrityError:
             return Response(
                 {
                     "detail": (
-                        "A class with this name already exists for this "
-                        "academic session."
+                        "The class or one of its sections already exists."
                     )
                 },
                 status=400
@@ -408,8 +585,16 @@ class CollegeAdminClassesAPIView(APIView):
 
         return Response(
             {
-                "message": "Class saved successfully.",
+                "message": (
+                    "Class and sections saved successfully."
+                    if created_sections
+                    else "Class saved successfully."
+                ),
                 "class": serialize_classroom(classroom),
+                "sections": [
+                    serialize_section(section)
+                    for section in created_sections
+                ],
             },
             status=201
         )
@@ -471,12 +656,18 @@ class CollegeAdminClassDetailAPIView(APIView):
 
         classroom.name = values["name"]
         classroom.academic_session = values["academic_session"]
+        classroom.roll_number_prefix = values["roll_number_prefix"]
+        classroom.roll_number_digits = values["roll_number_digits"]
+        classroom.roll_number_start = values["roll_number_start"]
 
         try:
             classroom.save(
                 update_fields=[
                     "name",
                     "academic_session",
+                    "roll_number_prefix",
+                    "roll_number_digits",
+                    "roll_number_start",
                 ]
             )
         except IntegrityError:
@@ -506,6 +697,23 @@ def serialize_section(section):
         "class_name": classroom.name,
         "academic_session_id": classroom.academic_session_id,
         "academic_session": classroom.academic_session.name,
+        "student_assignment_mode": subject.student_assignment_mode,
+        "student_assignment_mode_label": (
+            subject.get_student_assignment_mode_display()
+        ),
+        "eligible_student_count": (
+            eligible_enrollments_for_subject(
+                subject,
+                organization=subject.organization,
+            ).values("student_id").distinct().count()
+        ),
+        "class_student_count": (
+            StudentEnrollment.objects.filter(
+                section__classroom=classroom,
+                is_active=True,
+                student__user__organization=subject.organization,
+            ).values("student_id").distinct().count()
+        ),
     }
 
 
@@ -752,9 +960,96 @@ class CollegeAdminSectionDetailAPIView(APIView):
             "section": serialize_section(section),
         })
 
+    def delete(self, request, section_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can remove sections."},
+                status=403,
+            )
+
+        section = self.get_section(request.user, section_id)
+
+        if not section:
+            return Response(
+                {"detail": "Section not found."},
+                status=404,
+            )
+
+        blockers = []
+
+        related_checks = [
+            (
+                "student_enrollments",
+                "student enrollments",
+            ),
+            (
+                "teacher_assignments",
+                "teacher assignments",
+            ),
+            (
+                "attendance_sessions",
+                "attendance records",
+            ),
+            (
+                "exams",
+                "exams/results",
+            ),
+            (
+                "notices",
+                "notices",
+            ),
+        ]
+
+        for related_name, label in related_checks:
+            manager = getattr(section, related_name, None)
+            if manager is not None and manager.exists():
+                blockers.append(label)
+
+        if blockers:
+            return Response(
+                {
+                    "detail": (
+                        "This section cannot be removed because it is "
+                        "already used by "
+                        + ", ".join(blockers)
+                        + ". Move or remove those records first."
+                    )
+                },
+                status=400,
+            )
+
+        section_name = section.name
+        class_name = section.classroom.name
+        section.delete()
+
+        return Response(
+            {
+                "message": (
+                    f'Section "{section_name}" was removed from '
+                    f'class "{class_name}".'
+                )
+            }
+        )
+
 
 def serialize_subject(subject):
     classroom = subject.classroom
+
+    eligible_student_count = (
+        eligible_enrollments_for_subject(
+            subject,
+            organization=subject.organization,
+        ).values("student_id").distinct().count()
+    )
+    class_student_count = (
+        StudentEnrollment.objects.filter(
+            section__classroom=classroom,
+            is_active=True,
+            student__user__organization=subject.organization,
+        ).values("student_id").distinct().count()
+    )
 
     return {
         "id": subject.id,
@@ -764,6 +1059,12 @@ def serialize_subject(subject):
         "class_name": classroom.name,
         "academic_session_id": classroom.academic_session_id,
         "academic_session": classroom.academic_session.name,
+        "student_assignment_mode": subject.student_assignment_mode,
+        "student_assignment_mode_label": (
+            subject.get_student_assignment_mode_display()
+        ),
+        "eligible_student_count": eligible_student_count,
+        "class_student_count": class_student_count,
     }
 
 
@@ -980,6 +1281,10 @@ class CollegeAdminSubjectDetailAPIView(APIView):
         if error:
             return Response(error, status=status_code)
 
+        classroom_changed = (
+            subject.classroom_id != values["classroom"].id
+        )
+
         subject.name = values["name"]
         subject.code = values["code"]
         subject.classroom = values["classroom"]
@@ -992,6 +1297,15 @@ class CollegeAdminSubjectDetailAPIView(APIView):
                     "classroom",
                 ]
             )
+
+            if classroom_changed:
+                subject.student_access_overrides.all().delete()
+                subject.student_assignment_mode = (
+                    Subject.StudentAssignmentMode.ALL
+                )
+                subject.save(
+                    update_fields=["student_assignment_mode"]
+                )
         except IntegrityError:
             return Response(
                 {
@@ -1007,6 +1321,240 @@ class CollegeAdminSubjectDetailAPIView(APIView):
             "message": "Subject updated successfully.",
             "subject": serialize_subject(subject),
         })
+
+class CollegeAdminSubjectStudentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_subject(self, user, subject_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None, None
+
+        subject = college_subject_queryset(
+            organization
+        ).filter(
+            id=subject_id
+        ).first()
+
+        return organization, subject
+
+    def get(self, request, subject_id):
+        organization, subject = self.get_subject(
+            request.user,
+            subject_id,
+        )
+
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can manage subject students."
+                    )
+                },
+                status=403,
+            )
+
+        if not subject:
+            return Response(
+                {"detail": "Subject not found."},
+                status=404,
+            )
+
+        enrollments = StudentEnrollment.objects.filter(
+            section__classroom=subject.classroom,
+            is_active=True,
+            student__user__organization=organization,
+        ).select_related(
+            "student",
+            "student__user",
+            "section",
+        ).order_by(
+            "section__name",
+            "roll_number",
+            "student__user__first_name",
+            "student__user__last_name",
+            "student__user__username",
+        )
+
+        overrides = {
+            access.student_id: access.is_enrolled
+            for access in SubjectStudentAccess.objects.filter(
+                subject=subject,
+                student_id__in=[
+                    enrollment.student_id
+                    for enrollment in enrollments
+                ],
+            )
+        }
+
+        students = []
+
+        for enrollment in enrollments:
+            student = enrollment.student
+            student_user = student.user
+
+            if student.id in overrides:
+                studies_subject = overrides[student.id]
+            else:
+                studies_subject = (
+                    subject.student_assignment_mode
+                    == Subject.StudentAssignmentMode.ALL
+                )
+
+            students.append({
+                "student_profile_id": student.id,
+                "student_user_id": student_user.id,
+                "name": (
+                    student_user.get_full_name().strip()
+                    or student_user.username
+                ),
+                "username": student_user.username,
+                "email": student_user.email,
+                "roll_number": enrollment.roll_number,
+                "section_id": enrollment.section_id,
+                "section_name": enrollment.section.name,
+                "studies_subject": studies_subject,
+            })
+
+        return Response({
+            "subject": serialize_subject(subject),
+            "assignment_modes": [
+                {
+                    "value": value,
+                    "label": label,
+                }
+                for value, label in Subject.StudentAssignmentMode.choices
+            ],
+            "students": students,
+        })
+
+    def patch(self, request, subject_id):
+        organization, subject = self.get_subject(
+            request.user,
+            subject_id,
+        )
+
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can manage subject students."
+                    )
+                },
+                status=403,
+            )
+
+        if not subject:
+            return Response(
+                {"detail": "Subject not found."},
+                status=404,
+            )
+
+        mode = str(
+            request.data.get(
+                "student_assignment_mode",
+                subject.student_assignment_mode,
+            )
+        ).strip()
+
+        valid_modes = {
+            value
+            for value, _label
+            in Subject.StudentAssignmentMode.choices
+        }
+
+        if mode not in valid_modes:
+            return Response(
+                {"detail": "Invalid student assignment mode."},
+                status=400,
+            )
+
+        selected_student_ids = request.data.get(
+            "student_profile_ids",
+            [],
+        )
+
+        if not isinstance(selected_student_ids, list):
+            return Response(
+                {"detail": "student_profile_ids must be a list."},
+                status=400,
+            )
+
+        try:
+            selected_student_ids = {
+                int(student_id)
+                for student_id in selected_student_ids
+            }
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Student IDs must be valid numbers."},
+                status=400,
+            )
+
+        class_student_ids = set(
+            StudentEnrollment.objects.filter(
+                section__classroom=subject.classroom,
+                is_active=True,
+                student__user__organization=organization,
+            ).values_list(
+                "student_id",
+                flat=True,
+            )
+        )
+
+        invalid_ids = selected_student_ids - class_student_ids
+
+        if invalid_ids:
+            return Response(
+                {
+                    "detail": (
+                        "One or more selected students do not belong "
+                        "to this class."
+                    )
+                },
+                status=400,
+            )
+
+        with transaction.atomic():
+            subject.student_assignment_mode = mode
+            subject.save(
+                update_fields=["student_assignment_mode"]
+            )
+
+            SubjectStudentAccess.objects.filter(
+                subject=subject
+            ).delete()
+
+            if mode == Subject.StudentAssignmentMode.ALL:
+                excluded_ids = (
+                    class_student_ids - selected_student_ids
+                )
+                SubjectStudentAccess.objects.bulk_create([
+                    SubjectStudentAccess(
+                        subject=subject,
+                        student_id=student_id,
+                        is_enrolled=False,
+                    )
+                    for student_id in excluded_ids
+                ])
+            else:
+                SubjectStudentAccess.objects.bulk_create([
+                    SubjectStudentAccess(
+                        subject=subject,
+                        student_id=student_id,
+                        is_enrolled=True,
+                    )
+                    for student_id in selected_student_ids
+                ])
+
+        return Response({
+            "message": "Subject student assignment updated successfully.",
+            "subject": serialize_subject(subject),
+            "selected_student_count": len(selected_student_ids),
+            "class_student_count": len(class_student_ids),
+        })
+
 
 def serialize_class_feature_access(classroom, organization):
     access_by_key = {

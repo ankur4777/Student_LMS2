@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from academics.models import ParentStudent, StudentEnrollment
+from notifications.services import notify_notice_published, notify_notice_user
 from .models import Notice
 from .serializers import NoticeSerializer
 
@@ -87,6 +88,10 @@ class CollegeAdminNoticeListCreateAPIView(APIView):
         serializer = NoticeSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         notice = serializer.save()
+
+        if notice.is_current:
+            notify_notice_published(notice)
+
         return Response(
             NoticeSerializer(notice, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
@@ -122,6 +127,8 @@ class CollegeAdminNoticeDetailAPIView(APIView):
         if error:
             return error
 
+        was_current = notice.is_current
+
         serializer = NoticeSerializer(
             notice,
             data=request.data,
@@ -130,6 +137,10 @@ class CollegeAdminNoticeDetailAPIView(APIView):
         )
         serializer.is_valid(raise_exception=True)
         updated = serializer.save()
+
+        if not was_current and updated.is_current:
+            notify_notice_published(updated)
+
         return Response(NoticeSerializer(updated, context={"request": request}).data)
 
     def delete(self, request, pk):
@@ -167,9 +178,15 @@ class RelevantNoticesAPIView(APIView):
         if not request.user.organization_id:
             return Response([])
 
-        notices = current_notice_queryset(request.user).select_related(
-            "classroom", "section", "created_by"
+        notices = list(
+            current_notice_queryset(request.user).select_related(
+                "classroom", "section", "created_by"
+            )
         )
+
+        for notice in notices:
+            notify_notice_user(notice, request.user)
+
         return Response(
             NoticeSerializer(notices, many=True, context={"request": request}).data
         )

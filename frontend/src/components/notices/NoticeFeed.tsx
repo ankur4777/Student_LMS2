@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
 interface NoticeItem {
   id: number;
@@ -58,14 +58,24 @@ export default function NoticeFeed({
       try {
         const response = await fetch(`${API_BASE}/api/notices/feed/`, {
           headers: {
+            Accept: "application/json",
             Authorization: `Bearer ${token}`,
           },
+          cache: "no-store",
         });
 
         if (response.status === 401) {
           localStorage.removeItem(tokenKey);
           router.replace(loginPath);
           return;
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+
+        if (!contentType.includes("application/json")) {
+          throw new Error(
+            "Notices are temporarily unavailable. Please refresh the page."
+          );
         }
 
         const result = await response.json();
@@ -75,7 +85,11 @@ export default function NoticeFeed({
         }
 
         if (active) {
-          setNotices(result || []);
+          setNotices(Array.isArray(result) ? result : []);
+
+          window.dispatchEvent(
+            new Event("lms:notifications-updated")
+          );
         }
       } catch (err) {
         if (active) {

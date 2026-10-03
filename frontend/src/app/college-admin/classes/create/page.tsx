@@ -22,6 +22,12 @@ interface AcademicSession {
   is_active: boolean;
 }
 
+interface RollNumberDefaults {
+  prefix: string;
+  digits: number;
+  start: number;
+}
+
 function getSavedAdmin() {
   if (typeof window === "undefined") {
     return {};
@@ -43,6 +49,11 @@ export default function CreateClassPage() {
   const [sessions, setSessions] = useState<AcademicSession[]>([]);
   const [name, setName] = useState("");
   const [academicSessionId, setAcademicSessionId] = useState("");
+  const [rollNumberPrefix, setRollNumberPrefix] = useState("");
+  const [rollNumberDigits, setRollNumberDigits] = useState("4");
+  const [rollNumberStart, setRollNumberStart] = useState("1");
+  const [prefixOptions, setPrefixOptions] = useState<string[]>([]);
+  const [sections, setSections] = useState([""]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -72,30 +83,60 @@ export default function CreateClassPage() {
       }
 
       try {
-        const response = await fetch(
-          `${API_BASE}/api/academics/college-admin/academic-sessions/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const [sessionsResponse, classesResponse] =
+          await Promise.all([
+            fetch(
+              `${API_BASE}/api/academics/college-admin/academic-sessions/`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+            fetch(
+              `${API_BASE}/api/academics/college-admin/classes/`,
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }
+            ),
+          ]);
 
-        if (response.status === 401) {
+        if (
+          sessionsResponse.status === 401 ||
+          classesResponse.status === 401
+        ) {
           clearSession();
           router.replace("/college-admin/login");
           return;
         }
 
-        const result = await response.json();
-        if (!response.ok) {
+        const sessionsResult = await sessionsResponse.json();
+        const classesResult = await classesResponse.json();
+
+        if (!sessionsResponse.ok) {
           throw new Error(
-            result?.detail || "Unable to load academic sessions."
+            sessionsResult?.detail || "Unable to load academic sessions."
+          );
+        }
+
+        if (!classesResponse.ok) {
+          throw new Error(
+            classesResult?.detail || "Unable to load roll number settings."
           );
         }
 
         if (isMounted) {
-          setSessions(result.academic_sessions || []);
+          const defaults = (
+            classesResult.roll_number_defaults || {}
+          ) as Partial<RollNumberDefaults>;
+
+          setSessions(sessionsResult.academic_sessions || []);
+          setPrefixOptions(classesResult.roll_number_prefixes || []);
+          setRollNumberPrefix(defaults.prefix || "");
+          setRollNumberDigits(String(defaults.digits || 4));
+          setRollNumberStart(String(defaults.start || 1));
         }
       } catch (err) {
         if (isMounted && err instanceof Error) {
@@ -115,10 +156,42 @@ export default function CreateClassPage() {
     };
   }, [clearSession, getToken, router]);
 
+  const addSection = () => {
+    setSections((current) => [...current, ""]);
+  };
+
+  const updateSection = (index: number, value: string) => {
+    setSections((current) =>
+      current.map((section, sectionIndex) =>
+        sectionIndex === index ? value : section
+      )
+    );
+  };
+
+  const removeSection = (index: number) => {
+    setSections((current) => {
+      if (current.length === 1) {
+        return current;
+      }
+
+      return current.filter((_, sectionIndex) => sectionIndex !== index);
+    });
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     setError("");
+
+    const sectionNames = sections
+      .map((section) => section.trim())
+      .filter(Boolean);
+
+    if (sectionNames.length === 0) {
+      setError("Add at least one section for this class.");
+      setSaving(false);
+      return;
+    }
 
     const token = getToken();
     if (!token) {
@@ -138,6 +211,10 @@ export default function CreateClassPage() {
           body: JSON.stringify({
             name,
             academic_session_id: academicSessionId,
+            roll_number_prefix: rollNumberPrefix,
+            roll_number_digits: Number(rollNumberDigits),
+            roll_number_start: Number(rollNumberStart),
+            sections: sectionNames,
           }),
         }
       );
@@ -175,7 +252,7 @@ export default function CreateClassPage() {
             <div className="mb-4">
               <h2 className="fw-bold mb-1">Add Class</h2>
               <p className="text-muted mb-0">
-                Create a class for an academic session.
+                Create a class, its sections, and roll number settings in one step.
               </p>
             </div>
 
@@ -219,6 +296,126 @@ export default function CreateClassPage() {
                             </option>
                           ))}
                         </select>
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label">
+                          Roll Number Prefix
+                        </label>
+                        <input
+                          className="form-control"
+                          list="roll-prefix-options"
+                          value={rollNumberPrefix}
+                          onChange={(event) =>
+                            setRollNumberPrefix(
+                              event.target.value.toUpperCase()
+                            )
+                          }
+                          placeholder="Example: CSE"
+                          maxLength={20}
+                          required
+                        />
+                        <datalist id="roll-prefix-options">
+                          {prefixOptions.map((prefix) => (
+                            <option key={prefix} value={prefix} />
+                          ))}
+                        </datalist>
+                        <div className="form-text">
+                          Select an existing prefix or type a new one for this class.
+                        </div>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Number Digits</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={rollNumberDigits}
+                          onChange={(event) =>
+                            setRollNumberDigits(event.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Starting Number</label>
+                        <input
+                          className="form-control"
+                          type="number"
+                          min="1"
+                          value={rollNumberStart}
+                          onChange={(event) =>
+                            setRollNumberStart(event.target.value)
+                          }
+                          required
+                        />
+                      </div>
+                      <div className="col-12">
+                        <div className="alert alert-light border mb-0">
+                          Roll number preview:{" "}
+                          <strong>
+                            {rollNumberPrefix || "ROLL"}-
+                            {String(
+                              Math.max(1, Number(rollNumberStart) || 1)
+                            ).padStart(
+                              Math.max(
+                                1,
+                                Math.min(
+                                  10,
+                                  Number(rollNumberDigits) || 4
+                                )
+                              ),
+                              "0"
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                      <div className="col-12">
+                        <div className="d-flex align-items-center justify-content-between gap-3 mb-2">
+                          <div>
+                            <label className="form-label mb-0">Sections</label>
+                            <div className="form-text mt-1">
+                              Create the sections for this class now. You can add more later from Sections.
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={addSection}
+                          >
+                            + Add Section
+                          </button>
+                        </div>
+
+                        <div className="row g-2">
+                          {sections.map((section, index) => (
+                            <div className="col-md-6" key={index}>
+                              <div className="input-group">
+                                <span className="input-group-text">
+                                  Section {index + 1}
+                                </span>
+                                <input
+                                  className="form-control"
+                                  value={section}
+                                  onChange={(event) =>
+                                    updateSection(index, event.target.value)
+                                  }
+                                  placeholder="Example: A"
+                                  required
+                                />
+                                {sections.length > 1 && (
+                                  <button
+                                    className="btn btn-outline-danger"
+                                    type="button"
+                                    onClick={() => removeSection(index)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                       <div className="col-12 d-flex gap-2">
                         <button

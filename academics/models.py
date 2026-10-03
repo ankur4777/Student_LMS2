@@ -48,6 +48,20 @@ class ClassRoom(models.Model):
         related_name='classes'
     )
 
+    roll_number_prefix = models.CharField(
+        max_length=20,
+        blank=True,
+        default=""
+    )
+
+    roll_number_digits = models.PositiveSmallIntegerField(
+        default=4
+    )
+
+    roll_number_start = models.PositiveIntegerField(
+        default=1
+    )
+
     class Meta:
         unique_together = (
             'organization',
@@ -88,6 +102,10 @@ class Section(models.Model):
 
 
 class Subject(models.Model):
+    class StudentAssignmentMode(models.TextChoices):
+        ALL = "all", "All Students"
+        SELECTED = "selected", "Selected Students Only"
+
     organization = models.ForeignKey(
         'institutions.Organization',
         on_delete=models.CASCADE,
@@ -108,6 +126,12 @@ class Subject(models.Model):
         related_name='subjects'
     )
 
+    student_assignment_mode = models.CharField(
+        max_length=20,
+        choices=StudentAssignmentMode.choices,
+        default=StudentAssignmentMode.ALL,
+    )
+
     class Meta:
         unique_together = (
             'organization',
@@ -117,6 +141,36 @@ class Subject(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.classroom.name}"
+
+
+class SubjectStudentAccess(models.Model):
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name="student_access_overrides",
+    )
+
+    student = models.ForeignKey(
+        'accounts.StudentProfile',
+        on_delete=models.CASCADE,
+        related_name="subject_access_overrides",
+    )
+
+    is_enrolled = models.BooleanField(default=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("subject", "student"),
+                name="uniq_subject_student_access",
+            )
+        ]
+
+    def __str__(self):
+        state = "included" if self.is_enrolled else "excluded"
+        return f"{self.subject} - {self.student} - {state}"
 
 
 class TeacherAssignment(models.Model):
@@ -151,6 +205,45 @@ class TeacherAssignment(models.Model):
         return f"{self.teacher} - {self.subject} - {self.section}"
 
 
+class RollNumberSequence(models.Model):
+    organization = models.ForeignKey(
+        'institutions.Organization',
+        on_delete=models.CASCADE,
+        related_name='roll_number_sequences'
+    )
+
+    academic_session = models.ForeignKey(
+        AcademicSession,
+        on_delete=models.CASCADE,
+        related_name='roll_number_sequences'
+    )
+
+    classroom = models.ForeignKey(
+        ClassRoom,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='roll_number_sequences'
+    )
+
+    next_number = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('organization', 'classroom'),
+                name='uniq_roll_sequence_org_class',
+            )
+        ]
+
+    def __str__(self):
+        class_label = self.classroom.name if self.classroom else "Legacy"
+        return (
+            f"{self.organization.name} - {self.academic_session.name} - "
+            f"{class_label} - {self.next_number}"
+        )
+
+
 class StudentEnrollment(models.Model):
     student = models.ForeignKey(
         'accounts.StudentProfile',
@@ -165,7 +258,7 @@ class StudentEnrollment(models.Model):
     )
 
     roll_number = models.CharField(
-        max_length=30,
+        max_length=50,
         blank=True
     )
 

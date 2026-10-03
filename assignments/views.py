@@ -20,6 +20,11 @@ from academics.models import (
     Section,
     Subject,
 )
+from academics.subject_access import (
+    eligible_enrollments_for_subject,
+    student_studies_subject,
+    subject_access_filter,
+)
 from django.utils import timezone
 from .models import AssignmentSubmission
 
@@ -64,22 +69,25 @@ def _assignment_summary(assignment):
     classroom = section.classroom
     academic_session = classroom.academic_session
 
-    eligible_students = StudentEnrollment.objects.filter(
+    eligible_enrollments = eligible_enrollments_for_subject(
+        subject,
         section=section,
-        is_active=True,
-        student__user__organization=assignment.organization,
-    ).count()
+        organization=assignment.organization,
+    )
+    eligible_student_ids = eligible_enrollments.values_list(
+        "student_id",
+        flat=True,
+    )
+    eligible_students = eligible_enrollments.count()
 
     submission_count = assignment.submissions.filter(
+        student_id__in=eligible_student_ids,
         student__user__organization=assignment.organization,
-        student__enrollments__section=section,
-        student__enrollments__is_active=True,
     ).distinct().count()
 
     graded_count = assignment.submissions.filter(
+        student_id__in=eligible_student_ids,
         student__user__organization=assignment.organization,
-        student__enrollments__section=section,
-        student__enrollments__is_active=True,
         status=AssignmentSubmission.Status.GRADED,
     ).distinct().count()
 
@@ -263,10 +271,10 @@ class CollegeAdminAssignmentDetailAPIView(APIView):
 
         section = assignment.teacher_assignment.section
 
-        enrollments = StudentEnrollment.objects.filter(
+        enrollments = eligible_enrollments_for_subject(
+            assignment.teacher_assignment.subject,
             section=section,
-            is_active=True,
-            student__user__organization=user.organization,
+            organization=user.organization,
         ).select_related(
             "student",
             "student__user",
@@ -796,6 +804,11 @@ class StudentAssignmentsAPIView(APIView):
             teacher_assignment__section=enrollment.section,
             teacher_assignment__is_active=True,
             is_published=True
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             "teacher_assignment__subject",
             "teacher_assignment__section",
@@ -932,6 +945,15 @@ class StudentAssignmentSubmitAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        if not student_studies_subject(
+            student_profile,
+            assignment.teacher_assignment.subject,
+        ):
+            return Response(
+                {"detail": "You are not enrolled in this subject."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         # Prevent duplicate submission
         existing_submission = AssignmentSubmission.objects.filter(
             assignment=assignment,
@@ -1064,10 +1086,10 @@ class TeacherAssignmentSubmissionsAPIView(APIView):
 
         section = assignment.teacher_assignment.section
 
-        enrollments = StudentEnrollment.objects.filter(
+        enrollments = eligible_enrollments_for_subject(
+            assignment.teacher_assignment.subject,
             section=section,
-            is_active=True,
-            student__user__organization=user.organization
+            organization=user.organization,
         ).select_related(
             "student",
             "student__user"
@@ -1426,6 +1448,11 @@ class ParentStudentAssignmentsAPIView(APIView):
             organization=user.organization,
             teacher_assignment__section=enrollment.section,
             is_published=True,
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             "teacher_assignment",
             "teacher_assignment__subject",

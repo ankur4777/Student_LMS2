@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from .forms import LMSUserCreationForm
 from .models import (
     User,
     TeacherProfile,
@@ -10,16 +11,30 @@ from .models import (
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
+    add_form = LMSUserCreationForm
     fieldsets = UserAdmin.fieldsets + (
         ('LMS Details', {
             'fields': ('role', 'organization'),
         }),
     )
 
-    add_fieldsets = UserAdmin.add_fieldsets + (
-        ('LMS Details', {
-            'fields': ('role', 'organization'),
-        }),
+    add_fieldsets = (
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": (
+                    "username",
+                    "first_name",
+                    "last_name",
+                    "email",
+                    "password1",
+                    "password2",
+                    "role",
+                    "organization",
+                ),
+            },
+        ),
     )
 
     list_display = (

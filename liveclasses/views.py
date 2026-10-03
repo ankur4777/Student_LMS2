@@ -7,6 +7,10 @@ from django.db.models import Q
 from django.utils.dateparse import parse_date, parse_time
 
 from academics.feature_access import StudentClassFeaturePermission
+from academics.subject_access import (
+    student_studies_subject,
+    subject_access_filter,
+)
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -25,7 +29,10 @@ from .serializers import (
     TeacherRecordingUploadSerializer,
     TeacherRecordingUpdateSerializer,
 )
-from notifications.services import notify_recording_available
+from notifications.services import (
+    notify_live_class_scheduled,
+    notify_recording_available,
+)
 
 
 def college_admin_organization(user):
@@ -153,6 +160,11 @@ def student_live_class_queryset(user, student_profile):
         organization=user.organization,
         teacher_assignment__section__student_enrollments__student=student_profile,
         teacher_assignment__section__student_enrollments__is_active=True,
+    ).filter(
+        subject_access_filter(
+            "teacher_assignment__subject",
+            student_profile,
+        )
     ).select_related(
         'teacher_assignment__teacher__user',
         'teacher_assignment__subject',
@@ -418,6 +430,8 @@ class CollegeAdminLiveClassesAPIView(APIView):
             organization=organization,
             **values,
         )
+
+        notify_live_class_scheduled(live_class)
 
         return Response(
             {
@@ -827,7 +841,8 @@ class StudentRecordingPlaybackAPIView(APIView):
         recording = get_object_or_404(
             LiveClassRecording.objects.select_related(
                 'live_class',
-                'live_class__teacher_assignment__section'
+                'live_class__teacher_assignment__section',
+                'live_class__teacher_assignment__subject'
             ),
             public_id=public_id,
             is_available=True
@@ -861,6 +876,15 @@ class StudentRecordingPlaybackAPIView(APIView):
             return Response(
                 {'detail': 'You are not enrolled in this class.'},
                 status=403
+            )
+
+        if not student_studies_subject(
+            student_profile,
+            live_class.teacher_assignment.subject,
+        ):
+            return Response(
+                {'detail': 'You are not enrolled in this subject.'},
+                status=403,
             )
 
         if not recording.video:

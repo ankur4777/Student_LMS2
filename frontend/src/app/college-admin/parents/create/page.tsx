@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import { buildUsernameSuggestion } from "@/lib/username";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
@@ -37,6 +38,7 @@ export default function CollegeAdminCreateParentPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [occupation, setOccupation] = useState("");
@@ -44,6 +46,9 @@ export default function CollegeAdminCreateParentPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const autoUsername = buildUsernameSuggestion(firstName, lastName);
+  const displayedUsername = usernameManuallyEdited ? username : autoUsername;
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -85,7 +90,8 @@ export default function CollegeAdminCreateParentPage() {
           body: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
-            username,
+            username: displayedUsername,
+            username_auto: !usernameManuallyEdited,
             email,
             phone,
             occupation,
@@ -132,7 +138,7 @@ export default function CollegeAdminCreateParentPage() {
 
             <div className="card border-0 shadow-sm">
               <div className="card-body p-4">
-                <form onSubmit={handleSubmit}>
+                <form onSubmit={handleSubmit} autoComplete="off">
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label">First Name</label>
@@ -154,10 +160,20 @@ export default function CollegeAdminCreateParentPage() {
                       <label className="form-label">Username</label>
                       <input
                         className="form-control"
-                        value={username}
-                        onChange={(event) => setUsername(event.target.value)}
+                        value={displayedUsername}
+                        name="generated-username"
+                        autoComplete="off"
+                        data-lpignore="true"
+                        data-1p-ignore="true"
+                        onChange={(event) => {
+                          setUsername(event.target.value);
+                          setUsernameManuallyEdited(true);
+                        }}
                         required
                       />
+                      <div className="form-text">
+                        Auto generated from the parent's name. You can edit it before creating the account.
+                      </div>
                     </div>
                     <div className="col-md-6">
                       <label className="form-label">Email</label>
@@ -165,6 +181,7 @@ export default function CollegeAdminCreateParentPage() {
                         className="form-control"
                         type="email"
                         value={email}
+                        required
                         onChange={(event) => setEmail(event.target.value)}
                       />
                     </div>
@@ -190,7 +207,9 @@ export default function CollegeAdminCreateParentPage() {
                       <label className="form-label">Password</label>
                       <input
                         className="form-control"
+                        name="new-password"
                         type="password"
+                        autoComplete="new-password"
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
                         required
@@ -200,7 +219,9 @@ export default function CollegeAdminCreateParentPage() {
                       <label className="form-label">Confirm Password</label>
                       <input
                         className="form-control"
+                        name="confirm-new-password"
                         type="password"
+                        autoComplete="new-password"
                         value={confirmPassword}
                         onChange={(event) =>
                           setConfirmPassword(event.target.value)

@@ -179,6 +179,20 @@ export default function EditTeacherAssignmentPage() {
           return;
         }
 
+        const assignmentContentType =
+          assignmentResponse.headers.get("content-type") || "";
+        const setupContentType =
+          setupResponse.headers.get("content-type") || "";
+
+        if (
+          !assignmentContentType.includes("application/json") ||
+          !setupContentType.includes("application/json")
+        ) {
+          throw new Error(
+            "Teacher assignment service is temporarily unavailable."
+          );
+        }
+
         const assignmentResult = await assignmentResponse.json();
         const setupResult = await setupResponse.json();
 
@@ -262,6 +276,13 @@ export default function EditTeacherAssignmentPage() {
       if (response.status === 401) {
         clearSession();
         router.replace("/college-admin/login");
+        return;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+
+      if (!contentType.includes("application/json")) {
+        setError("Teacher assignment service is temporarily unavailable.");
         return;
       }
 

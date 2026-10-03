@@ -14,6 +14,7 @@ from .models import (
     Section,
     StudentEnrollment,
     Subject,
+    SubjectStudentAccess,
 )
 
 
@@ -529,3 +530,462 @@ class ClassFeatureAccessTests(TestCase):
             "This feature has been restricted for parents of this class.",
         )
 
+
+
+class ClassCreationWithSectionsTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Section Setup College",
+            code="SSC",
+        )
+        self.admin = User.objects.create_user(
+            username="section-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_class_creation_can_create_multiple_sections_together(self):
+        response = self.client.post(
+            "/api/academics/college-admin/classes/",
+            {
+                "name": "Class 10",
+                "academic_session_id": self.session.id,
+                "roll_number_prefix": "TEN",
+                "roll_number_digits": 3,
+                "roll_number_start": 1,
+                "sections": ["A", "B", "C"],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        classroom = ClassRoom.objects.get(
+            organization=self.organization,
+            name="Class 10",
+        )
+        self.assertEqual(
+            list(
+                Section.objects.filter(
+                    organization=self.organization,
+                    classroom=classroom,
+                ).order_by("name").values_list("name", flat=True)
+            ),
+            ["A", "B", "C"],
+        )
+        self.assertEqual(len(response.data["sections"]), 3)
+
+    def test_repeated_section_name_rejects_entire_class_creation(self):
+        response = self.client.post(
+            "/api/academics/college-admin/classes/",
+            {
+                "name": "Class 11",
+                "academic_session_id": self.session.id,
+                "roll_number_prefix": "ELEVEN",
+                "roll_number_digits": 3,
+                "roll_number_start": 1,
+                "sections": ["A", "a"],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            ClassRoom.objects.filter(
+                organization=self.organization,
+                name="Class 11",
+            ).exists()
+        )
+
+    def test_class_creation_without_sections_still_supported_by_api(self):
+        response = self.client.post(
+            "/api/academics/college-admin/classes/",
+            {
+                "name": "Class 12",
+                "academic_session_id": self.session.id,
+                "roll_number_prefix": "TWELVE",
+                "roll_number_digits": 3,
+                "roll_number_start": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["sections"], [])
+
+
+class SectionRemovalTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Section Removal College",
+            code="REMOVE",
+        )
+        self.admin = User.objects.create_user(
+            username="remove-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 9",
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_unused_section_can_be_removed(self):
+        section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="C",
+        )
+
+        response = self.client.delete(
+            f"/api/academics/college-admin/sections/{section.id}/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(
+            Section.objects.filter(id=section.id).exists()
+        )
+
+    def test_section_with_student_enrollment_cannot_be_removed(self):
+        section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        student_user = User.objects.create_user(
+            username="remove-student",
+            password="pass12345",
+            role="student",
+            organization=self.organization,
+        )
+        student = StudentProfile.objects.create(
+            user=student_user,
+            admission_number="REMOVE-001",
+        )
+        StudentEnrollment.objects.create(
+            student=student,
+            section=section,
+            roll_number="REMOVE-001",
+            is_active=True,
+        )
+
+        response = self.client.delete(
+            f"/api/academics/college-admin/sections/{section.id}/"
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("student enrollments", response.data["detail"])
+        self.assertTrue(
+            Section.objects.filter(id=section.id).exists()
+        )
+
+    def test_college_admin_cannot_remove_foreign_section(self):
+        other_organization = Organization.objects.create(
+            name="Other Section College",
+            code="OTHERREMOVE",
+        )
+        other_session = AcademicSession.objects.create(
+            organization=other_organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        other_class = ClassRoom.objects.create(
+            organization=other_organization,
+            academic_session=other_session,
+            name="Foreign Class",
+        )
+        other_section = Section.objects.create(
+            organization=other_organization,
+            classroom=other_class,
+            name="Z",
+        )
+
+        response = self.client.delete(
+            f"/api/academics/college-admin/sections/{other_section.id}/"
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(
+            Section.objects.filter(id=other_section.id).exists()
+        )
+
+
+class SubjectStudentAssignmentTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Subject Access College",
+            code="SAC",
+        )
+        self.other_organization = Organization.objects.create(
+            name="Other Subject College",
+            code="OSC",
+        )
+        self.admin = User.objects.create_user(
+            username="subject-admin",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 10",
+        )
+        self.section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.subject = Subject.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="Maths",
+            code="MATH",
+        )
+
+        self.students = []
+
+        for index, first_name in enumerate(
+            ["Aarav", "Diya", "Kabir"],
+            start=1,
+        ):
+            user = User.objects.create_user(
+                username=f"subjectstudent{index}",
+                email=f"subjectstudent{index}@example.com",
+                password="pass12345",
+                first_name=first_name,
+                last_name="Test",
+                role="student",
+                organization=self.organization,
+            )
+            profile = StudentProfile.objects.create(
+                user=user,
+                admission_number=f"SAC-{index:03d}",
+            )
+            StudentEnrollment.objects.create(
+                student=profile,
+                section=self.section,
+                roll_number=f"SAC-{index:03d}",
+                is_active=True,
+            )
+            self.students.append(profile)
+
+        self.client.force_authenticate(user=self.admin)
+
+    def test_existing_subject_defaults_to_all_students(self):
+        response = self.client.get(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["subject"]["student_assignment_mode"],
+            "all",
+        )
+        self.assertEqual(
+            response.data["subject"]["eligible_student_count"],
+            3,
+        )
+        self.assertTrue(
+            all(
+                student["studies_subject"]
+                for student in response.data["students"]
+            )
+        )
+
+    def test_all_mode_can_exclude_selected_exceptions(self):
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/",
+            {
+                "student_assignment_mode": "all",
+                "student_profile_ids": [
+                    self.students[0].id,
+                    self.students[1].id,
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertEqual(
+            self.subject.student_assignment_mode,
+            Subject.StudentAssignmentMode.ALL,
+        )
+        self.assertTrue(
+            SubjectStudentAccess.objects.filter(
+                subject=self.subject,
+                student=self.students[2],
+                is_enrolled=False,
+            ).exists()
+        )
+
+        response = self.client.get(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/"
+        )
+        selected_ids = {
+            item["student_profile_id"]
+            for item in response.data["students"]
+            if item["studies_subject"]
+        }
+        self.assertEqual(
+            selected_ids,
+            {
+                self.students[0].id,
+                self.students[1].id,
+            },
+        )
+
+    def test_selected_mode_only_includes_checked_students(self):
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/",
+            {
+                "student_assignment_mode": "selected",
+                "student_profile_ids": [
+                    self.students[1].id,
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertEqual(
+            self.subject.student_assignment_mode,
+            Subject.StudentAssignmentMode.SELECTED,
+        )
+        self.assertEqual(
+            list(
+                SubjectStudentAccess.objects.filter(
+                    subject=self.subject,
+                    is_enrolled=True,
+                ).values_list("student_id", flat=True)
+            ),
+            [self.students[1].id],
+        )
+
+    def test_cannot_assign_student_from_another_class_or_college(self):
+        foreign_session = AcademicSession.objects.create(
+            organization=self.other_organization,
+            name="Other 2026",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        foreign_class = ClassRoom.objects.create(
+            organization=self.other_organization,
+            academic_session=foreign_session,
+            name="Foreign Class",
+        )
+        foreign_section = Section.objects.create(
+            organization=self.other_organization,
+            classroom=foreign_class,
+            name="A",
+        )
+        foreign_user = User.objects.create_user(
+            username="foreign-subject-student",
+            email="foreign-subject-student@example.com",
+            password="pass12345",
+            role="student",
+            organization=self.other_organization,
+        )
+        foreign_student = StudentProfile.objects.create(
+            user=foreign_user,
+            admission_number="FOREIGN-SUBJECT-1",
+        )
+        StudentEnrollment.objects.create(
+            student=foreign_student,
+            section=foreign_section,
+            roll_number="F-001",
+            is_active=True,
+        )
+
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/",
+            {
+                "student_assignment_mode": "selected",
+                "student_profile_ids": [foreign_student.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(
+            SubjectStudentAccess.objects.filter(
+                subject=self.subject,
+                student=foreign_student,
+            ).exists()
+        )
+
+
+    def test_moving_subject_to_another_class_resets_student_assignment(self):
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/",
+            {
+                "student_assignment_mode": "selected",
+                "student_profile_ids": [self.students[0].id],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        other_class = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 11",
+        )
+        Section.objects.create(
+            organization=self.organization,
+            classroom=other_class,
+            name="A",
+        )
+
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/",
+            {
+                "class_id": other_class.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertEqual(
+            self.subject.student_assignment_mode,
+            Subject.StudentAssignmentMode.ALL,
+        )
+        self.assertFalse(
+            SubjectStudentAccess.objects.filter(
+                subject=self.subject,
+            ).exists()
+        )

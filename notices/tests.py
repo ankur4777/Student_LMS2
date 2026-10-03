@@ -7,6 +7,7 @@ from rest_framework.test import APIClient
 from academics.models import AcademicSession, ClassRoom, ParentStudent, Section, StudentEnrollment
 from accounts.models import ParentProfile, StudentProfile, TeacherProfile, User
 from institutions.models import Organization
+from notifications.models import Notification
 from .models import Notice
 
 
@@ -208,3 +209,91 @@ class NoticeAPITests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["classes"][0]["name"], "Digital Marketing")
         self.assertEqual(response.data["sections"][0]["name"], "A")
+
+
+    def test_everyone_notice_creates_notifications_for_all_relevant_portals(self):
+        self.auth(self.admin_a)
+        response = self.client.post(
+            "/api/notices/college-admin/",
+            {
+                "title": "Holiday",
+                "message": "College closed tomorrow",
+                "audience": "everyone",
+                "is_active": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        notifications = Notification.objects.filter(
+            organization=self.org_a,
+            title="New Notice",
+        )
+
+        self.assertEqual(notifications.count(), 3)
+        self.assertEqual(
+            set(notifications.values_list("user_id", flat=True)),
+            {
+                self.student_user.id,
+                self.teacher_user.id,
+                self.parent_user.id,
+            },
+        )
+
+    def test_class_notice_notifies_student_and_linked_parent_only(self):
+        self.auth(self.admin_a)
+        response = self.client.post(
+            "/api/notices/college-admin/",
+            {
+                "title": "Class Notice",
+                "message": "Bring your project file.",
+                "audience": "class",
+                "classroom": self.classroom.id,
+                "is_active": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+
+        notifications = Notification.objects.filter(
+            organization=self.org_a,
+            title="New Notice",
+        )
+
+        self.assertEqual(
+            set(notifications.values_list("user_id", flat=True)),
+            {
+                self.student_user.id,
+                self.parent_user.id,
+            },
+        )
+        self.assertFalse(
+            notifications.filter(user=self.teacher_user).exists()
+        )
+
+    def test_existing_current_notice_backfills_notification_when_feed_loads(self):
+        notice = self.create_notice(
+            Notice.Audience.STUDENTS,
+            title="Existing Notice",
+        )
+
+        self.assertFalse(
+            Notification.objects.filter(
+                user=self.student_user,
+                message__contains=notice.title,
+            ).exists()
+        )
+
+        self.auth(self.student_user)
+        response = self.client.get("/api/notices/feed/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Notification.objects.filter(
+                user=self.student_user,
+                title="New Notice",
+                message__contains=notice.title,
+            ).exists()
+        )

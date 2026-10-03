@@ -41,6 +41,20 @@ class Organization(models.Model):
         blank=True
     )
 
+    roll_number_prefix = models.CharField(
+        max_length=20,
+        blank=True,
+        default=""
+    )
+
+    roll_number_digits = models.PositiveSmallIntegerField(
+        default=4
+    )
+
+    roll_number_start = models.PositiveIntegerField(
+        default=1
+    )
+
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)

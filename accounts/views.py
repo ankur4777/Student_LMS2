@@ -32,6 +32,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import TeacherProfile, ParentProfile
 from academics.feature_access import get_student_feature_map
+from academics.subject_access import subject_access_filter
 from academics.models import (
     AcademicSession,
     ClassRoom,
@@ -40,6 +41,7 @@ from academics.models import (
     TeacherAssignment,
     StudentEnrollment,
     ParentStudent,
+    RollNumberSequence,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -50,6 +52,63 @@ PORTAL_PASSWORD_RESET_PATHS = {
     "teacher": "teacher",
     "college_admin": "college-admin",
 }
+
+
+def authenticate_portal_user(identifier, password, role):
+    identifier = str(identifier or "").strip()
+
+    if not identifier or not password:
+        return None, "Email/username and password are required."
+
+    email_matches = User.objects.filter(
+        email__iexact=identifier,
+        role=role,
+        is_active=True,
+    ).order_by("id")
+
+    email_match_count = email_matches.count()
+
+    if email_match_count > 1:
+        return (
+            None,
+            (
+                "More than one account uses this email for this portal. "
+                "Please sign in with your username or contact the college admin."
+            ),
+        )
+
+    login_username = (
+        email_matches.first().username
+        if email_match_count == 1
+        else identifier
+    )
+
+    user = authenticate(
+        username=login_username,
+        password=password,
+    )
+
+    if not user or user.role != role:
+        return None, "Invalid email/username or password."
+
+    return user, None
+
+
+def email_in_use_for_role(email, role, exclude_user_id=None):
+    email = str(email or "").strip()
+
+    if not email:
+        return False
+
+    users = User.objects.filter(
+        email__iexact=email,
+        role=role,
+    )
+
+    if exclude_user_id:
+        users = users.exclude(id=exclude_user_id)
+
+    return users.exists()
 
 
 class ChangePasswordAPIView(APIView):
@@ -329,6 +388,11 @@ class StudentDashboardAPIView(APIView):
             organization=user.organization,
             teacher_assignment__section_id__in=active_sections,
             class_date=today
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             'teacher_assignment__teacher__user',
             'teacher_assignment__subject',
@@ -344,6 +408,11 @@ class StudentDashboardAPIView(APIView):
             teacher_assignment__section_id__in=active_sections,
             class_date__gt=today,
             status=LiveClass.Status.SCHEDULED
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).select_related(
             'teacher_assignment__teacher__user',
             'teacher_assignment__subject',
@@ -362,6 +431,11 @@ class StudentDashboardAPIView(APIView):
             teacher_assignment__section_id__in=active_sections,
             status=LiveClass.Status.COMPLETED,
             recording__is_available=True
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                student_profile,
+            )
         ).exclude(
             recording__video=''
         ).select_related(
@@ -378,6 +452,11 @@ class StudentDashboardAPIView(APIView):
         attendance_records = StudentAttendance.objects.filter(
             student=student_profile,
             attendance_session__organization=user.organization
+        ).filter(
+            subject_access_filter(
+                "attendance_session__subject",
+                student_profile,
+            )
         )
 
         if not attendance_enabled:
@@ -536,25 +615,24 @@ class StudentProfileAPIView(APIView):
 class StudentLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
 
-        user = authenticate(
-            username=username,
-            password=password
+        password = request.data.get("password")
+
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "student",
         )
 
         if not user:
             return Response(
-                {'detail': 'Invalid username or password.'},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != 'student':
-            return Response(
-                {'detail': 'Only students can login here.'},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
@@ -836,25 +914,24 @@ class TeacherProfileAPIView(APIView):
 class TeacherLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
 
-        user = authenticate(
-            username=username,
-            password=password
+        password = request.data.get("password")
+
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "teacher",
         )
 
         if not user:
             return Response(
-                {'detail': 'Invalid username or password.'},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != 'teacher':
-            return Response(
-                {'detail': 'Only teachers can login here.'},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
@@ -886,25 +963,24 @@ class TeacherLoginAPIView(APIView):
 class CollegeAdminLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get("username")
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
+
         password = request.data.get("password")
 
-        user = authenticate(
-            username=username,
-            password=password
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "college_admin",
         )
 
         if not user:
             return Response(
-                {"detail": "Invalid username or password."},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != "college_admin":
-            return Response(
-                {"detail": "Only college admins can login here."},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
@@ -1384,6 +1460,12 @@ def serialize_college_admin_profile(user, request):
                 "address": organization.address,
                 "website": organization.website,
                 "domain": organization.domain,
+                "roll_number_prefix": (
+                    organization.roll_number_prefix
+                    or organization.code.upper()
+                ),
+                "roll_number_digits": organization.roll_number_digits,
+                "roll_number_start": organization.roll_number_start,
                 "is_active": organization.is_active,
                 "status": "active" if organization.is_active else "inactive",
                 "logo": (
@@ -1450,7 +1532,25 @@ class CollegeAdminProfileAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            user.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "college_admin",
+                exclude_user_id=user.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another college admin account."},
+                    status=400,
+                )
+
+            user.email = email
 
         user.save(
             update_fields=[
@@ -1482,6 +1582,12 @@ def serialize_college_admin_institution(organization, request):
         "address": organization.address,
         "website": organization.website,
         "domain": organization.domain,
+        "roll_number_prefix": (
+            organization.roll_number_prefix
+            or organization.code.upper()
+        ),
+        "roll_number_digits": organization.roll_number_digits,
+        "roll_number_start": organization.roll_number_start,
         "is_active": organization.is_active,
         "status": "active" if organization.is_active else "inactive",
     }
@@ -1522,6 +1628,51 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
                 status=403
             )
 
+        if "roll_number_prefix" in request.data:
+            requested_prefix = str(
+                request.data.get("roll_number_prefix") or ""
+            ).strip()
+
+            if len(requested_prefix) > 20:
+                return Response(
+                    {"detail": "Roll number prefix cannot exceed 20 characters."},
+                    status=400,
+                )
+
+        if "roll_number_digits" in request.data:
+            try:
+                roll_number_digits = int(request.data.get("roll_number_digits"))
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "Roll number digits must be a number."},
+                    status=400,
+                )
+
+            if roll_number_digits < 1 or roll_number_digits > 10:
+                return Response(
+                    {"detail": "Roll number digits must be between 1 and 10."},
+                    status=400,
+                )
+        else:
+            roll_number_digits = organization.roll_number_digits
+
+        if "roll_number_start" in request.data:
+            try:
+                roll_number_start = int(request.data.get("roll_number_start"))
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "Roll number starting value must be a number."},
+                    status=400,
+                )
+
+            if roll_number_start < 1:
+                return Response(
+                    {"detail": "Roll number starting value must be at least 1."},
+                    status=400,
+                )
+        else:
+            roll_number_start = organization.roll_number_start
+
         editable_fields = [
             "primary_color",
             "secondary_color",
@@ -1529,6 +1680,7 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
             "phone",
             "address",
             "website",
+            "roll_number_prefix",
         ]
         update_fields = []
 
@@ -1540,6 +1692,14 @@ class CollegeAdminInstitutionSettingsAPIView(APIView):
                     str(request.data.get(field) or "").strip(),
                 )
                 update_fields.append(field)
+
+        if "roll_number_digits" in request.data:
+            organization.roll_number_digits = roll_number_digits
+            update_fields.append("roll_number_digits")
+
+        if "roll_number_start" in request.data:
+            organization.roll_number_start = roll_number_start
+            update_fields.append("roll_number_start")
 
         if "logo" in request.FILES:
             logo = request.FILES["logo"]
@@ -1585,6 +1745,133 @@ def college_admin_organization(user):
         return None
 
     return user.organization
+
+
+def request_boolean(value):
+    if isinstance(value, str):
+        return value.lower() in ["true", "1", "yes", "on"]
+    return bool(value)
+
+
+def roll_number_prefix(organization, classroom=None):
+    if classroom:
+        class_prefix = str(
+            classroom.roll_number_prefix or ""
+        ).strip()
+
+        if class_prefix:
+            return class_prefix
+
+    return (
+        str(organization.roll_number_prefix or "").strip()
+        or str(organization.code or "").strip().upper()
+        or "ROLL"
+    )
+
+
+def roll_number_digits(organization, classroom=None):
+    value = (
+        classroom.roll_number_digits
+        if classroom
+        else organization.roll_number_digits
+    )
+    return max(1, min(int(value or 4), 10))
+
+
+def roll_number_start(organization, classroom=None):
+    value = (
+        classroom.roll_number_start
+        if classroom
+        else organization.roll_number_start
+    )
+    return max(1, int(value or 1))
+
+
+def format_roll_number(organization, classroom, number):
+    digits = roll_number_digits(organization, classroom)
+    return (
+        f"{roll_number_prefix(organization, classroom)}-"
+        f"{int(number):0{digits}d}"
+    )
+
+
+def get_roll_number_preview(organization, classroom):
+    sequence = RollNumberSequence.objects.filter(
+        organization=organization,
+        classroom=classroom,
+    ).first()
+
+    next_number = (
+        sequence.next_number
+        if sequence
+        else roll_number_start(organization, classroom)
+    )
+
+    return format_roll_number(
+        organization,
+        classroom,
+        next_number,
+    )
+
+
+def generate_roll_number(organization, classroom):
+    academic_session = classroom.academic_session
+
+    sequence, _created = (
+        RollNumberSequence.objects.select_for_update().get_or_create(
+            organization=organization,
+            academic_session=academic_session,
+            classroom=classroom,
+            defaults={
+                "next_number": roll_number_start(
+                    organization,
+                    classroom,
+                )
+            },
+        )
+    )
+
+    number = max(sequence.next_number, 1)
+
+    while True:
+        candidate = format_roll_number(
+            organization,
+            classroom,
+            number,
+        )
+        duplicate = StudentEnrollment.objects.filter(
+            section__organization=organization,
+            section__classroom=classroom,
+            roll_number__iexact=candidate,
+        ).exists()
+
+        if not duplicate:
+            break
+
+        number += 1
+
+    sequence.next_number = number + 1
+    sequence.save(update_fields=["next_number"])
+
+    return candidate
+
+
+def roll_number_exists(
+    organization,
+    classroom,
+    roll_number,
+    exclude_enrollment_id=None,
+):
+    query = StudentEnrollment.objects.filter(
+        section__organization=organization,
+        section__classroom=classroom,
+        roll_number__iexact=roll_number,
+    )
+
+    if exclude_enrollment_id:
+        query = query.exclude(id=exclude_enrollment_id)
+
+    return query.exists()
 
 
 def serialize_college_student(user):
@@ -1879,21 +2166,40 @@ class CollegeAdminTeachersAPIView(APIView):
                 status=403
             )
 
-        username = request.data.get("username", "").strip()
+        requested_username = str(
+            request.data.get("username", "") or ""
+        ).strip()
+        username_auto = request_boolean(
+            request.data.get(
+                "username_auto",
+                not requested_username,
+            )
+        )
+        username = (
+            None
+            if username_auto or not requested_username
+            else requested_username
+        )
         password = request.data.get("password", "")
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         email = request.data.get("email", "").strip()
+
+        if not email:
+            return Response(
+                {"detail": "Email is required for teacher accounts."},
+                status=400,
+            )
+
+        if email_in_use_for_role(email, "teacher"):
+            return Response(
+                {"detail": "This email is already used by another teacher account."},
+                status=400,
+            )
         employee_id = request.data.get("employee_id", "").strip()
         phone = request.data.get("phone", "").strip()
         qualification = request.data.get("qualification", "").strip()
         joining_date = request.data.get("joining_date") or None
-
-        if not username:
-            return Response(
-                {"detail": "Username is required."},
-                status=400
-            )
 
         if not password:
             return Response(
@@ -1907,7 +2213,9 @@ class CollegeAdminTeachersAPIView(APIView):
                 status=400
             )
 
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(
+            username__iexact=username
+        ).exists():
             return Response(
                 {"detail": "Username already exists."},
                 status=400
@@ -2034,7 +2342,25 @@ class CollegeAdminTeacherDetailAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            teacher.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "teacher",
+                exclude_user_id=teacher.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another teacher account."},
+                    status=400,
+                )
+
+            teacher.email = email
 
         if "is_active" in request.data:
             value = request.data.get("is_active")
@@ -2149,11 +2475,36 @@ class CollegeAdminStudentsAPIView(APIView):
                 status=403
             )
 
-        username = request.data.get("username", "").strip()
+        requested_username = str(
+            request.data.get("username", "") or ""
+        ).strip()
+        username_auto = request_boolean(
+            request.data.get(
+                "username_auto",
+                not requested_username,
+            )
+        )
+        username = (
+            None
+            if username_auto or not requested_username
+            else requested_username
+        )
         password = request.data.get("password", "")
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         email = request.data.get("email", "").strip()
+
+        if not email:
+            return Response(
+                {"detail": "Email is required for student accounts."},
+                status=400,
+            )
+
+        if email_in_use_for_role(email, "student"):
+            return Response(
+                {"detail": "This email is already used by another student account."},
+                status=400,
+            )
         admission_number = request.data.get(
             "admission_number",
             ""
@@ -2162,11 +2513,199 @@ class CollegeAdminStudentsAPIView(APIView):
         address = request.data.get("address", "").strip()
         date_of_birth = request.data.get("date_of_birth") or None
         admission_date = request.data.get("admission_date") or None
+        parents_payload = request.data.get("parents", [])
 
-        if not username:
+        if parents_payload is None:
+            parents_payload = []
+
+        if not isinstance(parents_payload, list):
             return Response(
-                {"detail": "Username is required."},
-                status=400
+                {"detail": "Parents must be provided as a list."},
+                status=400,
+            )
+
+        valid_relationships = {
+            choice[0]
+            for choice in ParentStudent.Relationship.choices
+        }
+        prepared_parents = []
+        seen_existing_parent_ids = set()
+        seen_new_parent_emails = set()
+
+        for index, parent_data in enumerate(parents_payload, start=1):
+            if not isinstance(parent_data, dict):
+                return Response(
+                    {"detail": f"Parent {index} details are invalid."},
+                    status=400,
+                )
+
+            mode = str(
+                parent_data.get("mode", "new") or "new"
+            ).strip().lower()
+            relationship = str(
+                parent_data.get(
+                    "relationship",
+                    ParentStudent.Relationship.GUARDIAN,
+                )
+            ).strip()
+
+            if relationship not in valid_relationships:
+                return Response(
+                    {"detail": f"Parent {index} relationship is invalid."},
+                    status=400,
+                )
+
+            if mode == "existing":
+                parent_profile_id = parent_data.get(
+                    "parent_profile_id"
+                )
+
+                parent_profile = ParentProfile.objects.filter(
+                    id=parent_profile_id,
+                    user__role="parent",
+                    user__organization=organization,
+                    user__is_active=True,
+                ).select_related("user").first()
+
+                if not parent_profile:
+                    return Response(
+                        {
+                            "detail": (
+                                f"Parent {index} was not found in "
+                                "this institution."
+                            )
+                        },
+                        status=400,
+                    )
+
+                if parent_profile.id in seen_existing_parent_ids:
+                    return Response(
+                        {
+                            "detail": (
+                                "The same existing parent cannot be "
+                                "selected more than once."
+                            )
+                        },
+                        status=400,
+                    )
+
+                seen_existing_parent_ids.add(parent_profile.id)
+                prepared_parents.append(
+                    {
+                        "mode": "existing",
+                        "relationship": relationship,
+                        "profile": parent_profile,
+                    }
+                )
+                continue
+
+            if mode != "new":
+                return Response(
+                    {"detail": f"Parent {index} mode is invalid."},
+                    status=400,
+                )
+
+            parent_first_name = str(
+                parent_data.get("first_name", "") or ""
+            ).strip()
+            parent_last_name = str(
+                parent_data.get("last_name", "") or ""
+            ).strip()
+            parent_email = str(
+                parent_data.get("email", "") or ""
+            ).strip()
+            parent_phone = str(
+                parent_data.get("phone", "") or ""
+            ).strip()
+            parent_occupation = str(
+                parent_data.get("occupation", "") or ""
+            ).strip()
+            parent_password = str(
+                parent_data.get("password", "") or ""
+            )
+            parent_requested_username = str(
+                parent_data.get("username", "") or ""
+            ).strip()
+            parent_username_auto = request_boolean(
+                parent_data.get(
+                    "username_auto",
+                    not parent_requested_username,
+                )
+            )
+            parent_username = (
+                None
+                if parent_username_auto or not parent_requested_username
+                else parent_requested_username
+            )
+
+            if not parent_first_name:
+                return Response(
+                    {"detail": f"Parent {index} first name is required."},
+                    status=400,
+                )
+
+            if not parent_email:
+                return Response(
+                    {"detail": f"Parent {index} email is required."},
+                    status=400,
+                )
+
+            normalized_parent_email = parent_email.lower()
+
+            if normalized_parent_email in seen_new_parent_emails:
+                return Response(
+                    {
+                        "detail": (
+                            "The same new parent email cannot be "
+                            "used more than once."
+                        )
+                    },
+                    status=400,
+                )
+
+            if email_in_use_for_role(parent_email, "parent"):
+                return Response(
+                    {
+                        "detail": (
+                            f'A parent account already uses "{parent_email}". '
+                            "Select Existing Parent instead."
+                        )
+                    },
+                    status=400,
+                )
+
+            if not parent_password:
+                return Response(
+                    {"detail": f"Parent {index} password is required."},
+                    status=400,
+                )
+
+            if parent_username and User.objects.filter(
+                username__iexact=parent_username
+            ).exists():
+                return Response(
+                    {
+                        "detail": (
+                            f'Parent username "{parent_username}" '
+                            "already exists."
+                        )
+                    },
+                    status=400,
+                )
+
+            seen_new_parent_emails.add(normalized_parent_email)
+            prepared_parents.append(
+                {
+                    "mode": "new",
+                    "relationship": relationship,
+                    "username": parent_username,
+                    "email": parent_email,
+                    "password": parent_password,
+                    "first_name": parent_first_name,
+                    "last_name": parent_last_name,
+                    "phone": parent_phone,
+                    "occupation": parent_occupation,
+                }
             )
 
         if not password:
@@ -2181,7 +2720,9 @@ class CollegeAdminStudentsAPIView(APIView):
                 status=400
             )
 
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(
+            username__iexact=username
+        ).exists():
             return Response(
                 {"detail": "Username already exists."},
                 status=400
@@ -2206,7 +2747,7 @@ class CollegeAdminStudentsAPIView(APIView):
                 organization=organization,
             )
 
-            StudentProfile.objects.create(
+            student_profile = StudentProfile.objects.create(
                 user=student,
                 admission_number=admission_number,
                 phone=phone,
@@ -2215,10 +2756,61 @@ class CollegeAdminStudentsAPIView(APIView):
                 admission_date=admission_date,
             )
 
+            linked_parents = []
+
+            for parent_data in prepared_parents:
+                if parent_data["mode"] == "existing":
+                    parent_profile = parent_data["profile"]
+                else:
+                    parent_user = User.objects.create_user(
+                        username=parent_data["username"],
+                        email=parent_data["email"],
+                        password=parent_data["password"],
+                        first_name=parent_data["first_name"],
+                        last_name=parent_data["last_name"],
+                        role="parent",
+                        organization=organization,
+                    )
+
+                    parent_profile = ParentProfile.objects.create(
+                        user=parent_user,
+                        phone=parent_data["phone"],
+                        occupation=parent_data["occupation"],
+                    )
+
+                link = ParentStudent.objects.create(
+                    parent=parent_profile,
+                    student=student_profile,
+                    relationship=parent_data["relationship"],
+                )
+
+                linked_parents.append(
+                    {
+                        "link_id": link.id,
+                        "relationship": link.relationship,
+                        "parent_profile_id": parent_profile.id,
+                        "parent_id": parent_profile.user_id,
+                        "name": (
+                            parent_profile.user.get_full_name().strip()
+                            or parent_profile.user.username
+                        ),
+                        "username": parent_profile.user.username,
+                        "email": parent_profile.user.email,
+                    }
+                )
+
         return Response(
             {
-                "message": "Student created successfully.",
+                "message": (
+                    "Student created successfully"
+                    + (
+                        " and parent account(s) linked."
+                        if linked_parents
+                        else "."
+                    )
+                ),
                 "student": serialize_college_student(student),
+                "parents": linked_parents,
             },
             status=201
         )
@@ -2311,7 +2903,25 @@ class CollegeAdminStudentDetailAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            student.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "student",
+                exclude_user_id=student.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another student account."},
+                    status=400,
+                )
+
+            student.email = email
 
         if "is_active" in request.data:
             student.is_active = bool(request.data.get("is_active"))
@@ -2425,19 +3035,38 @@ class CollegeAdminParentsAPIView(APIView):
                 status=403
             )
 
-        username = request.data.get("username", "").strip()
+        requested_username = str(
+            request.data.get("username", "") or ""
+        ).strip()
+        username_auto = request_boolean(
+            request.data.get(
+                "username_auto",
+                not requested_username,
+            )
+        )
+        username = (
+            None
+            if username_auto or not requested_username
+            else requested_username
+        )
         password = request.data.get("password", "")
         first_name = request.data.get("first_name", "").strip()
         last_name = request.data.get("last_name", "").strip()
         email = request.data.get("email", "").strip()
+
+        if not email:
+            return Response(
+                {"detail": "Email is required for parent accounts."},
+                status=400,
+            )
+
+        if email_in_use_for_role(email, "parent"):
+            return Response(
+                {"detail": "This email is already used by another parent account."},
+                status=400,
+            )
         phone = request.data.get("phone", "").strip()
         occupation = request.data.get("occupation", "").strip()
-
-        if not username:
-            return Response(
-                {"detail": "Username is required."},
-                status=400
-            )
 
         if not password:
             return Response(
@@ -2445,7 +3074,9 @@ class CollegeAdminParentsAPIView(APIView):
                 status=400
             )
 
-        if User.objects.filter(username=username).exists():
+        if username and User.objects.filter(
+            username__iexact=username
+        ).exists():
             return Response(
                 {"detail": "Username already exists."},
                 status=400
@@ -2567,7 +3198,25 @@ class CollegeAdminParentDetailAPIView(APIView):
             ).strip()
 
         if "email" in request.data:
-            parent.email = request.data.get("email", "").strip()
+            email = request.data.get("email", "").strip()
+
+            if not email:
+                return Response(
+                    {"detail": "Email cannot be empty."},
+                    status=400,
+                )
+
+            if email_in_use_for_role(
+                email,
+                "parent",
+                exclude_user_id=parent.id,
+            ):
+                return Response(
+                    {"detail": "This email is already used by another parent account."},
+                    status=400,
+                )
+
+            parent.email = email
 
         if "is_active" in request.data:
             value = request.data.get("is_active")
@@ -3638,6 +4287,14 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
             "name",
         )
 
+        roll_sequences = {
+            sequence.classroom_id: sequence.next_number
+            for sequence in RollNumberSequence.objects.filter(
+                organization=organization,
+                classroom__in=classrooms,
+            ).exclude(classroom_id=None)
+        }
+
         return Response({
             "students": [
                 {
@@ -3665,12 +4322,40 @@ class CollegeAdminEnrollmentSetupAPIView(APIView):
                 }
                 for session in sessions
             ],
+            "roll_number_settings": {
+                "prefix": roll_number_prefix(organization),
+                "digits": organization.roll_number_digits,
+                "start": organization.roll_number_start,
+            },
             "classes": [
                 {
                     "id": classroom.id,
                     "name": classroom.name,
                     "academic_session_id": (
                         classroom.academic_session_id
+                    ),
+                    "roll_number_prefix": roll_number_prefix(
+                        organization,
+                        classroom,
+                    ),
+                    "roll_number_digits": roll_number_digits(
+                        organization,
+                        classroom,
+                    ),
+                    "roll_number_start": roll_number_start(
+                        organization,
+                        classroom,
+                    ),
+                    "next_roll_number": format_roll_number(
+                        organization,
+                        classroom,
+                        roll_sequences.get(
+                            classroom.id,
+                            roll_number_start(
+                                organization,
+                                classroom,
+                            ),
+                        ),
                     ),
                 }
                 for classroom in classrooms
@@ -3736,7 +4421,15 @@ class CollegeAdminEnrollmentsAPIView(APIView):
 
         student_id = request.data.get("student_id")
         section_id = request.data.get("section_id")
-        roll_number = request.data.get("roll_number", "").strip()
+        roll_number = str(
+            request.data.get("roll_number", "") or ""
+        ).strip()
+        roll_number_auto = request_boolean(
+            request.data.get(
+                "roll_number_auto",
+                not roll_number,
+            )
+        )
 
         student = StudentProfile.objects.filter(
             user_id=student_id,
@@ -3763,7 +4456,50 @@ class CollegeAdminEnrollmentsAPIView(APIView):
                 status=404
             )
 
+        classroom = section.classroom
+
         with transaction.atomic():
+            existing_enrollment = StudentEnrollment.objects.filter(
+                student=student,
+                section=section,
+            ).first()
+
+            if roll_number_auto:
+                if (
+                    existing_enrollment
+                    and existing_enrollment.roll_number
+                ):
+                    roll_number = existing_enrollment.roll_number
+                else:
+                    roll_number = generate_roll_number(
+                        organization,
+                        classroom,
+                    )
+            elif not roll_number:
+                return Response(
+                    {"detail": "Roll number cannot be empty."},
+                    status=400,
+                )
+            elif roll_number_exists(
+                organization,
+                classroom,
+                roll_number,
+                exclude_enrollment_id=(
+                    existing_enrollment.id
+                    if existing_enrollment
+                    else None
+                ),
+            ):
+                return Response(
+                    {
+                        "detail": (
+                            "This roll number already exists in "
+                            "the selected class."
+                        )
+                    },
+                    status=400,
+                )
+
             StudentEnrollment.objects.filter(
                 student=student,
                 is_active=True,
@@ -3914,6 +4650,22 @@ class CollegeAdminEnrollmentDetailAPIView(APIView):
             ).strip()
         )
 
+        if roll_number and roll_number_exists(
+            organization,
+            section.classroom,
+            roll_number,
+            exclude_enrollment_id=enrollment.id,
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "This roll number already exists in "
+                        "the selected class."
+                    )
+                },
+                status=400,
+            )
+
         is_active = enrollment.is_active
 
         if "is_active" in request.data:
@@ -3976,25 +4728,24 @@ class CollegeAdminEnrollmentDetailAPIView(APIView):
 class ParentLoginAPIView(APIView):
 
     def post(self, request):
-        username = request.data.get("username")
+        identifier = request.data.get("identifier")
+        if identifier is None:
+            identifier = request.data.get("username")
+
         password = request.data.get("password")
 
-        user = authenticate(
-            username=username,
-            password=password
+        user, auth_error = authenticate_portal_user(
+            identifier,
+            password,
+            "parent",
         )
 
         if not user:
             return Response(
-                {"detail": "Invalid username or password."},
-                status=401
+                {"detail": auth_error},
+                status=401,
             )
 
-        if user.role != "parent":
-            return Response(
-                {"detail": "Only parents can login here."},
-                status=403
-            )
 
         if not user.is_active:
             return Response(
