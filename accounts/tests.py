@@ -2619,13 +2619,13 @@ class TeacherStudentsPageTests(TestCase):
             name="History",
             code="HIST",
         )
-        TeacherAssignment.objects.create(
+        self.maths_assignment = TeacherAssignment.objects.create(
             teacher=self.teacher,
             subject=self.maths,
             section=self.section,
             is_active=True,
         )
-        TeacherAssignment.objects.create(
+        self.history_assignment = TeacherAssignment.objects.create(
             teacher=self.teacher,
             subject=self.history,
             section=self.section,
@@ -2729,6 +2729,115 @@ class TeacherStudentsPageTests(TestCase):
 
         response = self.client.get(
             "/api/accounts/teacher/students/"
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+
+    def test_teacher_can_open_student_personal_and_academic_detail(self):
+        attendance_session = AttendanceSession.objects.create(
+            organization=self.organization,
+            section=self.section,
+            subject=self.maths,
+            teacher=self.teacher,
+            date=date(2026, 10, 1),
+        )
+        StudentAttendance.objects.create(
+            attendance_session=attendance_session,
+            student=self.student_one,
+            status=StudentAttendance.Status.PRESENT,
+        )
+
+        exam = Exam.objects.create(
+            organization=self.organization,
+            section=self.section,
+            name="Maths Unit Test",
+            exam_date=date(2026, 10, 2),
+        )
+        StudentResult.objects.create(
+            exam=exam,
+            student=self.student_one,
+            subject=self.maths,
+            teacher=self.teacher,
+            marks_obtained=80,
+            maximum_marks=100,
+            remarks="Good work",
+        )
+
+        assignment = Assignment.objects.create(
+            organization=self.organization,
+            teacher_assignment=self.maths_assignment,
+            title="Algebra Homework",
+            due_date=date(2026, 10, 10),
+            is_published=True,
+        )
+        AssignmentSubmission.objects.create(
+            assignment=assignment,
+            student=self.student_one,
+            submission_text="Done",
+        )
+
+        self.student_one.address = "12 Main Road"
+        self.student_one.save(update_fields=["address"])
+
+        response = self.client.get(
+            f"/api/accounts/teacher/students/{self.student_one.id}/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["student"]["name"],
+            "Aman Sharma",
+        )
+        self.assertEqual(
+            response.data["student"]["address"],
+            "12 Main Road",
+        )
+        self.assertEqual(
+            response.data["academic"]["roll_number"],
+            "TEN-001",
+        )
+        self.assertEqual(
+            {
+                item["name"]
+                for item in response.data["academic"]["subjects_i_teach"]
+            },
+            {"Maths", "History"},
+        )
+        self.assertEqual(
+            response.data["attendance"]["present"],
+            1,
+        )
+        self.assertEqual(
+            response.data["attendance"]["percentage"],
+            100.0,
+        )
+        self.assertEqual(
+            response.data["assignments"]["published"],
+            1,
+        )
+        self.assertEqual(
+            response.data["assignments"]["submitted"],
+            1,
+        )
+        self.assertEqual(len(response.data["results"]), 1)
+        self.assertEqual(
+            response.data["results"][0]["subject_name"],
+            "Maths",
+        )
+
+    def test_teacher_cannot_open_student_excluded_from_all_their_subjects(self):
+        response = self.client.get(
+            f"/api/accounts/teacher/students/{self.student_two.id}/"
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_non_teacher_cannot_open_teacher_student_detail(self):
+        self.client.force_authenticate(user=self.student_one_user)
+
+        response = self.client.get(
+            f"/api/accounts/teacher/students/{self.student_one.id}/"
         )
 
         self.assertEqual(response.status_code, 403)
