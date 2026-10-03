@@ -1300,6 +1300,12 @@ class CollegeAdminSubjectDetailAPIView(APIView):
 
             if classroom_changed:
                 subject.student_access_overrides.all().delete()
+                subject.student_assignment_mode = (
+                    Subject.StudentAssignmentMode.ALL
+                )
+                subject.save(
+                    update_fields=["student_assignment_mode"]
+                )
         except IntegrityError:
             return Response(
                 {
