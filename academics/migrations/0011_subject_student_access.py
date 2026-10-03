@@ -5,7 +5,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("accounts", "0001_initial"),
+        ("accounts", "0003_parentprofile_studentprofile_teacherprofile"),
         ("academics", "0010_class_roll_number_settings"),
     ]
 
