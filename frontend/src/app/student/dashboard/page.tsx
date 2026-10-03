@@ -52,6 +52,7 @@ interface LiveClass {
   end_time: string;
   meeting_link: string;
   status: string;
+  can_join: boolean;
   teacher_name: string;
   subject_name: string;
   section_name: string;
@@ -146,6 +147,59 @@ export default function StudentDashboard() {
 
     void loadDashboard();
   }, [router]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("student_access_token");
+
+    if (!token) {
+      return;
+    }
+
+    let active = true;
+
+    const refreshTodayClasses = async () => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/live-classes/student/today/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const result = await response.json();
+
+        if (active && Array.isArray(result)) {
+          setData((current) =>
+            current
+              ? {
+                  ...current,
+                  today_classes: result,
+                }
+              : current
+          );
+        }
+      } catch {
+        // Keep the current dashboard state if a background refresh fails.
+      }
+    };
+
+    const intervalId = window.setInterval(
+      refreshTodayClasses,
+      5000
+    );
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -393,7 +447,9 @@ export default function StudentDashboard() {
                               </small>
                             </div>
 
-                            {liveClass.meeting_link && (
+                            {liveClass.status === "live" &&
+                            liveClass.can_join &&
+                            liveClass.meeting_link ? (
                               <a
                                 className="btn btn-primary btn-sm"
                                 href={liveClass.meeting_link}
@@ -402,7 +458,16 @@ export default function StudentDashboard() {
                               >
                                 Join Class
                               </a>
-                            )}
+                            ) : liveClass.status === "scheduled" ? (
+                              <button
+                                type="button"
+                                className="btn btn-outline-secondary btn-sm"
+                                disabled
+                                title="The teacher has not started this class yet."
+                              >
+                                Join Class
+                              </button>
+                            ) : null}
                           </div>
                         ))
                       )}
