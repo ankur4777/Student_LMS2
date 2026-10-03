@@ -507,17 +507,68 @@ class CollegeAdminClassesAPIView(APIView):
         if error:
             return Response(error, status=status_code)
 
-        try:
-            classroom = ClassRoom.objects.create(
-                organization=organization,
-                **values
+        raw_sections = request.data.get("sections", [])
+
+        if raw_sections is None:
+            raw_sections = []
+
+        if not isinstance(raw_sections, list):
+            return Response(
+                {"detail": "Sections must be provided as a list."},
+                status=400,
             )
+
+        section_names = []
+        seen_section_names = set()
+
+        for index, section_value in enumerate(raw_sections, start=1):
+            section_name = str(section_value or "").strip()
+
+            if not section_name:
+                return Response(
+                    {
+                        "detail": (
+                            f"Section {index} name cannot be empty."
+                        )
+                    },
+                    status=400,
+                )
+
+            normalized_name = section_name.casefold()
+
+            if normalized_name in seen_section_names:
+                return Response(
+                    {
+                        "detail": (
+                            f'Section "{section_name}" is repeated.'
+                        )
+                    },
+                    status=400,
+                )
+
+            seen_section_names.add(normalized_name)
+            section_names.append(section_name)
+
+        try:
+            with transaction.atomic():
+                classroom = ClassRoom.objects.create(
+                    organization=organization,
+                    **values
+                )
+
+                created_sections = [
+                    Section.objects.create(
+                        organization=organization,
+                        classroom=classroom,
+                        name=section_name,
+                    )
+                    for section_name in section_names
+                ]
         except IntegrityError:
             return Response(
                 {
                     "detail": (
-                        "A class with this name already exists for this "
-                        "academic session."
+                        "The class or one of its sections already exists."
                     )
                 },
                 status=400
@@ -525,8 +576,16 @@ class CollegeAdminClassesAPIView(APIView):
 
         return Response(
             {
-                "message": "Class saved successfully.",
+                "message": (
+                    "Class and sections saved successfully."
+                    if created_sections
+                    else "Class saved successfully."
+                ),
                 "class": serialize_classroom(classroom),
+                "sections": [
+                    serialize_section(section)
+                    for section in created_sections
+                ],
             },
             status=201
         )
