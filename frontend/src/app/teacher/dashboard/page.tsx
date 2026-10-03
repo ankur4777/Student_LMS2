@@ -30,6 +30,15 @@ interface Assignment {
   section_name: string;
 }
 
+interface AssignedClassSummary {
+  classroom_id: number;
+  classroom_name: string;
+  academic_session: string;
+  sections: string[];
+  subjects: string[];
+  total_students: number;
+}
+
 interface TeacherClass {
   id: number;
   title: string;
@@ -58,6 +67,7 @@ interface TeacherDashboardData {
   teacher: TeacherInfo;
   summary: Summary;
   assignments: Assignment[];
+  assigned_classes: AssignedClassSummary[];
   today_classes: TeacherClass[];
   upcoming_classes: TeacherClass[];
   recordings: Recording[];
@@ -244,6 +254,62 @@ export default function TeacherDashboard() {
                   <span>Uploaded recorded classes</span>
                 </div>
               </div>
+            </section>
+
+            <section className="teacher-panel teacher-assigned-classes-panel">
+              <div className="teacher-panel-header">
+                <div>
+                  <h2>Assigned Classes & Students</h2>
+                  <p>
+                    Total students you teach in each assigned class.
+                  </p>
+                </div>
+                <Link href="/teacher/students">View students</Link>
+              </div>
+
+              {data.assigned_classes.length === 0 ? (
+                <div className="text-muted small p-3">
+                  No assigned classes found.
+                </div>
+              ) : (
+                <div className="teacher-assigned-class-grid">
+                  {data.assigned_classes.map((item) => (
+                    <div
+                      className="teacher-assigned-class-card"
+                      key={item.classroom_id}
+                    >
+                      <div className="teacher-assigned-class-top">
+                        <div>
+                          <strong>{item.classroom_name}</strong>
+                          <small>
+                            {item.academic_session || "Academic session"}
+                          </small>
+                        </div>
+
+                        <div className="teacher-student-count">
+                          <strong>{item.total_students}</strong>
+                          <span>Students</span>
+                        </div>
+                      </div>
+
+                      <div className="teacher-assigned-class-meta">
+                        <span>
+                          Sections:{" "}
+                          {item.sections.length
+                            ? item.sections.join(", ")
+                            : "-"}
+                        </span>
+                        <span>
+                          Subjects:{" "}
+                          {item.subjects.length
+                            ? item.subjects.join(", ")
+                            : "-"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="teacher-dashboard-grid">
