@@ -94,6 +94,14 @@ export default function CollegeAdminSectionsPage() {
       throw new Error("Unauthorized");
     }
 
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      throw new Error(
+        "Sections are temporarily unavailable. Please refresh the page."
+      );
+    }
+
     const result = await response.json();
 
     if (!response.ok) {
@@ -250,7 +258,7 @@ export default function CollegeAdminSectionsPage() {
                   Loading sections...
                 </div>
               </div>
-            ) : sections.length === 0 ? (
+            ) : error ? null : sections.length === 0 ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center">
                   <h5 className="fw-bold">No Sections</h5>
