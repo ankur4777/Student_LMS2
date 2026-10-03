@@ -22,6 +22,7 @@ interface CollegeAdminUser {
 interface StudentProfile {
   admission_number: string;
   phone: string;
+  address: string;
   date_of_birth: string | null;
   admission_date: string | null;
 }
@@ -269,6 +270,10 @@ export default function CollegeAdminStudentDetailPage() {
                           <div className="student-detail-item">
                             <span><AdminIcon name="phone" size={14} />Phone</span>
                             <strong>{formatValue(student.profile?.phone)}</strong>
+                          </div>
+                          <div className="student-detail-item">
+                            <span><AdminIcon name="documents" size={14} />Address</span>
+                            <strong>{formatValue(student.profile?.address)}</strong>
                           </div>
                           <div className="student-detail-item">
                             <span><AdminIcon name="calendar" size={14} />Date of Birth</span>
