@@ -12,6 +12,7 @@ from academics.models import (
     Section,
     StudentEnrollment,
     Subject,
+    SubjectStudentAccess,
     TeacherAssignment,
 )
 from accounts.models import ParentProfile, StudentProfile, TeacherProfile
@@ -522,3 +523,164 @@ class TeacherAssignmentGradingValidationTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class SubjectSpecificAssignmentAccessTests(APITestCase):
+    def setUp(self):
+        self.org = Organization.objects.create(
+            name="Subject Assignment College",
+            code="SAC-A",
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.org,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.org,
+            academic_session=self.session,
+            name="Class 10",
+        )
+        self.section = Section.objects.create(
+            organization=self.org,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.subject = Subject.objects.create(
+            organization=self.org,
+            classroom=self.classroom,
+            name="Maths",
+            code="MATH",
+        )
+
+        self.teacher_user = User.objects.create_user(
+            username="subject-teacher",
+            email="subject-teacher@example.com",
+            password="pass12345",
+            role="teacher",
+            organization=self.org,
+        )
+        self.teacher = TeacherProfile.objects.create(
+            user=self.teacher_user,
+            employee_id="SUB-T-1",
+        )
+        self.teacher_assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher,
+            subject=self.subject,
+            section=self.section,
+            is_active=True,
+        )
+
+        self.included_user = User.objects.create_user(
+            username="included-student",
+            email="included@example.com",
+            password="pass12345",
+            role="student",
+            organization=self.org,
+        )
+        self.included_student = StudentProfile.objects.create(
+            user=self.included_user,
+            admission_number="SUB-S-1",
+        )
+        StudentEnrollment.objects.create(
+            student=self.included_student,
+            section=self.section,
+            roll_number="SUB-001",
+            is_active=True,
+        )
+
+        self.excluded_user = User.objects.create_user(
+            username="excluded-student",
+            email="excluded@example.com",
+            password="pass12345",
+            role="student",
+            organization=self.org,
+        )
+        self.excluded_student = StudentProfile.objects.create(
+            user=self.excluded_user,
+            admission_number="SUB-S-2",
+        )
+        StudentEnrollment.objects.create(
+            student=self.excluded_student,
+            section=self.section,
+            roll_number="SUB-002",
+            is_active=True,
+        )
+
+        SubjectStudentAccess.objects.create(
+            subject=self.subject,
+            student=self.excluded_student,
+            is_enrolled=False,
+        )
+
+        self.assignment = Assignment.objects.create(
+            organization=self.org,
+            teacher_assignment=self.teacher_assignment,
+            title="Algebra",
+            due_date=date(2026, 10, 10),
+            is_published=True,
+        )
+
+    def test_excluded_student_does_not_see_subject_assignment(self):
+        self.client.force_authenticate(user=self.excluded_user)
+
+        response = self.client.get(reverse("student-assignments"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 0)
+
+    def test_included_student_sees_subject_assignment(self):
+        self.client.force_authenticate(user=self.included_user)
+
+        response = self.client.get(reverse("student-assignments"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual(
+            response.data["assignments"][0]["id"],
+            self.assignment.id,
+        )
+
+    def test_excluded_student_cannot_submit_subject_assignment(self):
+        self.client.force_authenticate(user=self.excluded_user)
+
+        response = self.client.post(
+            reverse(
+                "student-assignment-submit",
+                args=[self.assignment.id],
+            ),
+            {
+                "submission_text": "Should not be accepted",
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(
+            AssignmentSubmission.objects.filter(
+                assignment=self.assignment,
+                student=self.excluded_student,
+            ).exists()
+        )
+
+    def test_teacher_submission_roster_excludes_non_subject_student(self):
+        self.client.force_authenticate(user=self.teacher_user)
+
+        response = self.client.get(
+            reverse(
+                "teacher-assignment-submissions",
+                args=[self.assignment.id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        student_ids = {
+            item["student_profile_id"]
+            for item in response.data["students"]
+        }
+        self.assertEqual(
+            student_ids,
+            {self.included_student.id},
+        )
