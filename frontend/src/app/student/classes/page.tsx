@@ -26,6 +26,7 @@ interface LiveClass {
   end_time: string;
   meeting_link: string;
   status: string;
+  can_join: boolean;
   teacher_name: string;
   subject_name: string;
   section_name: string;
@@ -125,6 +126,12 @@ export default function StudentClassesPage() {
     }
 
     loadClasses();
+
+    const intervalId = window.setInterval(loadClasses, 5000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [router]);
 
   const filteredClasses = useMemo(() => {
@@ -222,18 +229,27 @@ export default function StudentClassesPage() {
                           </p>
                         )}
 
-                        {liveClass.meeting_link &&
-                          liveClass.status !== "completed" &&
-                          liveClass.status !== "cancelled" && (
-                            <a
-                              href={liveClass.meeting_link}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn btn-primary btn-sm"
-                            >
-                              Join Class
-                            </a>
-                          )}
+                        {liveClass.status === "live" &&
+                        liveClass.can_join &&
+                        liveClass.meeting_link ? (
+                          <a
+                            href={liveClass.meeting_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="btn btn-primary btn-sm"
+                          >
+                            Join Class
+                          </a>
+                        ) : liveClass.status === "scheduled" ? (
+                          <button
+                            type="button"
+                            className="btn btn-outline-secondary btn-sm"
+                            disabled
+                            title="The teacher has not started this class yet."
+                          >
+                            Join Class
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   ))}
