@@ -714,6 +714,7 @@ class StudentDocumentDownloadAPIView(APIView):
             teacher_assignment__section__organization=request.user.organization,
         ).select_related(
             "teacher_assignment",
+            "teacher_assignment__subject",
             "teacher_assignment__section",
         ).first()
 
@@ -721,6 +722,15 @@ class StudentDocumentDownloadAPIView(APIView):
             return Response(
                 {"detail": "Document not found."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not student_studies_subject(
+            student_profile,
+            document.teacher_assignment.subject,
+        ):
+            return Response(
+                {"detail": "You are not enrolled in this subject."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         filename = Path(document.file.name).name
