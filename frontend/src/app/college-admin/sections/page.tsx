@@ -50,6 +50,7 @@ export default function CollegeAdminSectionsPage() {
   const [sections, setSections] = useState<Section[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   const clearSession = useCallback(() => {
@@ -158,6 +159,38 @@ export default function CollegeAdminSectionsPage() {
     }
   };
 
+  const handleRemove = async (section: Section) => {
+    const confirmed = window.confirm(
+      `Remove section "${section.name}" from class "${section.class_name}"?\n\nThis is only allowed when the section has no students, teacher assignments, attendance, exams/results, or notices.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingId(section.id);
+    setError("");
+
+    try {
+      await fetchJson(
+        `${API_BASE}/api/academics/college-admin/sections/${section.id}/`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      setSections((current) =>
+        current.filter((item) => item.id !== section.id)
+      );
+    } catch (err) {
+      if (err instanceof Error && err.message !== "Unauthorized") {
+        setError(err.message);
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="teacher-dashboard">
       <CollegeAdminSidebar />
@@ -245,12 +278,24 @@ export default function CollegeAdminSectionsPage() {
                           <td>{section.class_name}</td>
                           <td>{section.academic_session}</td>
                           <td>
-                            <Link
-                              className="btn btn-outline-primary btn-sm"
-                              href={`/college-admin/sections/${section.id}/edit`}
-                            >
-                              Edit
-                            </Link>
+                            <div className="d-flex gap-2 flex-wrap">
+                              <Link
+                                className="btn btn-outline-primary btn-sm"
+                                href={`/college-admin/sections/${section.id}/edit`}
+                              >
+                                Edit
+                              </Link>
+                              <button
+                                type="button"
+                                className="btn btn-outline-danger btn-sm"
+                                disabled={deletingId === section.id}
+                                onClick={() => handleRemove(section)}
+                              >
+                                {deletingId === section.id
+                                  ? "Removing..."
+                                  : "Remove"}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
