@@ -21,6 +21,7 @@ interface Child {
   student_profile_id: number;
   name: string;
   username: string;
+  address: string;
   roll_number: string;
   classroom_name: string;
   section_name: string;
@@ -223,6 +224,16 @@ export default function ParentChildrenPage() {
 
                             <div className="fw-semibold">
                               {child.relationship || "-"}
+                            </div>
+                          </div>
+
+                          <div className="col-12">
+                            <div className="text-muted small">
+                              Address
+                            </div>
+
+                            <div className="fw-semibold">
+                              {child.address || "-"}
                             </div>
                           </div>
                         </div>
