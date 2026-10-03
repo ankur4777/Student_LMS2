@@ -2069,6 +2069,7 @@ def serialize_parent_student_link(link):
             or student_user.username
         ),
         "username": student_user.username,
+        "address": student.address,
         "admission_number": student.admission_number,
         "roll_number": (
             enrollment.roll_number
