@@ -36,6 +36,7 @@ export default function CollegeAdminCreateStudentPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [admissionNumber, setAdmissionNumber] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [admissionDate, setAdmissionDate] = useState("");
@@ -88,6 +89,7 @@ export default function CollegeAdminCreateStudentPage() {
             username,
             email,
             phone,
+            address,
             admission_number: admissionNumber,
             date_of_birth: dateOfBirth || null,
             admission_date: admissionDate || null,
@@ -174,6 +176,10 @@ export default function CollegeAdminCreateStudentPage() {
                     <div className="student-form-group">
                       <label htmlFor="phone">Phone</label>
                       <input id="phone" value={phone} onChange={(event) => setPhone(event.target.value)} />
+                    </div>
+                    <div className="student-form-group">
+                      <label htmlFor="address">Address</label>
+                      <input id="address" value={address} onChange={(event) => setAddress(event.target.value)} />
                     </div>
                     <div className="student-form-group">
                       <label htmlFor="dob">Date of Birth</label>

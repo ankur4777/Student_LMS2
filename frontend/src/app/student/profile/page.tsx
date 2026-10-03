@@ -25,6 +25,7 @@ interface StudentProfile {
   organization: string | null;
   admission_number: string;
   phone: string;
+  address: string;
   date_of_birth: string | null;
   admission_date: string | null;
 }
@@ -264,6 +265,16 @@ export default function StudentProfilePage() {
 
                         <div className="fw-semibold">
                           {formatValue(profile?.phone)}
+                        </div>
+                      </div>
+
+                      <div className="col-md-6 col-xl-4">
+                        <div className="text-muted small">
+                          Address
+                        </div>
+
+                        <div className="fw-semibold">
+                          {formatValue(profile?.address)}
                         </div>
                       </div>
 

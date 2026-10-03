@@ -513,6 +513,7 @@ class StudentProfileAPIView(APIView):
                     student_profile.admission_number
                 ),
                 "phone": student_profile.phone,
+                "address": student_profile.address,
                 "date_of_birth": student_profile.date_of_birth,
                 "admission_date": student_profile.admission_date,
             },
@@ -2158,6 +2159,7 @@ class CollegeAdminStudentsAPIView(APIView):
             ""
         ).strip()
         phone = request.data.get("phone", "").strip()
+        address = request.data.get("address", "").strip()
         date_of_birth = request.data.get("date_of_birth") or None
         admission_date = request.data.get("admission_date") or None
 
@@ -2208,6 +2210,7 @@ class CollegeAdminStudentsAPIView(APIView):
                 user=student,
                 admission_number=admission_number,
                 phone=phone,
+                address=address,
                 date_of_birth=date_of_birth,
                 admission_date=admission_date,
             )
