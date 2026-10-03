@@ -1281,6 +1281,10 @@ class CollegeAdminSubjectDetailAPIView(APIView):
         if error:
             return Response(error, status=status_code)
 
+        classroom_changed = (
+            subject.classroom_id != values["classroom"].id
+        )
+
         subject.name = values["name"]
         subject.code = values["code"]
         subject.classroom = values["classroom"]
@@ -1293,6 +1297,9 @@ class CollegeAdminSubjectDetailAPIView(APIView):
                     "classroom",
                 ]
             )
+
+            if classroom_changed:
+                subject.student_access_overrides.all().delete()
         except IntegrityError:
             return Response(
                 {
