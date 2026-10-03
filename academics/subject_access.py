@@ -1,6 +1,6 @@
 from django.db.models import Q
 
-from .models import StudentEnrollment, Subject
+from .models import StudentEnrollment, Subject, SubjectStudentAccess
 
 
 def student_studies_subject(student, subject):
@@ -63,26 +63,35 @@ def eligible_enrollments_for_subject(
     return enrollments
 
 
+def allowed_subject_ids_for_student(student):
+    all_mode_ids = list(
+        Subject.objects.filter(
+            student_assignment_mode=Subject.StudentAssignmentMode.ALL
+        ).exclude(
+            student_access_overrides__student=student,
+            student_access_overrides__is_enrolled=False,
+        ).values_list(
+            "id",
+            flat=True,
+        )
+    )
+
+    selected_mode_ids = list(
+        SubjectStudentAccess.objects.filter(
+            student=student,
+            is_enrolled=True,
+            subject__student_assignment_mode=(
+                Subject.StudentAssignmentMode.SELECTED
+            ),
+        ).values_list(
+            "subject_id",
+            flat=True,
+        )
+    )
+
+    return set(all_mode_ids + selected_mode_ids)
+
+
 def subject_access_filter(prefix, student):
-    all_mode = Q(
-        **{
-            f"{prefix}__student_assignment_mode":
-                Subject.StudentAssignmentMode.ALL
-        }
-    ) & ~Q(
-        **{
-            f"{prefix}__student_access_overrides__student": student,
-            f"{prefix}__student_access_overrides__is_enrolled": False,
-        }
-    )
-
-    selected_mode = Q(
-        **{
-            f"{prefix}__student_assignment_mode":
-                Subject.StudentAssignmentMode.SELECTED,
-            f"{prefix}__student_access_overrides__student": student,
-            f"{prefix}__student_access_overrides__is_enrolled": True,
-        }
-    )
-
-    return all_mode | selected_mode
+    allowed_ids = allowed_subject_ids_for_student(student)
+    return Q(**{f"{prefix}_id__in": allowed_ids})
