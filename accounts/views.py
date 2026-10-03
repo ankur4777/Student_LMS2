@@ -1285,7 +1285,7 @@ class TeacherStudentDetailAPIView(APIView):
                         "subject_name": result.subject.name,
                         "marks_obtained": str(result.marks_obtained),
                         "maximum_marks": str(result.maximum_marks),
-                        "percentage": result.percentage,
+                        "percentage": float(result.percentage),
                         "remarks": result.remarks,
                     }
                     for result in results
