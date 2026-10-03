@@ -627,6 +627,54 @@ class LiveClassTeacherStudentIntegrationTests(TestCase):
         self.live_class.refresh_from_db()
         self.assertEqual(self.live_class.status, LiveClass.Status.COMPLETED)
 
+    def test_student_join_becomes_available_only_after_teacher_starts(self):
+        self.live_class.class_date = timezone.localdate()
+        self.live_class.save(update_fields=["class_date"])
+
+        self.authenticate(self.student_profile.user)
+        before_start = self.client.get(
+            "/api/live-classes/student/today/"
+        )
+
+        self.assertEqual(before_start.status_code, 200)
+        scheduled = next(
+            item
+            for item in before_start.data
+            if item["id"] == self.live_class.id
+        )
+        self.assertEqual(
+            scheduled["status"],
+            LiveClass.Status.SCHEDULED,
+        )
+        self.assertFalse(scheduled["can_join"])
+        self.assertEqual(scheduled["meeting_link"], "")
+
+        self.authenticate(self.teacher_user)
+        start_response = self.client.patch(
+            f"/api/live-classes/teacher/classes/{self.live_class.id}/status/",
+            {"status": LiveClass.Status.LIVE},
+            format="json",
+        )
+        self.assertEqual(start_response.status_code, 200)
+
+        self.authenticate(self.student_profile.user)
+        after_start = self.client.get(
+            "/api/live-classes/student/today/"
+        )
+
+        self.assertEqual(after_start.status_code, 200)
+        live_data = next(
+            item
+            for item in after_start.data
+            if item["id"] == self.live_class.id
+        )
+        self.assertEqual(live_data["status"], LiveClass.Status.LIVE)
+        self.assertTrue(live_data["can_join"])
+        self.assertEqual(
+            live_data["meeting_link"],
+            self.live_class.meeting_link,
+        )
+
     def test_teacher_can_complete_missed_started_class_after_end(self):
         self.complete_class_date(self.live_class)
         self.authenticate(self.teacher_user)
