@@ -2732,3 +2732,110 @@ class TeacherStudentsPageTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 403)
+
+
+class StudentAddressVisibilityTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Address College",
+            code="ADDR",
+        )
+        self.admin = User.objects.create_user(
+            username="address-admin",
+            email="address-admin@example.com",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.student_user = User.objects.create_user(
+            username="addresss01",
+            email="student-address@example.com",
+            password="pass12345",
+            first_name="Address",
+            last_name="Student",
+            role="student",
+            organization=self.organization,
+        )
+        self.student = StudentProfile.objects.create(
+            user=self.student_user,
+            admission_number="ADDR-001",
+            phone="9999999999",
+            address="12 Main Road, Delhi",
+        )
+        self.parent_user = User.objects.create_user(
+            username="addressp01",
+            email="parent-address@example.com",
+            password="pass12345",
+            first_name="Address",
+            last_name="Parent",
+            role="parent",
+            organization=self.organization,
+        )
+        self.parent = ParentProfile.objects.create(
+            user=self.parent_user,
+        )
+        ParentStudent.objects.create(
+            parent=self.parent,
+            student=self.student,
+            relationship=ParentStudent.Relationship.GUARDIAN,
+        )
+
+    def test_college_admin_student_detail_returns_address(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.get(
+            f"/api/accounts/college-admin/students/{self.student_user.id}/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["student"]["profile"]["address"],
+            "12 Main Road, Delhi",
+        )
+
+    def test_college_admin_can_update_student_address(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.patch(
+            f"/api/accounts/college-admin/students/{self.student_user.id}/",
+            {"address": "45 New Street, Delhi"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.address, "45 New Street, Delhi")
+        self.assertEqual(
+            response.data["student"]["profile"]["address"],
+            "45 New Street, Delhi",
+        )
+
+    def test_college_admin_can_search_student_by_address(self):
+        self.client.force_authenticate(user=self.admin)
+
+        response = self.client.get(
+            "/api/accounts/college-admin/students/",
+            {"search": "Main Road"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["students"]), 1)
+        self.assertEqual(
+            response.data["students"][0]["id"],
+            self.student_user.id,
+        )
+
+    def test_parent_children_returns_child_address(self):
+        self.client.force_authenticate(user=self.parent_user)
+
+        response = self.client.get(
+            "/api/accounts/parent/children/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["children"]), 1)
+        self.assertEqual(
+            response.data["children"][0]["address"],
+            "12 Main Road, Delhi",
+        )
