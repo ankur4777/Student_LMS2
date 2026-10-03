@@ -248,7 +248,7 @@ export default function CollegeAdminLiveClassesPage() {
   };
 
   return (
-    <div className="teacher-dashboard">
+    <div className="teacher-dashboard college-admin-module-ui ca-live-classes-page">
       <CollegeAdminSidebar />
       <main className="teacher-dashboard-main">
         <CollegeAdminTopbar
