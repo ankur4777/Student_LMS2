@@ -934,6 +934,79 @@ class CollegeAdminSectionDetailAPIView(APIView):
             "section": serialize_section(section),
         })
 
+    def delete(self, request, section_id):
+        organization = college_admin_organization(request.user)
+
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can remove sections."},
+                status=403,
+            )
+
+        section = self.get_section(request.user, section_id)
+
+        if not section:
+            return Response(
+                {"detail": "Section not found."},
+                status=404,
+            )
+
+        blockers = []
+
+        related_checks = [
+            (
+                "student_enrollments",
+                "student enrollments",
+            ),
+            (
+                "teacher_assignments",
+                "teacher assignments",
+            ),
+            (
+                "attendance_sessions",
+                "attendance records",
+            ),
+            (
+                "exams",
+                "exams/results",
+            ),
+            (
+                "notices",
+                "notices",
+            ),
+        ]
+
+        for related_name, label in related_checks:
+            manager = getattr(section, related_name, None)
+            if manager is not None and manager.exists():
+                blockers.append(label)
+
+        if blockers:
+            return Response(
+                {
+                    "detail": (
+                        "This section cannot be removed because it is "
+                        "already used by "
+                        + ", ".join(blockers)
+                        + ". Move or remove those records first."
+                    )
+                },
+                status=400,
+            )
+
+        section_name = section.name
+        class_name = section.classroom.name
+        section.delete()
+
+        return Response(
+            {
+                "message": (
+                    f'Section "{section_name}" was removed from '
+                    f'class "{class_name}".'
+                )
+            }
+        )
+
 
 def serialize_subject(subject):
     classroom = subject.classroom
