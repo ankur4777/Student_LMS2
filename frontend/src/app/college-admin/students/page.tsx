@@ -22,6 +22,7 @@ interface CollegeAdminUser {
 interface StudentProfile {
   admission_number: string;
   phone: string;
+  address: string;
 }
 
 interface Student {
@@ -234,7 +235,7 @@ export default function CollegeAdminStudentsPage() {
                   <AdminIcon name="search" size={18} />
                   <input
                     aria-label="Search students"
-                    placeholder="Search by name, username, or email"
+                    placeholder="Search by name, username, email, or address"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                   />
@@ -312,6 +313,7 @@ export default function CollegeAdminStudentsPage() {
                             <div className="student-contact-cell">
                               <span><AdminIcon name="mail" size={14} />{student.email || "-"}</span>
                               <span><AdminIcon name="phone" size={14} />{student.profile?.phone || "-"}</span>
+                              <span>Address: {student.profile?.address || "-"}</span>
                             </div>
                           </td>
                           <td>
