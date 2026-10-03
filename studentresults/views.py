@@ -15,6 +15,12 @@ from academics.models import (
     Section,
     Subject,
 )
+from academics.subject_access import (
+    eligible_enrollments_for_subject,
+    student_studies_subject,
+    subject_access_filter,
+)
+
 from datetime import datetime
 
 from studentresults.models import Exam, StudentResult
@@ -47,10 +53,10 @@ def _exam_summary(exam):
     classroom = section.classroom
     academic_session = classroom.academic_session
 
-    eligible_students = StudentEnrollment.objects.filter(
+    eligible_students = eligible_enrollments_for_subject(
+        teacher_assignment.subject,
         section=section,
-        is_active=True,
-        student__user__organization=exam.organization,
+        organization=exam.organization,
     ).count()
 
     results = StudentResult.objects.filter(
@@ -631,10 +637,10 @@ class TeacherExamStudentsAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        enrollments = StudentEnrollment.objects.filter(
+        enrollments = eligible_enrollments_for_subject(
+            assignment.subject,
             section=assignment.section,
-            is_active=True,
-            student__user__organization=user.organization,
+            organization=user.organization,
         ).select_related(
             "student",
             "student__user",
@@ -800,6 +806,12 @@ class TeacherSaveExamMarksAPIView(APIView):
             ).first()
 
             if not enrollment:
+                continue
+
+            if not student_studies_subject(
+                enrollment.student,
+                assignment.subject,
+            ):
                 continue
 
             try:
@@ -1060,6 +1072,11 @@ class StudentResultsAPIView(APIView):
             exam__organization=user.organization,
             exam__section=enrollment.section,
             exam__is_published=True,
+        ).filter(
+            subject_access_filter(
+                "subject",
+                student_profile,
+            )
         ).select_related(
             "exam",
             "subject",
@@ -1220,6 +1237,11 @@ class ParentStudentResultsAPIView(APIView):
             exam__organization=user.organization,
             exam__section=enrollment.section,
             exam__is_published=True,
+        ).filter(
+            subject_access_filter(
+                "subject",
+                student_profile,
+            )
         ).select_related(
             "exam",
             "subject",
