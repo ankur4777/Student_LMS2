@@ -1044,6 +1044,256 @@ class TeacherStudentsAPIView(APIView):
         )
 
 
+class TeacherStudentDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, student_profile_id):
+        user = request.user
+
+        if user.role != "teacher":
+            return Response(
+                {"detail": "Only teachers can view student details."},
+                status=403,
+            )
+
+        organization = user.organization
+        teacher = TeacherProfile.objects.filter(
+            user=user,
+            user__organization=organization,
+        ).first()
+
+        if not organization or not teacher:
+            return Response(
+                {"detail": "Teacher profile or organization not found."},
+                status=404,
+            )
+
+        student = StudentProfile.objects.filter(
+            id=student_profile_id,
+            user__role="student",
+            user__organization=organization,
+            user__is_active=True,
+        ).select_related(
+            "user",
+        ).first()
+
+        if not student:
+            return Response(
+                {"detail": "Student not found."},
+                status=404,
+            )
+
+        enrollment = StudentEnrollment.objects.filter(
+            student=student,
+            is_active=True,
+            section__organization=organization,
+            section__classroom__organization=organization,
+            section__classroom__academic_session__organization=organization,
+        ).select_related(
+            "section",
+            "section__classroom",
+            "section__classroom__academic_session",
+        ).first()
+
+        if not enrollment:
+            return Response(
+                {"detail": "Active student enrollment not found."},
+                status=404,
+            )
+
+        assignments = TeacherAssignment.objects.filter(
+            teacher=teacher,
+            section=enrollment.section,
+            is_active=True,
+            subject__organization=organization,
+            subject__classroom=enrollment.section.classroom,
+        ).select_related(
+            "subject",
+            "section",
+            "section__classroom",
+        ).order_by(
+            "subject__name",
+        )
+
+        eligible_assignments = []
+
+        for assignment in assignments:
+            is_eligible = eligible_enrollments_for_subject(
+                assignment.subject,
+                section=enrollment.section,
+                organization=organization,
+            ).filter(
+                student=student,
+            ).exists()
+
+            if is_eligible:
+                eligible_assignments.append(assignment)
+
+        if not eligible_assignments:
+            return Response(
+                {
+                    "detail": (
+                        "You do not currently teach this student in "
+                        "an assigned subject."
+                    )
+                },
+                status=403,
+            )
+
+        subject_ids = [
+            assignment.subject_id
+            for assignment in eligible_assignments
+        ]
+        teacher_assignment_ids = [
+            assignment.id
+            for assignment in eligible_assignments
+        ]
+
+        attendance_records = StudentAttendance.objects.filter(
+            student=student,
+            attendance_session__organization=organization,
+            attendance_session__teacher=teacher,
+            attendance_session__section=enrollment.section,
+            attendance_session__subject_id__in=subject_ids,
+        ).select_related(
+            "attendance_session",
+            "attendance_session__subject",
+        )
+
+        attendance_counts = {
+            status_value: 0
+            for status_value, _label in StudentAttendance.Status.choices
+        }
+
+        for record in attendance_records:
+            attendance_counts[record.status] = (
+                attendance_counts.get(record.status, 0) + 1
+            )
+
+        total_attendance = sum(attendance_counts.values())
+        attended_count = (
+            attendance_counts.get(StudentAttendance.Status.PRESENT, 0)
+            + attendance_counts.get(StudentAttendance.Status.LATE, 0)
+        )
+        attendance_percentage = (
+            round((attended_count / total_attendance) * 100, 2)
+            if total_attendance
+            else None
+        )
+
+        results = StudentResult.objects.filter(
+            student=student,
+            teacher=teacher,
+            subject_id__in=subject_ids,
+            exam__organization=organization,
+            exam__section=enrollment.section,
+        ).select_related(
+            "exam",
+            "subject",
+        ).order_by(
+            "-exam__exam_date",
+            "subject__name",
+        )[:20]
+
+        assignment_queryset = Assignment.objects.filter(
+            organization=organization,
+            teacher_assignment_id__in=teacher_assignment_ids,
+            teacher_assignment__section=enrollment.section,
+            is_published=True,
+        )
+
+        assignment_count = assignment_queryset.count()
+        submitted_assignment_count = AssignmentSubmission.objects.filter(
+            assignment__in=assignment_queryset,
+            student=student,
+        ).count()
+
+        student_user = student.user
+        classroom = enrollment.section.classroom
+        academic_session = classroom.academic_session
+
+        return Response(
+            {
+                "student": {
+                    "student_profile_id": student.id,
+                    "student_user_id": student_user.id,
+                    "name": (
+                        student_user.get_full_name().strip()
+                        or student_user.username
+                    ),
+                    "first_name": student_user.first_name,
+                    "last_name": student_user.last_name,
+                    "username": student_user.username,
+                    "email": student_user.email,
+                    "phone": student.phone,
+                    "address": student.address,
+                    "date_of_birth": student.date_of_birth,
+                    "admission_date": student.admission_date,
+                },
+                "academic": {
+                    "admission_number": student.admission_number,
+                    "roll_number": enrollment.roll_number,
+                    "classroom_name": classroom.name,
+                    "section_name": enrollment.section.name,
+                    "academic_session": (
+                        academic_session.name
+                        if academic_session
+                        else ""
+                    ),
+                    "subjects_i_teach": [
+                        {
+                            "id": assignment.subject_id,
+                            "name": assignment.subject.name,
+                            "code": assignment.subject.code,
+                        }
+                        for assignment in eligible_assignments
+                    ],
+                },
+                "attendance": {
+                    "total": total_attendance,
+                    "present": attendance_counts.get(
+                        StudentAttendance.Status.PRESENT,
+                        0,
+                    ),
+                    "late": attendance_counts.get(
+                        StudentAttendance.Status.LATE,
+                        0,
+                    ),
+                    "absent": attendance_counts.get(
+                        StudentAttendance.Status.ABSENT,
+                        0,
+                    ),
+                    "excused": attendance_counts.get(
+                        StudentAttendance.Status.EXCUSED,
+                        0,
+                    ),
+                    "percentage": attendance_percentage,
+                },
+                "assignments": {
+                    "published": assignment_count,
+                    "submitted": submitted_assignment_count,
+                    "pending": max(
+                        assignment_count - submitted_assignment_count,
+                        0,
+                    ),
+                },
+                "results": [
+                    {
+                        "id": result.id,
+                        "exam_name": result.exam.name,
+                        "exam_date": result.exam.exam_date,
+                        "subject_name": result.subject.name,
+                        "marks_obtained": str(result.marks_obtained),
+                        "maximum_marks": str(result.maximum_marks),
+                        "percentage": result.percentage,
+                        "remarks": result.remarks,
+                    }
+                    for result in results
+                ],
+            }
+        )
+
+
 class TeacherLoginAPIView(APIView):
 
     def post(self, request):
