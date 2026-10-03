@@ -247,7 +247,7 @@
   padding: 2px 0 4px;
 }
 
-.teacher-ui-scope .teacher-dashboard-content .container-fluid > .mb-4:first-child::before,
+.teacher-ui-scope .teacher-dashboard-content .container-fluid > .mb-4:first-child:not(.d-flex)::before,
 .teacher-ui-scope .teacher-dashboard-content .container-fluid > .d-flex.mb-4:first-child > div:first-child::before {
   content: "TEACHER PORTAL";
   display: block;
