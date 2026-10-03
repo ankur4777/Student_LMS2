@@ -5,6 +5,7 @@ from django.core.mail import send_mail
 from django.db import transaction
 
 from academics.models import ParentStudent, StudentEnrollment
+from academics.subject_access import eligible_enrollments_for_subject
 from accounts.models import User
 from studentresults.models import StudentResult
 
@@ -236,11 +237,10 @@ def notify_assignment_published(assignment):
     teacher_assignment = assignment.teacher_assignment
     organization = assignment.organization
 
-    enrollments = StudentEnrollment.objects.filter(
+    enrollments = eligible_enrollments_for_subject(
+        teacher_assignment.subject,
         section=teacher_assignment.section,
-        is_active=True,
-        section__organization=organization,
-        student__user__organization=organization,
+        organization=organization,
     ).select_related(
         "student",
         "student__user",
@@ -365,11 +365,10 @@ def notify_document_published(document):
     teacher_assignment = document.teacher_assignment
     organization = document.organization
 
-    enrollments = StudentEnrollment.objects.filter(
+    enrollments = eligible_enrollments_for_subject(
+        teacher_assignment.subject,
         section=teacher_assignment.section,
-        is_active=True,
-        section__organization=organization,
-        student__user__organization=organization,
+        organization=organization,
     ).select_related(
         "student",
         "student__user",
@@ -434,15 +433,25 @@ def notify_document_published(document):
 def notify_exam_created(exam, teacher_assignment=None):
     organization = exam.organization
 
-    enrollments = StudentEnrollment.objects.filter(
-        section=exam.section,
-        is_active=True,
-        section__organization=organization,
-        student__user__organization=organization,
-    ).select_related(
-        "student",
-        "student__user",
-    )
+    if teacher_assignment is not None:
+        enrollments = eligible_enrollments_for_subject(
+            teacher_assignment.subject,
+            section=exam.section,
+            organization=organization,
+        ).select_related(
+            "student",
+            "student__user",
+        )
+    else:
+        enrollments = StudentEnrollment.objects.filter(
+            section=exam.section,
+            is_active=True,
+            section__organization=organization,
+            student__user__organization=organization,
+        ).select_related(
+            "student",
+            "student__user",
+        )
 
     students = [enrollment.student for enrollment in enrollments]
 
@@ -559,11 +568,10 @@ def notify_live_class_scheduled(live_class):
             related_url="/teacher/classes",
         )
 
-    enrollments = StudentEnrollment.objects.filter(
+    enrollments = eligible_enrollments_for_subject(
+        teacher_assignment.subject,
         section=teacher_assignment.section,
-        is_active=True,
-        section__organization=organization,
-        student__user__organization=organization,
+        organization=organization,
     ).select_related(
         "student",
         "student__user",
@@ -616,11 +624,10 @@ def notify_recording_available(recording):
     teacher_assignment = live_class.teacher_assignment
     organization = live_class.organization
 
-    enrollments = StudentEnrollment.objects.filter(
+    enrollments = eligible_enrollments_for_subject(
+        teacher_assignment.subject,
         section=teacher_assignment.section,
-        is_active=True,
-        section__organization=organization,
-        student__user__organization=organization,
+        organization=organization,
     ).select_related(
         "student",
         "student__user",
