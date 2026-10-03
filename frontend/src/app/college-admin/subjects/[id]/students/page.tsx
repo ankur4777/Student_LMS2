@@ -438,7 +438,7 @@ export default function SubjectStudentsPage() {
 
                   <div className="card-body border-top d-flex justify-content-between align-items-center gap-3 flex-wrap">
                     <div className="text-muted small">
-                      Checked students will receive this subject's
+                      Checked students will receive this subject&apos;s
                       assignments, exams, classes, documents and related
                       notifications.
                     </div>
