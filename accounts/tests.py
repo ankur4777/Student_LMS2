@@ -2948,3 +2948,106 @@ class StudentAddressVisibilityTests(TestCase):
             response.data["children"][0]["address"],
             "12 Main Road, Delhi",
         )
+
+
+class TeacherDashboardAssignedClassStudentCountTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Teacher Dashboard College",
+            code="TDC",
+        )
+        self.session = AcademicSession.objects.create(
+            organization=self.organization,
+            name="2026-27",
+            start_date=date(2026, 6, 1),
+            end_date=date(2027, 5, 31),
+            is_active=True,
+        )
+        self.classroom = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 10",
+        )
+        self.section = Section.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="A",
+        )
+        self.maths = Subject.objects.create(
+            organization=self.organization,
+            classroom=self.classroom,
+            name="Maths",
+            code="MATH",
+        )
+        self.teacher_user = User.objects.create_user(
+            username="teacherd01",
+            email="teacherd@example.com",
+            password="pass12345",
+            role="teacher",
+            organization=self.organization,
+        )
+        self.teacher = TeacherProfile.objects.create(
+            user=self.teacher_user,
+            employee_id="TD-001",
+        )
+        TeacherAssignment.objects.create(
+            teacher=self.teacher,
+            subject=self.maths,
+            section=self.section,
+            is_active=True,
+        )
+
+        self.students = []
+        for index in range(3):
+            user = User.objects.create_user(
+                username=f"studentd{index + 1:02d}",
+                email=f"studentd{index + 1}@example.com",
+                password="pass12345",
+                role="student",
+                organization=self.organization,
+            )
+            student = StudentProfile.objects.create(
+                user=user,
+                admission_number=f"TD-ADM-{index + 1}",
+            )
+            StudentEnrollment.objects.create(
+                student=student,
+                section=self.section,
+                roll_number=f"TDC-{index + 1:03d}",
+                is_active=True,
+            )
+            self.students.append(student)
+
+        self.client.force_authenticate(user=self.teacher_user)
+
+    def test_dashboard_returns_total_students_for_each_assigned_class(self):
+        response = self.client.get(
+            "/api/accounts/teacher/dashboard/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data["assigned_classes"]), 1)
+
+        class_data = response.data["assigned_classes"][0]
+        self.assertEqual(class_data["classroom_name"], "Class 10")
+        self.assertEqual(class_data["sections"], ["A"])
+        self.assertEqual(class_data["subjects"], ["Maths"])
+        self.assertEqual(class_data["total_students"], 3)
+
+    def test_dashboard_student_count_respects_subject_exclusions(self):
+        SubjectStudentAccess.objects.create(
+            subject=self.maths,
+            student=self.students[0],
+            is_enrolled=False,
+        )
+
+        response = self.client.get(
+            "/api/accounts/teacher/dashboard/"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.data["assigned_classes"][0]["total_students"],
+            2,
+        )
