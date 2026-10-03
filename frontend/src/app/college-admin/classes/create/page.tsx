@@ -53,6 +53,7 @@ export default function CreateClassPage() {
   const [rollNumberDigits, setRollNumberDigits] = useState("4");
   const [rollNumberStart, setRollNumberStart] = useState("1");
   const [prefixOptions, setPrefixOptions] = useState<string[]>([]);
+  const [sections, setSections] = useState([""]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -155,10 +156,42 @@ export default function CreateClassPage() {
     };
   }, [clearSession, getToken, router]);
 
+  const addSection = () => {
+    setSections((current) => [...current, ""]);
+  };
+
+  const updateSection = (index: number, value: string) => {
+    setSections((current) =>
+      current.map((section, sectionIndex) =>
+        sectionIndex === index ? value : section
+      )
+    );
+  };
+
+  const removeSection = (index: number) => {
+    setSections((current) => {
+      if (current.length === 1) {
+        return current;
+      }
+
+      return current.filter((_, sectionIndex) => sectionIndex !== index);
+    });
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
     setError("");
+
+    const sectionNames = sections
+      .map((section) => section.trim())
+      .filter(Boolean);
+
+    if (sectionNames.length === 0) {
+      setError("Add at least one section for this class.");
+      setSaving(false);
+      return;
+    }
 
     const token = getToken();
     if (!token) {
@@ -181,6 +214,7 @@ export default function CreateClassPage() {
             roll_number_prefix: rollNumberPrefix,
             roll_number_digits: Number(rollNumberDigits),
             roll_number_start: Number(rollNumberStart),
+            sections: sectionNames,
           }),
         }
       );
@@ -218,7 +252,7 @@ export default function CreateClassPage() {
             <div className="mb-4">
               <h2 className="fw-bold mb-1">Add Class</h2>
               <p className="text-muted mb-0">
-                Create a class for an academic session.
+                Create a class, its sections, and roll number settings in one step.
               </p>
             </div>
 
@@ -334,6 +368,53 @@ export default function CreateClassPage() {
                               "0"
                             )}
                           </strong>
+                        </div>
+                      </div>
+                      <div className="col-12">
+                        <div className="d-flex align-items-center justify-content-between gap-3 mb-2">
+                          <div>
+                            <label className="form-label mb-0">Sections</label>
+                            <div className="form-text mt-1">
+                              Create the sections for this class now. You can add more later from Sections.
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={addSection}
+                          >
+                            + Add Section
+                          </button>
+                        </div>
+
+                        <div className="row g-2">
+                          {sections.map((section, index) => (
+                            <div className="col-md-6" key={index}>
+                              <div className="input-group">
+                                <span className="input-group-text">
+                                  Section {index + 1}
+                                </span>
+                                <input
+                                  className="form-control"
+                                  value={section}
+                                  onChange={(event) =>
+                                    updateSection(index, event.target.value)
+                                  }
+                                  placeholder="Example: A"
+                                  required
+                                />
+                                {sections.length > 1 && (
+                                  <button
+                                    className="btn btn-outline-danger"
+                                    type="button"
+                                    onClick={() => removeSection(index)}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                       <div className="col-12 d-flex gap-2">
