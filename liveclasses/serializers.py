@@ -19,6 +19,14 @@ class LiveClassSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    meeting_link = serializers.SerializerMethodField()
+
+    def get_meeting_link(self, obj):
+        if obj.status != LiveClass.Status.LIVE:
+            return ""
+
+        return obj.meeting_link
+
     # Unique ID of uploaded recording
     recording_public_id = serializers.UUIDField(
         source='recording.public_id',
