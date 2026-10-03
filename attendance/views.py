@@ -988,8 +988,18 @@ class TeacherAttendanceSessionAPIView(APIView):
                 'attendance': [],
             })
 
+        eligible_student_ids = eligible_enrollments_for_subject(
+            assignment.subject,
+            section=assignment.section,
+            organization=user.organization,
+        ).values_list(
+            'student_id',
+            flat=True,
+        )
+
         records = StudentAttendance.objects.filter(
-            attendance_session=attendance_session
+            attendance_session=attendance_session,
+            student_id__in=eligible_student_ids,
         ).select_related(
             'student__user'
         )
