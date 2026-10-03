@@ -21,6 +21,12 @@ from academics.models import (
     StudentEnrollment,
     ParentStudent,
 )
+from academics.subject_access import (
+    eligible_enrollments_for_subject,
+    student_studies_subject,
+    subject_access_filter,
+)
+
 
 from .models import (
     AttendanceSession,
@@ -558,6 +564,11 @@ class StudentAttendanceAPIView(APIView):
         attendance_records = StudentAttendance.objects.filter(
             student=student_profile,
             attendance_session__organization=user.organization
+        ).filter(
+            subject_access_filter(
+                "attendance_session__subject",
+                student_profile,
+            )
         ).select_related(
             'attendance_session',
             'attendance_session__subject',
@@ -601,6 +612,11 @@ class StudentAttendanceSummaryAPIView(APIView):
         records = StudentAttendance.objects.filter(
             student=student_profile,
             attendance_session__organization=user.organization
+        ).filter(
+            subject_access_filter(
+                "attendance_session__subject",
+                student_profile,
+            )
         )
 
         total_classes = records.count()
@@ -685,10 +701,10 @@ class TeacherAttendanceSetupAPIView(APIView):
         data = []
 
         for assignment in assignments:
-            students = StudentEnrollment.objects.filter(
+            students = eligible_enrollments_for_subject(
+                assignment.subject,
                 section=assignment.section,
-                is_active=True,
-                student__user__organization=user.organization
+                organization=user.organization,
             ).select_related(
                 'student__user'
             ).order_by(
@@ -862,6 +878,20 @@ class TeacherSaveAttendanceAPIView(APIView):
                         'detail': f'Student {student_profile_id} is not enrolled in this section.'
                     },
                     status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if not student_studies_subject(
+                enrollment.student,
+                assignment.subject,
+            ):
+                return Response(
+                    {
+                        'detail': (
+                            f'Student {student_profile_id} is not '
+                            'enrolled in this subject.'
+                        )
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
             student_attendance, _ = StudentAttendance.objects.update_or_create(
@@ -1045,6 +1075,11 @@ class ParentStudentAttendanceAPIView(APIView):
             student=student_profile,
             attendance_session__organization=user.organization,
             attendance_session__section=enrollment.section,
+        ).filter(
+            subject_access_filter(
+                "attendance_session__subject",
+                student_profile,
+            )
         ).select_related(
             "attendance_session",
             "attendance_session__subject",
