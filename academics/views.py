@@ -12,7 +12,16 @@ from .feature_access import (
     get_parent_child_feature_map,
     get_student_feature_map,
 )
-from .models import AcademicSession, ClassFeatureAccess, ClassRoom, Section, Subject
+from .subject_access import eligible_enrollments_for_subject
+from .models import (
+    AcademicSession,
+    ClassFeatureAccess,
+    ClassRoom,
+    Section,
+    StudentEnrollment,
+    Subject,
+    SubjectStudentAccess,
+)
 
 
 def college_admin_organization(user):
@@ -688,6 +697,23 @@ def serialize_section(section):
         "class_name": classroom.name,
         "academic_session_id": classroom.academic_session_id,
         "academic_session": classroom.academic_session.name,
+        "student_assignment_mode": subject.student_assignment_mode,
+        "student_assignment_mode_label": (
+            subject.get_student_assignment_mode_display()
+        ),
+        "eligible_student_count": (
+            eligible_enrollments_for_subject(
+                subject,
+                organization=subject.organization,
+            ).values("student_id").distinct().count()
+        ),
+        "class_student_count": (
+            StudentEnrollment.objects.filter(
+                section__classroom=classroom,
+                is_active=True,
+                student__user__organization=subject.organization,
+            ).values("student_id").distinct().count()
+        ),
     }
 
 
@@ -1262,6 +1288,240 @@ class CollegeAdminSubjectDetailAPIView(APIView):
             "message": "Subject updated successfully.",
             "subject": serialize_subject(subject),
         })
+
+class CollegeAdminSubjectStudentsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_subject(self, user, subject_id):
+        organization = college_admin_organization(user)
+
+        if not organization:
+            return None, None
+
+        subject = college_subject_queryset(
+            organization
+        ).filter(
+            id=subject_id
+        ).first()
+
+        return organization, subject
+
+    def get(self, request, subject_id):
+        organization, subject = self.get_subject(
+            request.user,
+            subject_id,
+        )
+
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can manage subject students."
+                    )
+                },
+                status=403,
+            )
+
+        if not subject:
+            return Response(
+                {"detail": "Subject not found."},
+                status=404,
+            )
+
+        enrollments = StudentEnrollment.objects.filter(
+            section__classroom=subject.classroom,
+            is_active=True,
+            student__user__organization=organization,
+        ).select_related(
+            "student",
+            "student__user",
+            "section",
+        ).order_by(
+            "section__name",
+            "roll_number",
+            "student__user__first_name",
+            "student__user__last_name",
+            "student__user__username",
+        )
+
+        overrides = {
+            access.student_id: access.is_enrolled
+            for access in SubjectStudentAccess.objects.filter(
+                subject=subject,
+                student_id__in=[
+                    enrollment.student_id
+                    for enrollment in enrollments
+                ],
+            )
+        }
+
+        students = []
+
+        for enrollment in enrollments:
+            student = enrollment.student
+            student_user = student.user
+
+            if student.id in overrides:
+                studies_subject = overrides[student.id]
+            else:
+                studies_subject = (
+                    subject.student_assignment_mode
+                    == Subject.StudentAssignmentMode.ALL
+                )
+
+            students.append({
+                "student_profile_id": student.id,
+                "student_user_id": student_user.id,
+                "name": (
+                    student_user.get_full_name().strip()
+                    or student_user.username
+                ),
+                "username": student_user.username,
+                "email": student_user.email,
+                "roll_number": enrollment.roll_number,
+                "section_id": enrollment.section_id,
+                "section_name": enrollment.section.name,
+                "studies_subject": studies_subject,
+            })
+
+        return Response({
+            "subject": serialize_subject(subject),
+            "assignment_modes": [
+                {
+                    "value": value,
+                    "label": label,
+                }
+                for value, label in Subject.StudentAssignmentMode.choices
+            ],
+            "students": students,
+        })
+
+    def patch(self, request, subject_id):
+        organization, subject = self.get_subject(
+            request.user,
+            subject_id,
+        )
+
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can manage subject students."
+                    )
+                },
+                status=403,
+            )
+
+        if not subject:
+            return Response(
+                {"detail": "Subject not found."},
+                status=404,
+            )
+
+        mode = str(
+            request.data.get(
+                "student_assignment_mode",
+                subject.student_assignment_mode,
+            )
+        ).strip()
+
+        valid_modes = {
+            value
+            for value, _label
+            in Subject.StudentAssignmentMode.choices
+        }
+
+        if mode not in valid_modes:
+            return Response(
+                {"detail": "Invalid student assignment mode."},
+                status=400,
+            )
+
+        selected_student_ids = request.data.get(
+            "student_profile_ids",
+            [],
+        )
+
+        if not isinstance(selected_student_ids, list):
+            return Response(
+                {"detail": "student_profile_ids must be a list."},
+                status=400,
+            )
+
+        try:
+            selected_student_ids = {
+                int(student_id)
+                for student_id in selected_student_ids
+            }
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "Student IDs must be valid numbers."},
+                status=400,
+            )
+
+        class_student_ids = set(
+            StudentEnrollment.objects.filter(
+                section__classroom=subject.classroom,
+                is_active=True,
+                student__user__organization=organization,
+            ).values_list(
+                "student_id",
+                flat=True,
+            )
+        )
+
+        invalid_ids = selected_student_ids - class_student_ids
+
+        if invalid_ids:
+            return Response(
+                {
+                    "detail": (
+                        "One or more selected students do not belong "
+                        "to this class."
+                    )
+                },
+                status=400,
+            )
+
+        with transaction.atomic():
+            subject.student_assignment_mode = mode
+            subject.save(
+                update_fields=["student_assignment_mode"]
+            )
+
+            SubjectStudentAccess.objects.filter(
+                subject=subject
+            ).delete()
+
+            if mode == Subject.StudentAssignmentMode.ALL:
+                excluded_ids = (
+                    class_student_ids - selected_student_ids
+                )
+                SubjectStudentAccess.objects.bulk_create([
+                    SubjectStudentAccess(
+                        subject=subject,
+                        student_id=student_id,
+                        is_enrolled=False,
+                    )
+                    for student_id in excluded_ids
+                ])
+            else:
+                SubjectStudentAccess.objects.bulk_create([
+                    SubjectStudentAccess(
+                        subject=subject,
+                        student_id=student_id,
+                        is_enrolled=True,
+                    )
+                    for student_id in selected_student_ids
+                ])
+
+        return Response({
+            "message": "Subject student assignment updated successfully.",
+            "subject": serialize_subject(subject),
+            "selected_student_count": len(selected_student_ids),
+            "class_student_count": len(class_student_ids),
+        })
+
 
 def serialize_class_feature_access(classroom, organization):
     access_by_key = {
