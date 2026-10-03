@@ -1037,6 +1037,20 @@ class CollegeAdminSectionDetailAPIView(APIView):
 def serialize_subject(subject):
     classroom = subject.classroom
 
+    eligible_student_count = (
+        eligible_enrollments_for_subject(
+            subject,
+            organization=subject.organization,
+        ).values("student_id").distinct().count()
+    )
+    class_student_count = (
+        StudentEnrollment.objects.filter(
+            section__classroom=classroom,
+            is_active=True,
+            student__user__organization=subject.organization,
+        ).values("student_id").distinct().count()
+    )
+
     return {
         "id": subject.id,
         "name": subject.name,
@@ -1045,6 +1059,12 @@ def serialize_subject(subject):
         "class_name": classroom.name,
         "academic_session_id": classroom.academic_session_id,
         "academic_session": classroom.academic_session.name,
+        "student_assignment_mode": subject.student_assignment_mode,
+        "student_assignment_mode_label": (
+            subject.get_student_assignment_mode_display()
+        ),
+        "eligible_student_count": eligible_student_count,
+        "class_student_count": class_student_count,
     }
 
 
