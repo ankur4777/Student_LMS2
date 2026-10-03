@@ -220,14 +220,25 @@ export default function TeacherStudentsPage() {
                         <th>Class & Section</th>
                         <th>Subjects I Teach</th>
                         <th>Contact</th>
+                        <th>Details</th>
                       </tr>
                     </thead>
                     <tbody>
                       {students.map((student) => (
                         <tr key={student.student_profile_id}>
                           <td>
-                            <div className="fw-semibold">{student.name}</div>
-                            <small className="text-muted">
+                            <button
+                              type="button"
+                              className="btn btn-link p-0 fw-semibold text-decoration-none text-start"
+                              onClick={() =>
+                                router.push(
+                                  `/teacher/students/${student.student_profile_id}`
+                                )
+                              }
+                            >
+                              {student.name}
+                            </button>
+                            <small className="text-muted d-block">
                               @{student.username}
                             </small>
                           </td>
@@ -270,6 +281,19 @@ export default function TeacherStudentsPage() {
                             <small className="text-muted d-block">
                               {student.address || "-"}
                             </small>
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline-primary"
+                              onClick={() =>
+                                router.push(
+                                  `/teacher/students/${student.student_profile_id}`
+                                )
+                              }
+                            >
+                              View
+                            </button>
                           </td>
                         </tr>
                       ))}
