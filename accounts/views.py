@@ -737,13 +737,67 @@ class TeacherDashboardView(APIView):
         )
 
         assignment_data = []
+        assigned_classes_map = {}
 
         for assignment in assignments:
+            classroom = assignment.section.classroom
+            academic_session = classroom.academic_session
+
             assignment_data.append({
                 "id": assignment.id,
                 "subject_name": assignment.subject.name,
                 "section_name": str(assignment.section),
             })
+
+            class_item = assigned_classes_map.setdefault(
+                classroom.id,
+                {
+                    "classroom_id": classroom.id,
+                    "classroom_name": classroom.name,
+                    "academic_session": (
+                        academic_session.name
+                        if academic_session
+                        else ""
+                    ),
+                    "sections": set(),
+                    "subjects": set(),
+                    "student_ids": set(),
+                },
+            )
+
+            class_item["sections"].add(assignment.section.name)
+            class_item["subjects"].add(assignment.subject.name)
+
+            eligible_student_ids = eligible_enrollments_for_subject(
+                assignment.subject,
+                section=assignment.section,
+                organization=organization,
+            ).values_list(
+                "student_id",
+                flat=True,
+            )
+
+            class_item["student_ids"].update(
+                eligible_student_ids
+            )
+
+        assigned_class_data = [
+            {
+                "classroom_id": item["classroom_id"],
+                "classroom_name": item["classroom_name"],
+                "academic_session": item["academic_session"],
+                "sections": sorted(item["sections"]),
+                "subjects": sorted(item["subjects"]),
+                "total_students": len(item["student_ids"]),
+            }
+            for item in sorted(
+                assigned_classes_map.values(),
+                key=lambda value: (
+                    value["classroom_name"].lower(),
+                    value["academic_session"].lower(),
+                ),
+            )
+        ]
 
         def serialize_class(live_class):
             return {
@@ -806,6 +860,7 @@ class TeacherDashboardView(APIView):
             },
 
             "assignments": assignment_data,
+            "assigned_classes": assigned_class_data,
 
             "today_classes": [
                 serialize_class(item)
