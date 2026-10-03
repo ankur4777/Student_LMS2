@@ -64,12 +64,19 @@ def eligible_enrollments_for_subject(
 
 
 def allowed_subject_ids_for_student(student):
+    excluded_subject_ids = SubjectStudentAccess.objects.filter(
+        student=student,
+        is_enrolled=False,
+    ).values_list(
+        "subject_id",
+        flat=True,
+    )
+
     all_mode_ids = list(
         Subject.objects.filter(
             student_assignment_mode=Subject.StudentAssignmentMode.ALL
         ).exclude(
-            student_access_overrides__student=student,
-            student_access_overrides__is_enrolled=False,
+            id__in=excluded_subject_ids,
         ).values_list(
             "id",
             flat=True,
