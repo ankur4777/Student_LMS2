@@ -946,3 +946,46 @@ class SubjectStudentAssignmentTests(TestCase):
                 student=foreign_student,
             ).exists()
         )
+
+
+    def test_moving_subject_to_another_class_resets_student_assignment(self):
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/students/",
+            {
+                "student_assignment_mode": "selected",
+                "student_profile_ids": [self.students[0].id],
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        other_class = ClassRoom.objects.create(
+            organization=self.organization,
+            academic_session=self.session,
+            name="Class 11",
+        )
+        Section.objects.create(
+            organization=self.organization,
+            classroom=other_class,
+            name="A",
+        )
+
+        response = self.client.patch(
+            f"/api/academics/college-admin/subjects/{self.subject.id}/",
+            {
+                "class_id": other_class.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.subject.refresh_from_db()
+        self.assertEqual(
+            self.subject.student_assignment_mode,
+            Subject.StudentAssignmentMode.ALL,
+        )
+        self.assertFalse(
+            SubjectStudentAccess.objects.filter(
+                subject=self.subject,
+            ).exists()
+        )
