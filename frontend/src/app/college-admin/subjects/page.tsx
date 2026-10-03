@@ -25,6 +25,10 @@ interface Subject {
   class_name: string;
   academic_session_id: number;
   academic_session: string;
+  student_assignment_mode: "all" | "selected";
+  student_assignment_mode_label: string;
+  eligible_student_count: number;
+  class_student_count: number;
 }
 
 function getSavedAdmin() {
@@ -237,6 +241,7 @@ export default function CollegeAdminSubjectsPage() {
                         <th>Code</th>
                         <th>Class</th>
                         <th>Academic Session</th>
+                        <th>Students</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -248,12 +253,29 @@ export default function CollegeAdminSubjectsPage() {
                           <td>{subject.class_name}</td>
                           <td>{subject.academic_session}</td>
                           <td>
-                            <Link
-                              className="btn btn-outline-primary btn-sm"
-                              href={`/college-admin/subjects/${subject.id}/edit`}
-                            >
-                              Edit
-                            </Link>
+                            <div className="fw-semibold">
+                              {subject.eligible_student_count} /{" "}
+                              {subject.class_student_count}
+                            </div>
+                            <small className="text-muted">
+                              {subject.student_assignment_mode_label}
+                            </small>
+                          </td>
+                          <td>
+                            <div className="d-flex gap-2 flex-wrap">
+                              <Link
+                                className="btn btn-outline-primary btn-sm"
+                                href={`/college-admin/subjects/${subject.id}/students`}
+                              >
+                                Manage Students
+                              </Link>
+                              <Link
+                                className="btn btn-outline-secondary btn-sm"
+                                href={`/college-admin/subjects/${subject.id}/edit`}
+                              >
+                                Edit
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))}
