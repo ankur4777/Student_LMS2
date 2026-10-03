@@ -102,6 +102,10 @@ class Section(models.Model):
 
 
 class Subject(models.Model):
+    class StudentAssignmentMode(models.TextChoices):
+        ALL = "all", "All Students"
+        SELECTED = "selected", "Selected Students Only"
+
     organization = models.ForeignKey(
         'institutions.Organization',
         on_delete=models.CASCADE,
@@ -122,6 +126,12 @@ class Subject(models.Model):
         related_name='subjects'
     )
 
+    student_assignment_mode = models.CharField(
+        max_length=20,
+        choices=StudentAssignmentMode.choices,
+        default=StudentAssignmentMode.ALL,
+    )
+
     class Meta:
         unique_together = (
             'organization',
@@ -131,6 +141,36 @@ class Subject(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.classroom.name}"
+
+
+class SubjectStudentAccess(models.Model):
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name="student_access_overrides",
+    )
+
+    student = models.ForeignKey(
+        'accounts.StudentProfile',
+        on_delete=models.CASCADE,
+        related_name="subject_access_overrides",
+    )
+
+    is_enrolled = models.BooleanField(default=True)
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("subject", "student"),
+                name="uniq_subject_student_access",
+            )
+        ]
+
+    def __str__(self):
+        state = "included" if self.is_enrolled else "excluded"
+        return f"{self.subject} - {self.student} - {state}"
 
 
 class TeacherAssignment(models.Model):
