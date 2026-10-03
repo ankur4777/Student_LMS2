@@ -987,6 +987,7 @@ class TeacherStudentsAPIView(APIView):
                         "username": student_user.username,
                         "email": student_user.email,
                         "phone": student.phone,
+                        "address": student.address,
                         "admission_number": student.admission_number,
                         "roll_number": enrollment.roll_number,
                         "classroom_name": classroom.name,
@@ -1025,6 +1026,7 @@ class TeacherStudentsAPIView(APIView):
                         item["name"],
                         item["username"],
                         item["email"],
+                        item["address"],
                         item["admission_number"],
                         item["roll_number"],
                         item["classroom_name"],
@@ -2027,6 +2029,7 @@ def serialize_college_student(user):
                     student_profile.admission_number
                 ),
                 "phone": student_profile.phone,
+                "address": student_profile.address,
                 "date_of_birth": student_profile.date_of_birth,
                 "admission_date": student_profile.admission_date,
             }
@@ -2279,6 +2282,7 @@ class CollegeAdminTeachersAPIView(APIView):
                 | Q(first_name__icontains=search)
                 | Q(last_name__icontains=search)
                 | Q(email__icontains=search)
+                | Q(student_profile__address__icontains=search)
             )
 
         return Response({
@@ -3082,6 +3086,9 @@ class CollegeAdminStudentDetailAPIView(APIView):
         if "phone" in request.data:
             profile.phone = request.data.get("phone", "").strip()
 
+        if "address" in request.data:
+            profile.address = request.data.get("address", "").strip()
+
         if "date_of_birth" in request.data:
             profile.date_of_birth = (
                 request.data.get("date_of_birth") or None
@@ -3106,6 +3113,7 @@ class CollegeAdminStudentDetailAPIView(APIView):
                 update_fields=[
                     "admission_number",
                     "phone",
+                    "address",
                     "date_of_birth",
                     "admission_date",
                 ]
@@ -4957,6 +4965,7 @@ class ParentChildrenAPIView(APIView):
                     or student_user.username
                 ),
                 "username": student_user.username,
+                "address": student.address,
                 "roll_number": (
                     enrollment.roll_number
                     if enrollment
