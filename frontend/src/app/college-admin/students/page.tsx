@@ -11,7 +11,7 @@ import AdminIcon from "@/components/college-admin/AdminIcon";
 import "../../teacher/dashboard/dashboard.css";
 import "./students.css";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
 interface CollegeAdminUser {
   username?: string;
@@ -80,15 +80,25 @@ export default function CollegeAdminStudentsPage() {
     const response = await fetch(url, {
       ...options,
       headers: {
+        Accept: "application/json",
         Authorization: `Bearer ${token}`,
         ...(options.headers || {}),
       },
+      cache: "no-store",
     });
 
     if (response.status === 401) {
       clearSession();
       router.replace("/college-admin/login");
       throw new Error("Unauthorized");
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+
+    if (!contentType.includes("application/json")) {
+      throw new Error(
+        "Student data is temporarily unavailable. Please refresh after the server update."
+      );
     }
 
     const result = await response.json();
