@@ -53,10 +53,10 @@ def _exam_summary(exam):
     classroom = section.classroom
     academic_session = classroom.academic_session
 
-    eligible_students = eligible_enrollments_for_subject(
-        teacher_assignment.subject,
+    eligible_students = StudentEnrollment.objects.filter(
         section=section,
-        organization=exam.organization,
+        is_active=True,
+        student__user__organization=exam.organization,
     ).count()
 
     results = StudentResult.objects.filter(
