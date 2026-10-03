@@ -2282,7 +2282,6 @@ class CollegeAdminTeachersAPIView(APIView):
                 | Q(first_name__icontains=search)
                 | Q(last_name__icontains=search)
                 | Q(email__icontains=search)
-                | Q(student_profile__address__icontains=search)
             )
 
         return Response({
@@ -2592,6 +2591,7 @@ class CollegeAdminStudentsAPIView(APIView):
                 | Q(first_name__icontains=search)
                 | Q(last_name__icontains=search)
                 | Q(email__icontains=search)
+                | Q(student_profile__address__icontains=search)
             )
 
         return Response({
