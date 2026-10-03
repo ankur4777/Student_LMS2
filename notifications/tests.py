@@ -12,6 +12,7 @@ from academics.models import (
     Section,
     StudentEnrollment,
     Subject,
+    SubjectStudentAccess,
     TeacherAssignment,
 )
 from accounts.models import ParentProfile, StudentProfile, TeacherProfile
@@ -344,4 +345,36 @@ class NotificationEmailTests(APITestCase):
         )
         self.assertTrue(
             all("Live Class Scheduled" in message.subject for message in mail.outbox)
+        )
+
+
+    def test_subject_excluded_student_and_parent_do_not_receive_assignment_email(self):
+        SubjectStudentAccess.objects.create(
+            subject=self.subject,
+            student=self.student,
+            is_enrolled=False,
+        )
+        assignment = Assignment.objects.create(
+            organization=self.org,
+            teacher_assignment=self.teacher_assignment,
+            title="Excluded Subject Homework",
+            due_date="2026-10-11",
+            is_published=True,
+        )
+
+        with self.captureOnCommitCallbacks(execute=True):
+            notify_assignment_published(assignment)
+
+        self.assertEqual(mail.outbox, [])
+        self.assertFalse(
+            Notification.objects.filter(
+                user=self.student_user,
+                message__contains="Excluded Subject Homework",
+            ).exists()
+        )
+        self.assertFalse(
+            Notification.objects.filter(
+                user=self.parent_user,
+                message__contains="Excluded Subject Homework",
+            ).exists()
         )
