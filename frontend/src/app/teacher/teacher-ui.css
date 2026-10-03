@@ -548,6 +548,85 @@
   margin-bottom: 14px;
 }
 
+.teacher-dashboard-polished .teacher-assigned-classes-panel {
+  margin-bottom: 14px;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-card {
+  padding: 13px 14px;
+  border: 1px solid #e8eaee;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-top > div:first-child strong,
+.teacher-dashboard-polished .teacher-assigned-class-top > div:first-child small {
+  display: block;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-top > div:first-child strong {
+  color: #344054;
+  font-size: .8rem;
+  font-weight: 680;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-top > div:first-child small {
+  margin-top: 3px;
+  color: #98a2b3;
+  font-size: .63rem;
+}
+
+.teacher-dashboard-polished .teacher-student-count {
+  min-width: 66px;
+  padding: 7px 9px;
+  border: 1px solid #ffe0e0;
+  border-radius: 9px;
+  background: #fff4f4;
+  text-align: center;
+}
+
+.teacher-dashboard-polished .teacher-student-count strong,
+.teacher-dashboard-polished .teacher-student-count span {
+  display: block;
+}
+
+.teacher-dashboard-polished .teacher-student-count strong {
+  color: #b42318;
+  font-size: 1.12rem;
+  line-height: 1;
+}
+
+.teacher-dashboard-polished .teacher-student-count span {
+  margin-top: 3px;
+  color: #8b95a5;
+  font-size: .58rem;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-meta {
+  display: grid;
+  gap: 4px;
+  margin-top: 11px;
+}
+
+.teacher-dashboard-polished .teacher-assigned-class-meta span {
+  color: #667085;
+  font-size: .63rem;
+}
+
 .teacher-dashboard-polished .teacher-panel {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
@@ -673,6 +752,10 @@
   .teacher-dashboard-polished .teacher-dashboard-grid {
     grid-template-columns: 1fr;
   }
+
+  .teacher-dashboard-polished .teacher-assigned-class-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 991px) {
@@ -715,6 +798,10 @@
   .teacher-dashboard-polished .teacher-class-item {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .teacher-dashboard-polished .teacher-assigned-class-grid {
+    grid-template-columns: 1fr;
   }
 }
 
