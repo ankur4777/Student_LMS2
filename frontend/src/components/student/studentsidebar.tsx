@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
+import OrganizationBrand from "@/components/common/OrganizationBrand";
 import StudentIcon, { StudentIconName } from "@/components/student/StudentIcon";
 
 type StudentFeatureKey =
@@ -163,14 +164,11 @@ export default function StudentSidebar() {
 
       <aside className={`student-sidebar student-portal-sidebar ${open ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand student-portal-brand">
-          <span className="student-brand-logo">
-            <StudentIcon name="school" size={22} />
-          </span>
-
-          <div>
-            <h5>Shabdd LMS</h5>
-            <small>Student Portal</small>
-          </div>
+          <OrganizationBrand
+            tokenKey="student_access_token"
+            userStorageKey="student_user"
+            portalLabel="Student Portal"
+          />
         </div>
 
         <nav className="sidebar-nav student-portal-nav">
