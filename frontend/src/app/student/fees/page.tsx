@@ -258,6 +258,11 @@ export default function StudentFeesPage() {
       return;
     }
 
+    if (proofFile.size > 5 * 1024 * 1024) {
+      setError("Payment proof must be 5 MB or smaller.");
+      return;
+    }
+
     const token = localStorage.getItem("student_access_token");
     if (!token) {
       router.replace("/student/login");
@@ -285,8 +290,17 @@ export default function StudentFeesPage() {
       );
 
       const contentType = response.headers.get("content-type") || "";
+
+      if (response.status === 413) {
+        throw new Error(
+          "The server rejected the upload because the file is too large. Please upload a file up to 5 MB."
+        );
+      }
+
       if (!contentType.includes("application/json")) {
-        throw new Error("Unable to submit payment proof.");
+        throw new Error(
+          `Unable to submit payment proof (server returned ${response.status}).`
+        );
       }
 
       const result = await response.json();
