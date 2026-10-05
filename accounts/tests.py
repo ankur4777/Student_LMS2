@@ -1,3 +1,4 @@
+import base64
 import shutil
 import tempfile
 from datetime import date, time
@@ -3050,4 +3051,126 @@ class TeacherDashboardAssignedClassStudentCountTests(TestCase):
         self.assertEqual(
             response.data["assigned_classes"][0]["total_students"],
             2,
+        )
+
+
+class StudentProfilePictureTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.media_root = tempfile.mkdtemp()
+        self.media_override = override_settings(
+            MEDIA_ROOT=self.media_root
+        )
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+        self.addCleanup(shutil.rmtree, self.media_root)
+
+        self.organization = Organization.objects.create(
+            name="Profile Picture College",
+            code="PIC",
+        )
+        self.student_user = User.objects.create_user(
+            username="picturestudent01",
+            email="picture-student@example.com",
+            password="pass12345",
+            first_name="Picture",
+            last_name="Student",
+            role="student",
+            organization=self.organization,
+        )
+        self.student = StudentProfile.objects.create(
+            user=self.student_user,
+            admission_number="PIC-001",
+        )
+        self.teacher_user = User.objects.create_user(
+            username="pictureteacher01",
+            email="picture-teacher@example.com",
+            password="pass12345",
+            role="teacher",
+            organization=self.organization,
+        )
+
+    def png_file(self, name="avatar.png"):
+        return SimpleUploadedFile(
+            name,
+            base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
+                "AAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+            ),
+            content_type="image/png",
+        )
+
+    def test_student_can_upload_own_profile_picture(self):
+        self.client.force_authenticate(user=self.student_user)
+
+        response = self.client.patch(
+            "/api/accounts/student/profile/",
+            {"profile_picture": self.png_file()},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.student.refresh_from_db()
+        self.assertTrue(self.student.profile_picture.name)
+        self.assertIn(
+            "/media/students/profile_pictures/",
+            response.data["profile_picture"],
+        )
+
+        profile_response = self.client.get(
+            "/api/accounts/student/profile/"
+        )
+        self.assertEqual(profile_response.status_code, 200)
+        self.assertEqual(
+            profile_response.data["profile"]["profile_picture"],
+            response.data["profile_picture"],
+        )
+
+    def test_invalid_profile_picture_is_rejected(self):
+        self.client.force_authenticate(user=self.student_user)
+
+        response = self.client.patch(
+            "/api/accounts/student/profile/",
+            {
+                "profile_picture": SimpleUploadedFile(
+                    "avatar.txt",
+                    b"not-an-image",
+                    content_type="text/plain",
+                )
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.profile_picture)
+
+    def test_non_student_cannot_upload_student_profile_picture(self):
+        self.client.force_authenticate(user=self.teacher_user)
+
+        response = self.client.patch(
+            "/api/accounts/student/profile/",
+            {"profile_picture": self.png_file()},
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_student_login_returns_profile_picture(self):
+        self.student.profile_picture = self.png_file()
+        self.student.save(update_fields=["profile_picture"])
+
+        response = self.client.post(
+            "/api/accounts/student/login/",
+            {
+                "username": self.student_user.username,
+                "password": "pass12345",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "/media/students/profile_pictures/",
+            response.data["user"]["profile_picture"],
         )
