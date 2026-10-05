@@ -150,6 +150,12 @@ class StudentProfile(models.Model):
 
     address = models.TextField(blank=True)
 
+    profile_picture = models.ImageField(
+        upload_to="students/profile_pictures/",
+        null=True,
+        blank=True,
+    )
+
     def __str__(self):
         return self.user.get_full_name() or self.user.username
 
