@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
@@ -31,6 +32,9 @@ from .models import (
     FeeStructure,
     StudentFee,
 )
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 def college_admin_organization(user):
@@ -1519,6 +1523,20 @@ class StudentFeePaymentProofAPIView(APIView):
             proof.save()
         except ValidationError as exc:
             return validation_error_response(exc)
+        except OSError:
+            LOGGER.exception(
+                "Unable to store fee payment proof for student fee %s",
+                student_fee.id,
+            )
+            return Response(
+                {
+                    "detail": (
+                        "The server could not store the payment proof file. "
+                        "Please contact the administrator."
+                    )
+                },
+                status=500,
+            )
 
         return Response(
             {
