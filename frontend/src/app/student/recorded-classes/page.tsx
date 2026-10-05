@@ -158,66 +158,101 @@ export default function StudentRecordedClassesPage() {
               <StudentFeatureRestricted featureName="Recorded Classes" />
             ) : (
               <>
-                <div className="dashboard-panel mb-4">
-                  <div className="panel-heading">
-                    <div>
-                      <h5 className="mb-1">Purchased Recorded Courses</h5>
-                      <small className="text-muted">
-                        Courses unlocked after payment verification.
-                      </small>
+                <section className="dashboard-panel recorded-library-panel mb-4">
+                  <div className="recorded-library-heading">
+                    <div className="recorded-library-title-wrap">
+                      <div className="recorded-library-icon" aria-hidden="true">
+                        ▶
+                      </div>
+                      <div>
+                        <span className="recorded-library-kicker">
+                          MY LEARNING LIBRARY
+                        </span>
+                        <h5>Purchased Recorded Courses</h5>
+                        <p>
+                          Continue learning from courses unlocked after payment verification.
+                        </p>
+                      </div>
                     </div>
-                    <span className="badge bg-success">{courses.length}</span>
+
+                    <div className="recorded-library-count">
+                      <strong>{courses.length}</strong>
+                      <span>{courses.length === 1 ? "Course" : "Courses"}</span>
+                    </div>
                   </div>
 
                   {loading && (
-                    <div className="text-muted mt-3 mb-2">Loading recordings...</div>
+                    <div className="recorded-library-empty">
+                      Loading your recorded courses...
+                    </div>
                   )}
 
                   {error && <div className="alert alert-danger">{error}</div>}
 
                   {!loading && !error && courses.length === 0 && (
-                    <div className="text-muted mt-3 mb-2">
-                      No purchased recorded courses with active access.
+                    <div className="recorded-library-empty">
+                      <div className="recorded-empty-icon" aria-hidden="true">
+                        ▶
+                      </div>
+                      <strong>No purchased courses yet</strong>
+                      <span>
+                        Purchased recorded courses with active access will appear here.
+                      </span>
                     </div>
                   )}
 
                   {!loading && !error && courses.length > 0 && (
-                    <div className="row g-3">
+                    <div className="recorded-course-grid">
                       {courses.map((course) => (
-                        <div
-                          className="col-lg-4 col-md-6"
-                          key={course.id}
-                        >
-                          <div className="border rounded p-3 h-100 d-flex flex-column">
-                            <h5 className="fw-bold">{course.title}</h5>
-                            <p className="text-muted flex-grow-1">
-                              {course.description || "Recorded course"}
-                            </p>
-                            <p className="small mb-2">
-                              Lessons: <strong>{course.lessons.length}</strong>
-                            </p>
-                            {course.access_expires_at && (
-                              <p className="small mb-3">
-                                Access until:{" "}
-                                <strong>
-                                  {new Date(
-                                    course.access_expires_at
-                                  ).toLocaleDateString()}
-                                </strong>
+                        <article className="recorded-course-card" key={course.id}>
+                          <div className="recorded-course-cover">
+                            <div className="recorded-course-play" aria-hidden="true">
+                              ▶
+                            </div>
+                            <span className="recorded-course-type">
+                              Recorded Course
+                            </span>
+                          </div>
+
+                          <div className="recorded-course-body">
+                            <div className="recorded-course-copy">
+                              <h3>{course.title}</h3>
+                              <p>
+                                {course.description ||
+                                  "Watch your lessons anytime during the active access period."}
                               </p>
-                            )}
+                            </div>
+
+                            <div className="recorded-course-meta">
+                              <div>
+                                <span>Lessons</span>
+                                <strong>{course.lessons.length}</strong>
+                              </div>
+                              <div>
+                                <span>Access</span>
+                                <strong>
+                                  {course.access_expires_at
+                                    ? new Date(
+                                        course.access_expires_at
+                                      ).toLocaleDateString()
+                                    : "Active"}
+                                </strong>
+                              </div>
+                            </div>
+
                             <Link
                               href={`/student/recorded-courses/${course.id}`}
-                              className="btn btn-success btn-sm align-self-start"
+                              className="recorded-course-open"
                             >
-                              Open Course
+                              <span>Open Course</span>
+                              <span aria-hidden="true">→</span>
                             </Link>
                           </div>
-                        </div>
+                        </article>
                       ))}
                     </div>
                   )}
-                </div>
+                </section>
 
                 <div className="dashboard-panel">
                   <div className="panel-heading">
