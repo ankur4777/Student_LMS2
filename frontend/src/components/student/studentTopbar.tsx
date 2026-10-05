@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import RoleSessionKeeper from "@/components/auth/RoleSessionKeeper";
@@ -10,6 +11,21 @@ import StudentIcon from "@/components/student/StudentIcon";
 interface StudentTopbarProps {
   name: string;
   organization?: string;
+}
+
+function savedProfilePicture() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem("student_user") || "{}"
+    );
+    return saved.profile_picture || "";
+  } catch {
+    return "";
+  }
 }
 
 function initials(name: string) {
@@ -26,6 +42,27 @@ export default function StudentTopbar({
   organization,
 }: StudentTopbarProps) {
   const router = useRouter();
+  const [profilePicture, setProfilePicture] = useState(
+    savedProfilePicture
+  );
+
+  useEffect(() => {
+    const refreshPicture = () => {
+      setProfilePicture(savedProfilePicture());
+    };
+
+    window.addEventListener(
+      "student:profile-updated",
+      refreshPicture
+    );
+
+    return () => {
+      window.removeEventListener(
+        "student:profile-updated",
+        refreshPicture
+      );
+    };
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem("student_access_token");
@@ -65,7 +102,19 @@ export default function StudentTopbar({
           )}
 
           <div className="student-portal-user">
-            <span className="student-portal-avatar">{initials(name)}</span>
+            {profilePicture ? (
+              <img
+                src={profilePicture}
+                alt=""
+                className="student-portal-avatar"
+                style={{ objectFit: "cover" }}
+                onError={() => setProfilePicture("")}
+              />
+            ) : (
+              <span className="student-portal-avatar">
+                {initials(name)}
+              </span>
+            )}
             <div>
               <strong>{name}</strong>
               <small>Student</small>
