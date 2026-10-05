@@ -14,6 +14,9 @@ from .views import (
     ParentStudentFeesAPIView,
     FeeInvoicePDFAPIView,
     FeeReceiptPDFAPIView,
+    StudentFeePaymentProofAPIView,
+    CollegeAdminFeePaymentProofsAPIView,
+    CollegeAdminFeePaymentProofReviewAPIView,
 )
 
 
@@ -21,6 +24,21 @@ urlpatterns = [
     path("documents/invoice/<int:student_fee_id>/", FeeInvoicePDFAPIView.as_view(), name="fee-invoice-pdf"),
     path("documents/receipt/<int:payment_id>/", FeeReceiptPDFAPIView.as_view(), name="fee-receipt-pdf"),
     path("student/", StudentFeesAPIView.as_view(), name="student-fees"),
+    path(
+        "student/<int:student_fee_id>/payment-proof/",
+        StudentFeePaymentProofAPIView.as_view(),
+        name="student-fee-payment-proof",
+    ),
+    path(
+        "college-admin/payment-proofs/",
+        CollegeAdminFeePaymentProofsAPIView.as_view(),
+        name="college-admin-fee-payment-proofs",
+    ),
+    path(
+        "college-admin/payment-proofs/<int:proof_id>/review/",
+        CollegeAdminFeePaymentProofReviewAPIView.as_view(),
+        name="college-admin-fee-payment-proof-review",
+    ),
     path("parent/student/<int:student_id>/", ParentStudentFeesAPIView.as_view(), name="parent-student-fees"),
     path(
         "college-admin/setup/",
