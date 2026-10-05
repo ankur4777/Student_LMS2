@@ -3174,3 +3174,56 @@ class StudentProfilePictureTests(TestCase):
             "/media/students/profile_pictures/",
             response.data["user"]["profile_picture"],
         )
+
+
+class OrganizationBrandingPortalTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Brand College",
+            code="BRAND",
+            primary_color="#123456",
+            secondary_color="#654321",
+        )
+
+    def test_student_teacher_parent_can_read_their_organization_branding(self):
+        roles = [
+            ("student", "brand-student"),
+            ("teacher", "brand-teacher"),
+            ("parent", "brand-parent"),
+            ("college_admin", "brand-admin"),
+        ]
+
+        for role, username in roles:
+            with self.subTest(role=role):
+                user = User.objects.create_user(
+                    username=username,
+                    email=f"{username}@example.com",
+                    password="pass12345",
+                    role=role,
+                    organization=self.organization,
+                )
+                self.client.force_authenticate(user=user)
+
+                response = self.client.get(
+                    "/api/accounts/organization-branding/"
+                )
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.data["name"], "Brand College")
+                self.assertEqual(response.data["code"], "BRAND")
+                self.assertEqual(response.data["logo"], "")
+
+    def test_user_cannot_read_branding_without_organization(self):
+        platform_admin = User.objects.create_superuser(
+            username="branding-platform-admin",
+            email="branding-platform@example.com",
+            password="pass12345",
+        )
+        self.client.force_authenticate(user=platform_admin)
+
+        response = self.client.get(
+            "/api/accounts/organization-branding/"
+        )
+
+        self.assertEqual(response.status_code, 404)
