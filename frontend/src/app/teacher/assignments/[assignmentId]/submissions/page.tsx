@@ -9,7 +9,6 @@ import TeacherTopbar from "@/components/teacher/TeacherTopbar";
 import "../../../dashboard/dashboard.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
-const MAX_ASSIGNMENT_MARKS = 9999.99;
 
 interface TeacherUser {
   username?: string;
@@ -337,25 +336,15 @@ const saveGrade = async (submissionId: number) => {
     return;
   }
 
-  if (!gradeMarks.trim()) {
-    setGradeError("Please enter marks.");
+  const gradeValue = gradeMarks.trim();
+
+  if (!gradeValue) {
+    setGradeError("Please enter marks or grade.");
     return;
   }
 
-  const numericMarks = Number(gradeMarks);
-
-  if (!Number.isFinite(numericMarks)) {
-    setGradeError("Please enter valid marks.");
-    return;
-  }
-
-  if (numericMarks < 0) {
-    setGradeError("Marks cannot be negative.");
-    return;
-  }
-
-  if (numericMarks > MAX_ASSIGNMENT_MARKS) {
-    setGradeError(`Marks cannot exceed ${MAX_ASSIGNMENT_MARKS}.`);
+  if (gradeValue.length > 50) {
+    setGradeError("Marks or grade cannot exceed 50 characters.");
     return;
   }
 
@@ -374,7 +363,7 @@ const saveGrade = async (submissionId: number) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          marks_obtained: numericMarks,
+          marks_obtained: gradeValue,
           feedback: gradeFeedback.trim(),
         }),
       }
@@ -663,20 +652,18 @@ const saveGrade = async (submissionId: number) => {
                                     <div>
                                       <div className="mb-2">
                                         <label className="form-label small fw-semibold">
-                                          Marks
+                                          Marks / Grade
                                         </label>
 
                                         <input
-                                          type="number"
-                                          min="0"
-                                          max={MAX_ASSIGNMENT_MARKS}
-                                          step="0.01"
+                                          type="text"
+                                          maxLength={50}
                                           className="form-control form-control-sm"
                                           value={gradeMarks}
                                           onChange={(e) =>
                                             setGradeMarks(e.target.value)
                                           }
-                                          placeholder="Enter marks"
+                                          placeholder="e.g. 50, A+, B1, Pass"
                                         />
 
                                         {gradeError && (
