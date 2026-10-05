@@ -15,6 +15,7 @@ interface AdminUser {
   username?: string;
   name?: string;
   organization?: string;
+  organization_logo?: string;
 }
 
 interface AccountInfo {
@@ -314,6 +315,26 @@ export default function CollegeAdminProfilePage() {
       });
       const updatedInstitution = result.institution || result;
       setOrganization(updatedInstitution);
+
+      setAdmin((currentAdmin) => {
+        const nextAdmin = {
+          ...currentAdmin,
+          organization: updatedInstitution.name || "",
+          organization_logo: updatedInstitution.logo || "",
+        };
+
+        localStorage.setItem(
+          "college_admin_user",
+          JSON.stringify(nextAdmin)
+        );
+
+        return nextAdmin;
+      });
+
+      window.dispatchEvent(
+        new Event("lms:organization-updated")
+      );
+
       setLogoFile(null);
       setSuccess(
         result.message || "Institution settings updated successfully."
