@@ -1396,53 +1396,56 @@ class TeacherGradeSubmissionAPIView(APIView):
 
         marks = request.data.get("marks_obtained")
         feedback = request.data.get("feedback", "").strip()
+        marks_value = str(marks or "").strip()
 
-        if marks in [None, ""]:
+        if not marks_value:
             return Response(
-                {"marks_obtained": ["Marks are required."]},
+                {"marks_obtained": ["Marks or grade are required."]},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        try:
-            marks_value = Decimal(str(marks).strip())
-        except (InvalidOperation, AttributeError):
-            return Response(
-                {"marks_obtained": ["Enter valid marks."]},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not marks_value.is_finite():
-            return Response(
-                {"marks_obtained": ["Enter valid marks."]},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if marks_value < 0:
-            return Response(
-                {"marks_obtained": ["Marks cannot be negative."]},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        marks_field = AssignmentSubmission._meta.get_field(
-            "marks_obtained"
-        )
-        max_whole_digits = (
-            marks_field.max_digits - marks_field.decimal_places
-        )
-        max_marks_value = (
-            Decimal("9" * max_whole_digits)
-            + (Decimal(1) - (Decimal(10) ** -marks_field.decimal_places))
-        )
-
-        if marks_value > max_marks_value:
+        if len(marks_value) > 50:
             return Response(
                 {
                     "marks_obtained": [
-                        f"Marks cannot exceed {max_marks_value}."
+                        "Marks or grade cannot exceed 50 characters."
                     ]
                 },
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Letter/alphanumeric grades such as A, A+, B1, Pass, etc. are
+        # valid. If the teacher enters a purely numeric value, retain the
+        # previous numeric safety checks.
+        try:
+            numeric_marks = Decimal(marks_value)
+        except (InvalidOperation, ValueError):
+            numeric_marks = None
+
+        if numeric_marks is not None:
+            if not numeric_marks.is_finite():
+                return Response(
+                    {"marks_obtained": ["Enter valid marks or grade."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if numeric_marks < 0:
+                return Response(
+                    {"marks_obtained": ["Marks cannot be negative."]},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            max_marks_value = Decimal("9999.99")
+
+            if numeric_marks > max_marks_value:
+                return Response(
+                    {
+                        "marks_obtained": [
+                            f"Marks cannot exceed {max_marks_value}."
+                        ]
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         submission.marks_obtained = marks_value
         submission.feedback = feedback
