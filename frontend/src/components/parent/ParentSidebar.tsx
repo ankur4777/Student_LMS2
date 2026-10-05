@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
+import OrganizationBrand from "@/components/common/OrganizationBrand";
 import ParentIcon, {
   ParentIconName,
 } from "@/components/parent/ParentIcon";
@@ -272,14 +273,11 @@ export default function ParentSidebar() {
         }`}
       >
         <div className="sidebar-brand parent-sidebar-brand">
-          <div className="brand-logo parent-brand-logo">
-            <ParentIcon name="children" size={22} />
-          </div>
-
-          <div>
-            <h5>Shabdd LMS</h5>
-            <small>Parent Portal</small>
-          </div>
+          <OrganizationBrand
+            tokenKey="parent_access_token"
+            userStorageKey="parent_user"
+            portalLabel="Parent Portal"
+          />
         </div>
 
         <nav className="sidebar-nav parent-sidebar-nav">
