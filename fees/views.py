@@ -27,6 +27,7 @@ from .models import (
     FeeComponent,
     FeeInstallment,
     FeePayment,
+    FeePaymentProof,
     FeeStructure,
     StudentFee,
 )
@@ -1386,3 +1387,288 @@ class FeeReceiptPDFAPIView(APIView):
             ["Reference", payment.reference_number or "-"],
         ]
         return pdf_response(f"fee-receipt-{payment.id}.pdf", "Payment Receipt", fee.organization, rows)
+
+
+def serialize_payment_proof(proof):
+    return {
+        "id": proof.id,
+        "amount": proof.amount,
+        "status": proof.status,
+        "admin_note": proof.admin_note,
+        "created_at": proof.created_at,
+        "reviewed_at": proof.reviewed_at,
+        "proof_document": (
+            proof.proof_document.url
+            if proof.proof_document
+            else ""
+        ),
+        "student_fee_id": proof.student_fee_id,
+        "student": {
+            "id": proof.student_fee.student_id,
+            "name": proof.student_fee.student.user.get_full_name()
+            or proof.student_fee.student.user.username,
+        },
+    }
+
+
+class StudentFeePaymentProofAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, student_fee_id):
+        user = request.user
+
+        if user.role != "student" or not user.is_active:
+            return Response(
+                {"detail": "Only students can submit fee proof."},
+                status=403,
+            )
+
+        student = StudentProfile.objects.filter(
+            user=user,
+        ).first()
+        student_fee = StudentFee.objects.filter(
+            id=student_fee_id,
+            student=student,
+            organization=user.organization,
+        ).first()
+
+        if not student_fee:
+            return Response(
+                {"detail": "Fee not found."},
+                status=404,
+            )
+
+        if student_fee.outstanding_amount <= ZERO:
+            return Response(
+                {"detail": "This fee is already paid."},
+                status=400,
+            )
+
+        if FeePaymentProof.objects.filter(
+            student_fee=student_fee,
+            status=FeePaymentProof.Status.PENDING,
+        ).exists():
+            return Response(
+                {
+                    "detail": (
+                        "A payment proof is already pending verification."
+                    )
+                },
+                status=400,
+            )
+
+        proof_document = request.FILES.get("proof_document")
+        if not proof_document:
+            return Response(
+                {"detail": "Payment proof document is required."},
+                status=400,
+            )
+
+        allowed_types = {
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        }
+        if proof_document.content_type not in allowed_types:
+            return Response(
+                {
+                    "detail": (
+                        "Upload a PDF, JPG, PNG or WEBP proof document."
+                    )
+                },
+                status=400,
+            )
+
+        if proof_document.size > 5 * 1024 * 1024:
+            return Response(
+                {"detail": "Proof document must be 5 MB or smaller."},
+                status=400,
+            )
+
+        amount, error = parse_money(
+            request.data.get("amount"),
+            "amount",
+        )
+        if error or not amount or amount <= ZERO:
+            return Response(
+                {"detail": "Enter a valid payment amount."},
+                status=400,
+            )
+
+        if amount > student_fee.outstanding_amount:
+            return Response(
+                {
+                    "detail": (
+                        "Payment amount cannot exceed outstanding balance."
+                    )
+                },
+                status=400,
+            )
+
+        proof = FeePaymentProof(
+            organization=user.organization,
+            student_fee=student_fee,
+            submitted_by=user,
+            amount=amount,
+            proof_document=proof_document,
+        )
+
+        try:
+            proof.full_clean()
+            proof.save()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+        return Response(
+            {
+                "message": (
+                    "Payment proof submitted. It is pending college verification."
+                ),
+                "payment_proof": serialize_payment_proof(proof),
+            },
+            status=201,
+        )
+
+
+class CollegeAdminFeePaymentProofsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can view payment proofs."},
+                status=403,
+            )
+
+        proofs = FeePaymentProof.objects.filter(
+            organization=organization,
+        ).select_related(
+            "student_fee__student__user",
+            "submitted_by",
+            "reviewed_by",
+        )
+
+        status_filter = request.query_params.get("status", "").strip()
+        if status_filter:
+            proofs = proofs.filter(status=status_filter)
+
+        return Response(
+            {
+                "payment_proofs": [
+                    serialize_payment_proof(proof)
+                    for proof in proofs
+                ]
+            }
+        )
+
+
+class CollegeAdminFeePaymentProofReviewAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, proof_id):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can review payment proofs."},
+                status=403,
+            )
+
+        action = str(request.data.get("action", "")).strip().lower()
+        if action not in {"approve", "reject"}:
+            return Response(
+                {"detail": "Action must be approve or reject."},
+                status=400,
+            )
+
+        with transaction.atomic():
+            proof = FeePaymentProof.objects.select_for_update().filter(
+                id=proof_id,
+                organization=organization,
+            ).select_related(
+                "student_fee",
+            ).first()
+
+            if not proof:
+                return Response(
+                    {"detail": "Payment proof not found."},
+                    status=404,
+                )
+
+            if proof.status != FeePaymentProof.Status.PENDING:
+                return Response(
+                    {"detail": "This payment proof has already been reviewed."},
+                    status=400,
+                )
+
+            proof.admin_note = str(
+                request.data.get("admin_note", "") or ""
+            ).strip()
+            proof.reviewed_by = request.user
+            proof.reviewed_at = timezone.now()
+
+            if action == "reject":
+                proof.status = FeePaymentProof.Status.REJECTED
+                proof.save(
+                    update_fields=[
+                        "status",
+                        "admin_note",
+                        "reviewed_by",
+                        "reviewed_at",
+                    ]
+                )
+            else:
+                student_fee = StudentFee.objects.select_for_update().get(
+                    id=proof.student_fee_id
+                )
+
+                if proof.amount > student_fee.outstanding_amount:
+                    return Response(
+                        {
+                            "detail": (
+                                "The submitted amount now exceeds the "
+                                "outstanding balance."
+                            )
+                        },
+                        status=400,
+                    )
+
+                payment = FeePayment(
+                    organization=organization,
+                    student_fee=student_fee,
+                    amount=proof.amount,
+                    payment_date=timezone.localdate(),
+                    payment_method=FeePayment.Method.OTHER,
+                    reference_number=f"PROOF-{proof.id}",
+                    notes="Approved from student payment proof.",
+                    recorded_by=request.user,
+                )
+                payment.full_clean()
+                payment.save()
+
+                proof.status = FeePaymentProof.Status.APPROVED
+                proof.payment = payment
+                proof.save(
+                    update_fields=[
+                        "status",
+                        "payment",
+                        "admin_note",
+                        "reviewed_by",
+                        "reviewed_at",
+                    ]
+                )
+
+                student_fee.status = student_fee.calculated_status()
+                student_fee.save(update_fields=["status", "updated_at"])
+
+        return Response(
+            {
+                "message": (
+                    "Payment approved and fee balance updated."
+                    if action == "approve"
+                    else "Payment proof rejected."
+                ),
+                "payment_proof": serialize_payment_proof(proof),
+            }
+        )
