@@ -390,3 +390,90 @@ class FeePayment(models.Model):
 
     def __str__(self):
         return f"{self.student_fee} - {self.amount}"
+
+
+
+class FeePaymentProof(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending Verification"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    organization = models.ForeignKey(
+        "institutions.Organization",
+        on_delete=models.CASCADE,
+        related_name="fee_payment_proofs",
+    )
+    student_fee = models.ForeignKey(
+        StudentFee,
+        on_delete=models.CASCADE,
+        related_name="payment_proofs",
+    )
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="submitted_fee_payment_proofs",
+    )
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    proof_document = models.FileField(
+        upload_to="fee_payment_proofs/%Y/%m/",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    admin_note = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="reviewed_fee_payment_proofs",
+        null=True,
+        blank=True,
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    payment = models.OneToOneField(
+        FeePayment,
+        on_delete=models.SET_NULL,
+        related_name="payment_proof",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def clean(self):
+        if self.student_fee_id and (
+            self.student_fee.organization_id != self.organization_id
+        ):
+            raise ValidationError(
+                {"student_fee": "Student fee must belong to organization."}
+            )
+
+        if self.submitted_by_id and (
+            self.submitted_by.organization_id != self.organization_id
+        ):
+            raise ValidationError(
+                {"submitted_by": "Submitter must belong to organization."}
+            )
+
+        if self.amount <= ZERO:
+            raise ValidationError(
+                {"amount": "Amount must be greater than zero."}
+            )
+
+        if self.student_fee_id and self.amount > self.student_fee.outstanding_amount:
+            raise ValidationError(
+                {"amount": "Amount cannot exceed outstanding balance."}
+            )
+
+    def __str__(self):
+        return (
+            f"{self.student_fee} - {self.amount} - {self.status}"
+        )
