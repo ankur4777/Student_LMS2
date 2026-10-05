@@ -461,17 +461,32 @@ class TeacherAssignmentGradingValidationTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("marks_obtained", response.data)
 
-    def test_non_numeric_marks_return_400(self):
+    def test_alphabetic_grade_success(self):
         self.authenticate()
 
         response = self.client.patch(
             self.url,
-            {"marks_obtained": "abc"},
+            {"marks_obtained": "A+"},
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("marks_obtained", response.data)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.marks_obtained, "A+")
+        self.assertEqual(self.submission.status, "graded")
+
+    def test_alphanumeric_grade_success(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {"marks_obtained": "B1"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.marks_obtained, "B1")
 
     def test_extremely_large_marks_return_400_not_500(self):
         self.authenticate()
@@ -499,9 +514,29 @@ class TeacherAssignmentGradingValidationTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.submission.refresh_from_db()
-        self.assertEqual(str(self.submission.marks_obtained), "88.00")
+        self.assertEqual(self.submission.marks_obtained, "88")
         self.assertEqual(self.submission.feedback, "Well done")
         self.assertIsNotNone(self.submission.graded_at)
+
+    def test_text_grade_pass_success(self):
+        self.authenticate()
+
+        response = self.client.patch(
+            self.url,
+            {
+                "marks_obtained": "Pass",
+                "feedback": "Completed successfully",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.submission.refresh_from_db()
+        self.assertEqual(self.submission.marks_obtained, "Pass")
+        self.assertEqual(
+            self.submission.feedback,
+            "Completed successfully",
+        )
 
     def test_unauthorized_teacher_cannot_grade(self):
         self.authenticate(self.other_teacher_user)
