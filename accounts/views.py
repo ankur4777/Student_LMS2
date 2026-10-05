@@ -54,6 +54,18 @@ PORTAL_PASSWORD_RESET_PATHS = {
 }
 
 
+def uploaded_file_url(request, file_field):
+    if not file_field:
+        return ""
+
+    try:
+        url = file_field.url
+    except (ValueError, AttributeError):
+        return ""
+
+    return request.build_absolute_uri(url) if request else url
+
+
 def authenticate_portal_user(identifier, password, role):
     identifier = str(identifier or "").strip()
 
@@ -539,6 +551,7 @@ class StudentDashboardAPIView(APIView):
 
 class StudentProfileAPIView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         user = request.user
@@ -595,6 +608,10 @@ class StudentProfileAPIView(APIView):
                 "address": student_profile.address,
                 "date_of_birth": student_profile.date_of_birth,
                 "admission_date": student_profile.admission_date,
+                "profile_picture": uploaded_file_url(
+                    request,
+                    student_profile.profile_picture,
+                ),
             },
             "enrollment": (
                 {
@@ -610,6 +627,109 @@ class StudentProfileAPIView(APIView):
                 else None
             ),
         })
+
+    def patch(self, request):
+        user = request.user
+
+        if user.role != "student":
+            return Response(
+                {"detail": "Only students can update profile pictures."},
+                status=403,
+            )
+
+        student_profile = StudentProfile.objects.filter(
+            user=user,
+            user__organization=user.organization,
+        ).first()
+
+        if not student_profile:
+            return Response(
+                {"detail": "Student profile not found."},
+                status=404,
+            )
+
+        profile_picture = request.FILES.get("profile_picture")
+
+        if not profile_picture:
+            return Response(
+                {"detail": "Please choose a profile picture to upload."},
+                status=400,
+            )
+
+        if profile_picture.size > 5 * 1024 * 1024:
+            return Response(
+                {"detail": "Profile picture must be 5 MB or smaller."},
+                status=400,
+            )
+
+        try:
+            cleaned_picture = ImageField().clean(profile_picture)
+        except ValidationError:
+            return Response(
+                {
+                    "detail": (
+                        "Upload a valid JPG, PNG, or WebP image "
+                        "for your profile picture."
+                    )
+                },
+                status=400,
+            )
+
+        allowed_types = {
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        }
+
+        if (
+            cleaned_picture.content_type
+            and cleaned_picture.content_type.lower() not in allowed_types
+        ):
+            return Response(
+                {
+                    "detail": (
+                        "Profile pictures must be JPG, PNG, or WebP."
+                    )
+                },
+                status=400,
+            )
+
+        old_picture_name = (
+            student_profile.profile_picture.name
+            if student_profile.profile_picture
+            else ""
+        )
+        old_storage = (
+            student_profile.profile_picture.storage
+            if student_profile.profile_picture
+            else None
+        )
+
+        student_profile.profile_picture = cleaned_picture
+        student_profile.save(update_fields=["profile_picture"])
+
+        if (
+            old_storage
+            and old_picture_name
+            and old_picture_name != student_profile.profile_picture.name
+        ):
+            try:
+                old_storage.delete(old_picture_name)
+            except Exception:
+                LOGGER.exception(
+                    "Unable to remove replaced profile picture for student %s",
+                    user.id,
+                )
+
+        return Response(
+            {
+                "message": "Profile picture updated successfully.",
+                "profile_picture": uploaded_file_url(
+                    request,
+                    student_profile.profile_picture,
+                ),
+            }
+        )
 
 
 class StudentLoginAPIView(APIView):
@@ -641,12 +761,25 @@ class StudentLoginAPIView(APIView):
             )
 
         refresh = RefreshToken.for_user(user)
+        student_profile = StudentProfile.objects.filter(user=user).first()
 
         return Response({
             'access': str(refresh.access_token),
             'refresh': str(refresh),
             'user': {
                 'username': user.username,
+                'name': (
+                    user.get_full_name().strip()
+                    or user.username
+                ),
+                'profile_picture': (
+                    uploaded_file_url(
+                        request,
+                        student_profile.profile_picture,
+                    )
+                    if student_profile
+                    else ""
+                ),
                 'role': user.role,
                 'organization': (
                     user.organization.name
@@ -2337,6 +2470,11 @@ def serialize_college_student(user):
                 "address": student_profile.address,
                 "date_of_birth": student_profile.date_of_birth,
                 "admission_date": student_profile.admission_date,
+                "profile_picture": (
+                    student_profile.profile_picture.url
+                    if student_profile.profile_picture
+                    else ""
+                ),
             }
             if student_profile
             else None
