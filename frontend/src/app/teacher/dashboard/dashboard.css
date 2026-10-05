@@ -28,6 +28,52 @@
   line-height: 1.25;
 }
 
+.college-admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.college-admin-brand-logo,
+.college-admin-brand-fallback {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 10px;
+}
+
+.college-admin-brand-logo {
+  display: block;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  padding: 4px;
+}
+
+.college-admin-brand-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+  font-size: 14px;
+  font-weight: 800;
+  border: 1px solid var(--border-color);
+}
+
+.college-admin-brand-copy {
+  min-width: 0;
+}
+
+.college-admin-brand-name {
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .teacher-sidebar-nav {
   display: flex;
   flex-direction: column;
