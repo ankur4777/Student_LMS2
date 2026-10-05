@@ -76,6 +76,7 @@ export default function StudentAssignmentsPage() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("student_access_token");
@@ -205,7 +206,7 @@ export default function StudentAssignmentsPage() {
     setSubmissionText("");
     setSubmissionFile(null);
     setMessage("");
-    setError("");
+    setSubmissionError("");
 
     const fileInput = document.getElementById(
       "student-assignment-file"
@@ -220,7 +221,31 @@ export default function StudentAssignmentsPage() {
     setSelectedAssignment(null);
     setSubmissionText("");
     setSubmissionFile(null);
+    setSubmissionError("");
   };
+
+  useEffect(() => {
+    if (!selectedAssignment) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && submittingId === null) {
+        closeSubmitForm();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedAssignment, submittingId]);
 
   const handleSubmitAssignment = async (
     event: FormEvent<HTMLFormElement>
@@ -239,14 +264,14 @@ export default function StudentAssignmentsPage() {
     }
 
     if (!submissionText.trim() && !submissionFile) {
-      setError("Please enter an answer or upload a file.");
+      setSubmissionError("Please enter an answer or upload a file.");
       return;
     }
 
     try {
       setSubmittingId(selectedAssignment.id);
       setMessage("");
-      setError("");
+      setSubmissionError("");
 
       const formData = new FormData();
 
@@ -308,7 +333,7 @@ export default function StudentAssignmentsPage() {
 
       await loadAssignments(token);
     } catch (err) {
-      setError(
+      setSubmissionError(
         err instanceof Error
           ? err.message
           : "Unable to submit assignment."
@@ -649,108 +674,136 @@ export default function StudentAssignmentsPage() {
               </div>
             )}
 
-            {/* SUBMIT FORM */}
+            {/* SUBMIT ASSIGNMENT POPUP */}
             {selectedAssignment && (
-              <div className="card border-0 shadow-sm mt-4">
-                <div className="card-body p-4">
+              <div
+                className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center p-3"
+                style={{
+                  zIndex: 1080,
+                  background: "rgba(15, 23, 42, 0.58)",
+                  backdropFilter: "blur(2px)",
+                }}
+                role="presentation"
+                onMouseDown={(event) => {
+                  if (
+                    event.target === event.currentTarget &&
+                    submittingId === null
+                  ) {
+                    closeSubmitForm();
+                  }
+                }}
+              >
+                <div
+                  className="bg-white rounded-4 shadow-lg w-100"
+                  style={{
+                    maxWidth: "760px",
+                    maxHeight: "90vh",
+                    overflowY: "auto",
+                  }}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="submit-assignment-title"
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <div className="p-4 p-md-5">
+                    <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
+                      <div>
+                        <h4
+                          id="submit-assignment-title"
+                          className="fw-bold mb-1"
+                        >
+                          Submit Assignment
+                        </h4>
 
-                  <div className="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                      <h5 className="fw-bold mb-1">
-                        Submit Assignment
-                      </h5>
+                        <p className="text-muted mb-0">
+                          {selectedAssignment.title}
+                        </p>
+                      </div>
 
-                      <p className="text-muted mb-0">
-                        {selectedAssignment.title}
-                      </p>
+                      <button
+                        type="button"
+                        className="btn-close"
+                        aria-label="Close"
+                        onClick={closeSubmitForm}
+                        disabled={submittingId !== null}
+                      />
                     </div>
 
-                    <button
-                      type="button"
-                      className="btn-close"
-                      onClick={closeSubmitForm}
-                    />
-                  </div>
-
-                  <form onSubmit={handleSubmitAssignment}>
-                    <div className="row g-3">
-
-                      <div className="col-12">
-                        <label className="form-label">
-                          Your Answer
-                        </label>
-
-                        <textarea
-                          className="form-control"
-                          rows={5}
-                          value={submissionText}
-                          onChange={(e) =>
-                            setSubmissionText(
-                              e.target.value
-                            )
-                          }
-                          placeholder="Write your answer here..."
-                        />
-
-                        <small className="text-muted">
-                          You can write an answer, upload a file,
-                          or both.
-                        </small>
+                    {submissionError && (
+                      <div className="alert alert-danger">
+                        {submissionError}
                       </div>
+                    )}
 
-                      <div className="col-12">
-                        <label className="form-label">
-                          Upload File
-                        </label>
+                    <form onSubmit={handleSubmitAssignment}>
+                      <div className="row g-3">
+                        <div className="col-12">
+                          <label className="form-label">
+                            Your Answer
+                          </label>
 
-                        <input
-                          id="student-assignment-file"
-                          type="file"
-                          className="form-control"
-                          onChange={(e) =>
-                            setSubmissionFile(
-                              e.target.files?.[0] ||
-                                null
-                            )
-                          }
-                        />
-                      </div>
-
-                      <div className="col-12">
-                        <div className="d-flex gap-2">
-
-                          <button
-                            type="submit"
-                            className="btn btn-primary"
-                            disabled={
-                              submittingId ===
-                              selectedAssignment.id
+                          <textarea
+                            className="form-control"
+                            rows={6}
+                            value={submissionText}
+                            onChange={(event) =>
+                              setSubmissionText(event.target.value)
                             }
-                          >
-                            {submittingId ===
-                            selectedAssignment.id
-                              ? "Submitting..."
-                              : "Submit Assignment"}
-                          </button>
+                            placeholder="Write your answer here..."
+                            autoFocus
+                          />
 
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary"
-                            onClick={closeSubmitForm}
-                            disabled={
-                              submittingId ===
-                              selectedAssignment.id
+                          <small className="text-muted">
+                            You can write an answer, upload a file,
+                            or both.
+                          </small>
+                        </div>
+
+                        <div className="col-12">
+                          <label className="form-label">
+                            Upload File
+                          </label>
+
+                          <input
+                            id="student-assignment-file"
+                            type="file"
+                            className="form-control"
+                            onChange={(event) =>
+                              setSubmissionFile(
+                                event.target.files?.[0] || null
+                              )
                             }
-                          >
-                            Cancel
-                          </button>
+                          />
+                        </div>
 
+                        <div className="col-12">
+                          <div className="d-flex flex-wrap gap-2 pt-2">
+                            <button
+                              type="submit"
+                              className="btn btn-primary"
+                              disabled={
+                                submittingId ===
+                                selectedAssignment.id
+                              }
+                            >
+                              {submittingId === selectedAssignment.id
+                                ? "Submitting..."
+                                : "Submit Assignment"}
+                            </button>
+
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary"
+                              onClick={closeSubmitForm}
+                              disabled={submittingId !== null}
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       </div>
-
-                    </div>
-                  </form>
-
+                    </form>
+                  </div>
                 </div>
               </div>
             )}
