@@ -106,6 +106,11 @@ export default function StudentFeesPage() {
   const [fees, setFees] = useState<Fee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [payFee, setPayFee] = useState<Fee | null>(null);
+  const [proofAmount, setProofAmount] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [submittingProof, setSubmittingProof] = useState(false);
+  const [proofMessage, setProofMessage] = useState("");
   const { formatCurrency: money } = useCurrency();
 
   useEffect(() => {
@@ -247,6 +252,65 @@ export default function StudentFeesPage() {
     }
   };
 
+  const submitPaymentProof = async () => {
+    if (!payFee || !proofFile || !proofAmount) {
+      setError("Enter the amount and select a payment proof document.");
+      return;
+    }
+
+    const token = localStorage.getItem("student_access_token");
+    if (!token) {
+      router.replace("/student/login");
+      return;
+    }
+
+    setSubmittingProof(true);
+    setError("");
+    setProofMessage("");
+
+    try {
+      const formData = new FormData();
+      formData.append("amount", proofAmount);
+      formData.append("proof_document", proofFile);
+
+      const response = await fetch(
+        `${API_BASE}/api/fees/student/${payFee.id}/payment-proof/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("Unable to submit payment proof.");
+      }
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.detail || "Unable to submit payment proof.");
+      }
+
+      setProofMessage(
+        "Payment proof submitted successfully. Waiting for college verification."
+      );
+      setPayFee(null);
+      setProofFile(null);
+      setProofAmount("");
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to submit payment proof."
+      );
+    } finally {
+      setSubmittingProof(false);
+    }
+  };
+
   const featureRestricted =
     isClassFeatureRestricted(error);
 
@@ -290,6 +354,12 @@ export default function StudentFeesPage() {
                 {error && (
                   <div className="alert alert-danger">
                     {error}
+                  </div>
+                )}
+
+                {proofMessage && (
+                  <div className="alert alert-success">
+                    {proofMessage}
                   </div>
                 )}
 
@@ -395,6 +465,21 @@ export default function StudentFeesPage() {
                                 >
                                   Download Invoice
                                 </button>
+
+                                {Number(fee.outstanding_amount) > 0 && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => {
+                                      setPayFee(fee);
+                                      setProofAmount(fee.outstanding_amount);
+                                      setProofFile(null);
+                                      setError("");
+                                    }}
+                                  >
+                                    Pay Fee
+                                  </button>
+                                )}
                               </div>
                             </header>
 
@@ -614,6 +699,98 @@ export default function StudentFeesPage() {
                   </>
                 ) : null}
               </div>
+            )}
+
+            {payFee && (
+              <>
+                <div
+                  className="modal fade show d-block"
+                  tabIndex={-1}
+                  role="dialog"
+                  aria-modal="true"
+                >
+                  <div className="modal-dialog modal-dialog-centered">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <div>
+                          <h5 className="modal-title">Submit Fee Payment Proof</h5>
+                          <small className="text-muted">
+                            {payFee.fee_structure?.name || "Fee"}
+                          </small>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          aria-label="Close"
+                          onClick={() => setPayFee(null)}
+                        />
+                      </div>
+                      <div className="modal-body">
+                        <div className="mb-3">
+                          <label className="form-label">Amount Paid</label>
+                          <input
+                            type="number"
+                            min="0.01"
+                            step="0.01"
+                            max={payFee.outstanding_amount}
+                            className="form-control"
+                            value={proofAmount}
+                            onChange={(event) =>
+                              setProofAmount(event.target.value)
+                            }
+                          />
+                          <div className="form-text">
+                            Pending balance: {money(payFee.outstanding_amount)}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="form-label">
+                            Payment Proof
+                          </label>
+                          <input
+                            type="file"
+                            className="form-control"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                            onChange={(event) =>
+                              setProofFile(
+                                event.target.files?.[0] || null
+                              )
+                            }
+                          />
+                          <div className="form-text">
+                            Upload PDF, JPG, PNG or WEBP. Maximum 5 MB.
+                          </div>
+                        </div>
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary"
+                          onClick={() => setPayFee(null)}
+                          disabled={submittingProof}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => void submitPaymentProof()}
+                          disabled={
+                            submittingProof ||
+                            !proofFile ||
+                            !proofAmount
+                          }
+                        >
+                          {submittingProof
+                            ? "Submitting..."
+                            : "Submit Proof"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-backdrop fade show" />
+              </>
             )}
           </div>
         </div>
