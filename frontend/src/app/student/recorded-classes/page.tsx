@@ -46,6 +46,113 @@ type PurchasedCourse = {
   }[];
 };
 
+function RecordedCourseThumbnail({
+  lessonId,
+}: {
+  lessonId?: number;
+}) {
+  const [videoUrl, setVideoUrl] = useState("");
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!lessonId) {
+      setFailed(true);
+      return;
+    }
+
+    let active = true;
+    let objectUrl = "";
+
+    async function loadThumbnailVideo() {
+      const token = localStorage.getItem("student_access_token");
+
+      if (!token) {
+        setFailed(true);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/api/recorded-courses/student/lessons/${lessonId}/play/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Unable to load course preview.");
+        }
+
+        const blob = await response.blob();
+
+        if (!active) {
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+        setVideoUrl(objectUrl);
+      } catch {
+        if (active) {
+          setFailed(true);
+        }
+      }
+    }
+
+    void loadThumbnailVideo();
+
+    return () => {
+      active = false;
+
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [lessonId]);
+
+  if (!lessonId || failed) {
+    return (
+      <div
+        className="recorded-course-thumbnail recorded-course-thumbnail-fallback"
+        aria-hidden="true"
+      />
+    );
+  }
+
+  if (!videoUrl) {
+    return (
+      <div
+        className="recorded-course-thumbnail recorded-course-thumbnail-loading"
+        aria-hidden="true"
+      >
+        <span>Loading preview...</span>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      className="recorded-course-thumbnail"
+      src={videoUrl}
+      muted
+      playsInline
+      preload="metadata"
+      tabIndex={-1}
+      aria-hidden="true"
+      onLoadedMetadata={(event) => {
+        const video = event.currentTarget;
+
+        if (Number.isFinite(video.duration) && video.duration > 0.2) {
+          video.currentTime = Math.min(0.5, video.duration / 10);
+        }
+      }}
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 function getSavedStudent(): StudentUser {
   if (typeof window === "undefined") {
     return {};
@@ -206,6 +313,13 @@ export default function StudentRecordedClassesPage() {
                       {courses.map((course) => (
                         <article className="recorded-course-card" key={course.id}>
                           <div className="recorded-course-cover">
+                            <RecordedCourseThumbnail
+                              lessonId={course.lessons[0]?.id}
+                            />
+                            <div
+                              className="recorded-course-cover-shade"
+                              aria-hidden="true"
+                            />
                             <div className="recorded-course-play" aria-hidden="true">
                               ▶
                             </div>
