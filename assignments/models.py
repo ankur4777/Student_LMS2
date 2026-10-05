@@ -121,9 +121,8 @@ class AssignmentSubmission(models.Model):
         auto_now=True
     )
 
-    marks_obtained = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
+    marks_obtained = models.CharField(
+        max_length=50,
         null=True,
         blank=True
     )
