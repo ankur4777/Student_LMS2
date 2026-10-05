@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import StudentIcon from "@/components/student/StudentIcon";
 import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
 
 import "../dashboard/dashboard.css";
+import "./attendance.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -36,6 +38,27 @@ interface AttendanceRecord {
   end_time: string;
   status: string;
   remarks: string;
+}
+
+function attendanceStatusClass(status: string) {
+  const normalized = status.toLowerCase();
+
+  if (normalized === "present") return "is-present";
+  if (normalized === "late") return "is-late";
+  if (normalized === "absent") return "is-absent";
+  if (normalized === "excused") return "is-excused";
+
+  return "";
+}
+
+function formatAttendanceDate(value: string) {
+  if (!value) return "-";
+
+  return new Date(value).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function getSavedStudent() {
@@ -150,87 +173,151 @@ export default function StudentAttendancePage() {
             {featureRestricted ? (
               <StudentFeatureRestricted featureName="Attendance" />
             ) : (
-              <>
-                <div className="dashboard-panel mb-4">
-              <div className="panel-heading">
-                <h5>Attendance</h5>
-              </div>
-
-              {loading && (
-                <div className="empty-state">Loading attendance...</div>
-              )}
-
-              {error && <div className="alert alert-danger">{error}</div>}
-
-              {!loading && !error && summary && (
-                <div className="row g-3">
-                  {[
-                    ["Overall", `${summary.attendance_percentage}%`],
-                    ["Total", summary.total_classes],
-                    ["Present", summary.present],
-                    ["Late", summary.late],
-                    ["Absent", summary.absent],
-                    ["Excused", summary.excused],
-                  ].map(([label, value]) => (
-                    <div key={label} className="col-lg-2 col-md-4 col-6">
-                      <div className="border rounded p-3 h-100">
-                        <div className="text-muted small">{label}</div>
-                        <div className="fs-5 fw-bold">{value}</div>
-                      </div>
+              <div className="student-attendance-page">
+                <section className="student-attendance-header">
+                  <div>
+                    <div className="student-attendance-kicker">
+                      STUDENT PORTAL
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <h1>Attendance</h1>
+                    <p>
+                      Review your attendance summary and class-by-class records.
+                    </p>
+                  </div>
 
-            <div className="dashboard-panel">
-              <div className="panel-heading">
-                <h5>Attendance Records</h5>
-                <span className="badge bg-primary">{records.length}</span>
-              </div>
+                  <span className="student-attendance-header-icon">
+                    <StudentIcon name="attendance" size={22} />
+                  </span>
+                </section>
 
-              {!loading && !error && records.length === 0 && (
-                <div className="empty-state">No attendance records found.</div>
-              )}
+                {loading && (
+                  <section className="student-attendance-card">
+                    <div className="student-attendance-loading">
+                      Loading attendance...
+                    </div>
+                  </section>
+                )}
 
-              {!loading && !error && records.length > 0 && (
-                <div className="table-responsive">
-                  <table className="table align-middle">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Subject</th>
-                        <th>Section</th>
-                        <th>Teacher</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                        <th>Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {records.map((record) => (
-                        <tr key={record.id}>
-                          <td>{record.date}</td>
-                          <td>{record.subject_name}</td>
-                          <td>{record.section_name}</td>
-                          <td>{record.teacher_name || "-"}</td>
-                          <td>
-                            {record.start_time} - {record.end_time}
-                          </td>
-                          <td>
-                            <span className="badge bg-light text-dark border">
-                              {record.status}
-                            </span>
-                          </td>
-                          <td>{record.remarks || "-"}</td>
-                        </tr>
+                {error && (
+                  <div className="alert alert-danger">{error}</div>
+                )}
+
+                {!loading && !error && summary && (
+                  <section className="student-attendance-summary">
+                    <article className="student-attendance-overall-card">
+                      <div className="student-attendance-overall-copy">
+                        <span>Overall Attendance</span>
+                        <strong>{summary.attendance_percentage}%</strong>
+                        <small>
+                          Present and late classes count toward attendance.
+                        </small>
+                      </div>
+
+                      <div
+                        className="student-attendance-progress"
+                        aria-label={`Overall attendance ${summary.attendance_percentage}%`}
+                      >
+                        <span
+                          style={{
+                            width: `${Math.min(
+                              100,
+                              Math.max(0, summary.attendance_percentage)
+                            )}%`,
+                          }}
+                        />
+                      </div>
+                    </article>
+
+                    <div className="student-attendance-metrics">
+                      {[
+                        ["Total Classes", summary.total_classes, "total"],
+                        ["Present", summary.present, "present"],
+                        ["Late", summary.late, "late"],
+                        ["Absent", summary.absent, "absent"],
+                        ["Excused", summary.excused, "excused"],
+                      ].map(([label, value, tone]) => (
+                        <article
+                          className={`student-attendance-metric is-${tone}`}
+                          key={label}
+                        >
+                          <span>{label}</span>
+                          <strong>{value}</strong>
+                        </article>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-              </>
+                    </div>
+                  </section>
+                )}
+
+                <section className="student-attendance-card">
+                  <div className="student-attendance-card-header">
+                    <div>
+                      <h2>Attendance Records</h2>
+                      <p>
+                        Your recorded attendance for each class session.
+                      </p>
+                    </div>
+
+                    <span className="student-attendance-count">
+                      {records.length} {records.length === 1 ? "record" : "records"}
+                    </span>
+                  </div>
+
+                  {!loading && !error && records.length === 0 && (
+                    <div className="student-attendance-empty">
+                      <span className="student-attendance-empty-icon">
+                        <StudentIcon name="calendar" size={22} />
+                      </span>
+                      <strong>No attendance records yet</strong>
+                      <p>Your attendance will appear here once classes are marked.</p>
+                    </div>
+                  )}
+
+                  {!loading && !error && records.length > 0 && (
+                    <div className="table-responsive student-attendance-table-wrap">
+                      <table className="table align-middle student-attendance-table">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Subject</th>
+                            <th>Section</th>
+                            <th>Teacher</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                            <th>Remarks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {records.map((record) => (
+                            <tr key={record.id}>
+                              <td className="student-attendance-date">
+                                {formatAttendanceDate(record.date)}
+                              </td>
+                              <td>
+                                <strong>{record.subject_name}</strong>
+                              </td>
+                              <td>{record.section_name}</td>
+                              <td>{record.teacher_name || "-"}</td>
+                              <td className="student-attendance-time">
+                                {record.start_time} - {record.end_time}
+                              </td>
+                              <td>
+                                <span
+                                  className={`student-attendance-status ${attendanceStatusClass(
+                                    record.status
+                                  )}`}
+                                >
+                                  {record.status}
+                                </span>
+                              </td>
+                              <td>{record.remarks || "-"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              </div>
             )}
           </div>
         </div>
