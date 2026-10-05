@@ -4,7 +4,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import TeacherTopbar from "@/components/teacher/TeacherTopbar";
+import TeacherIcon from "@/components/teacher/TeacherIcon";
 import "../dashboard/dashboard.css";
+import "./assignments.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -37,6 +39,22 @@ interface Assignment {
   classroom_name: string;
   has_attachment: boolean;
   submission_count: number;
+}
+
+function formatAssignmentDate(value: string) {
+  if (!value) return "No due date";
+
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 export default function TeacherAssignmentsPage() {
@@ -706,319 +724,334 @@ const handleDeleteAssignment = async (
             </div>
 
             {/* MY ASSIGNMENTS */}
-            <div className="card border-0 shadow-sm">
-              <div className="card-body p-4">
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <div>
-                    <h5 className="fw-bold mb-1">
-                      My Assignments
-                    </h5>
-
-                    <p className="text-muted mb-0">
-                      {assignments.length} assignment
-                      {assignments.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
+            <section className="teacher-assignments-panel">
+              <div className="teacher-assignments-panel-header">
+                <div>
+                  <span className="teacher-assignments-kicker">
+                    ASSIGNMENT LIBRARY
+                  </span>
+                  <h5>My Assignments</h5>
+                  <p>
+                    Review published work, submissions and drafts from one place.
+                  </p>
                 </div>
 
-                {loading ? (
-                  <div className="py-4 text-center text-muted">
-                    Loading assignments...
+                <div className="teacher-assignment-summary">
+                  <div>
+                    <strong>{assignments.length}</strong>
+                    <span>Total</span>
                   </div>
-                ) : assignments.length === 0 ? (
-                  <div className="text-center py-5">
-                    <h6>No assignments yet</h6>
-
-                    <p className="text-muted mb-0">
-                      Create your first assignment above.
-                    </p>
+                  <div>
+                    <strong>
+                      {
+                        assignments.filter(
+                          (assignment) => assignment.is_published
+                        ).length
+                      }
+                    </strong>
+                    <span>Published</span>
                   </div>
-                ) : (
-                  <div className="row g-3">
-                    {assignments.map((assignment) => (
-  <div
-    className="col-xl-6"
-    key={assignment.id}
-  >
-    <div className="border rounded-3 p-3 h-100">
-
-      <div className="d-flex justify-content-between gap-3 mb-2">
-        <div>
-          <h6 className="fw-bold mb-1">
-            {assignment.title}
-          </h6>
-
-          <div className="small text-muted">
-            {assignment.classroom_name} -{" "}
-            {assignment.section_name} •{" "}
-            {assignment.subject_name}
-          </div>
-        </div>
-
-        <span
-          className={`badge ${
-            assignment.is_published
-              ? "bg-success"
-              : "bg-secondary"
-          }`}
-        >
-          {assignment.is_published
-            ? "Published"
-            : "Draft"}
-        </span>
-      </div>
-
-      {assignment.instructions && (
-        <p className="text-muted small mt-3 mb-3">
-          {assignment.instructions}
-        </p>
-      )}
-
-      <div className="small mb-2">
-        <strong>Due:</strong>{" "}
-        {assignment.due_date}
-
-        {assignment.due_time &&
-          ` at ${assignment.due_time.slice(
-            0,
-            5
-          )}`}
-      </div>
-
-      <div className="d-flex flex-wrap gap-2 mt-3">
-        <span className="badge text-bg-light">
-          {assignment.submission_count}{" "}
-          submission
-          {assignment.submission_count === 1
-            ? ""
-            : "s"}
-        </span>
-
-        {assignment.has_attachment && (
-          <span className="badge text-bg-light">
-            Attachment
-          </span>
-        )}
-      </div>
-
-      {/* ACTIONS */}
-      <div className="d-flex flex-wrap gap-2 mt-3">
-        <button
-  type="button"
-  className="btn btn-outline-dark btn-sm"
-  onClick={() =>
-    router.push(
-      `/teacher/assignments/${assignment.id}/submissions`
-    )
-  }
->
-  View Submissions
-</button>
-        <button
-          type="button"
-          className="btn btn-outline-primary btn-sm"
-          onClick={() =>
-            startEditing(assignment)
-          }
-          disabled={
-            deletingId === assignment.id
-          }
-        >
-          Edit
-        </button>
-
-        <button
-          type="button"
-          className="btn btn-outline-danger btn-sm"
-          onClick={() =>
-            handleDeleteAssignment(
-              assignment
-            )
-          }
-          disabled={
-            deletingId === assignment.id ||
-            savingId === assignment.id
-          }
-        >
-          {deletingId === assignment.id
-            ? "Deleting..."
-            : "Delete"}
-        </button>
-      </div>
-
-      {/* EDIT FORM */}
-      {editingId === assignment.id && (
-        <div className="border-top mt-4 pt-3">
-
-          <h6 className="fw-bold mb-3">
-            Edit Assignment
-          </h6>
-
-          <div className="row g-3">
-
-            <div className="col-12">
-              <label className="form-label">
-                Assignment Title
-              </label>
-
-              <input
-                type="text"
-                className="form-control"
-                value={editTitle}
-                onChange={(e) =>
-                  setEditTitle(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-12">
-              <label className="form-label">
-                Instructions
-              </label>
-
-              <textarea
-                className="form-control"
-                rows={3}
-                value={editInstructions}
-                onChange={(e) =>
-                  setEditInstructions(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label">
-                Due Date
-              </label>
-
-              <input
-                type="date"
-                className="form-control"
-                value={editDueDate}
-                onChange={(e) =>
-                  setEditDueDate(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-md-6">
-              <label className="form-label">
-                Due Time
-              </label>
-
-              <input
-                type="time"
-                className="form-control"
-                value={editDueTime}
-                onChange={(e) =>
-                  setEditDueTime(
-                    e.target.value
-                  )
-                }
-              />
-            </div>
-
-            <div className="col-12">
-              <label className="form-label">
-                Replace Attachment
-              </label>
-
-              <input
-                type="file"
-                className="form-control"
-                onChange={(e) =>
-                  setEditAttachment(
-                    e.target.files?.[0] ||
-                      null
-                  )
-                }
-              />
-
-              <small className="text-muted">
-                Leave empty to keep the
-                current attachment.
-              </small>
-            </div>
-
-            <div className="col-12">
-              <div className="form-check">
-                <input
-                  id={`edit-published-${assignment.id}`}
-                  type="checkbox"
-                  className="form-check-input"
-                  checked={editPublished}
-                  onChange={(e) =>
-                    setEditPublished(
-                      e.target.checked
-                    )
-                  }
-                />
-
-                <label
-                  htmlFor={`edit-published-${assignment.id}`}
-                  className="form-check-label"
-                >
-                  Published
-                </label>
-              </div>
-            </div>
-
-            <div className="col-12">
-              <div className="d-flex gap-2">
-
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  disabled={
-                    savingId ===
-                      assignment.id ||
-                    !editTitle.trim() ||
-                    !editDueDate
-                  }
-                  onClick={() =>
-                    handleUpdateAssignment(
-                      assignment.id
-                    )
-                  }
-                >
-                  {savingId ===
-                  assignment.id
-                    ? "Saving..."
-                    : "Save Changes"}
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary btn-sm"
-                  onClick={cancelEditing}
-                  disabled={
-                    savingId ===
-                    assignment.id
-                  }
-                >
-                  Cancel
-                </button>
-
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-    </div>
-  </div>
-))}
+                  <div>
+                    <strong>
+                      {
+                        assignments.filter(
+                          (assignment) => !assignment.is_published
+                        ).length
+                      }
+                    </strong>
+                    <span>Drafts</span>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
+
+              {loading ? (
+                <div className="teacher-assignment-empty">
+                  Loading assignments...
+                </div>
+              ) : assignments.length === 0 ? (
+                <div className="teacher-assignment-empty">
+                  <span className="teacher-assignment-empty-icon">
+                    <TeacherIcon name="assignments" size={24} />
+                  </span>
+                  <h6>No assignments yet</h6>
+                  <p>Create your first assignment using the form above.</p>
+                </div>
+              ) : (
+                <div className="teacher-assignment-list">
+                  {assignments.map((assignment) => (
+                    <article
+                      className="teacher-assignment-card"
+                      key={assignment.id}
+                    >
+                      <div className="teacher-assignment-card-main">
+                        <div className="teacher-assignment-title-wrap">
+                          <span className="teacher-assignment-icon">
+                            <TeacherIcon name="assignments" size={20} />
+                          </span>
+
+                          <div className="teacher-assignment-title-content">
+                            <div className="teacher-assignment-title-row">
+                              <h6>{assignment.title}</h6>
+                              <span
+                                className={
+                                  assignment.is_published
+                                    ? "teacher-assignment-status published"
+                                    : "teacher-assignment-status draft"
+                                }
+                              >
+                                {assignment.is_published
+                                  ? "Published"
+                                  : "Draft"}
+                              </span>
+                            </div>
+
+                            <div className="teacher-assignment-context">
+                              <span>{assignment.classroom_name}</span>
+                              <span>{assignment.section_name}</span>
+                              <span>{assignment.subject_name}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {assignment.instructions && (
+                          <p className="teacher-assignment-instructions">
+                            {assignment.instructions}
+                          </p>
+                        )}
+
+                        <div className="teacher-assignment-meta-grid">
+                          <div className="teacher-assignment-meta">
+                            <span className="teacher-assignment-meta-icon">
+                              <TeacherIcon name="calendar" size={17} />
+                            </span>
+                            <div>
+                              <small>Due date</small>
+                              <strong>
+                                {formatAssignmentDate(assignment.due_date)}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="teacher-assignment-meta">
+                            <span className="teacher-assignment-meta-icon">
+                              <TeacherIcon name="clock" size={17} />
+                            </span>
+                            <div>
+                              <small>Due time</small>
+                              <strong>
+                                {assignment.due_time
+                                  ? assignment.due_time.slice(0, 5)
+                                  : "No time set"}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="teacher-assignment-meta">
+                            <span className="teacher-assignment-meta-icon">
+                              <TeacherIcon name="students" size={17} />
+                            </span>
+                            <div>
+                              <small>Submissions</small>
+                              <strong>
+                                {assignment.submission_count} received
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="teacher-assignment-meta">
+                            <span className="teacher-assignment-meta-icon">
+                              <TeacherIcon name="documents" size={17} />
+                            </span>
+                            <div>
+                              <small>Attachment</small>
+                              <strong>
+                                {assignment.has_attachment
+                                  ? "File attached"
+                                  : "No attachment"}
+                              </strong>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="teacher-assignment-card-actions">
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={() =>
+                            router.push(
+                              `/teacher/assignments/${assignment.id}/submissions`
+                            )
+                          }
+                        >
+                          View Submissions
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-outline-secondary btn-sm"
+                          onClick={() => startEditing(assignment)}
+                          disabled={deletingId === assignment.id}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          className="btn btn-outline-danger btn-sm"
+                          onClick={() =>
+                            handleDeleteAssignment(assignment)
+                          }
+                          disabled={
+                            deletingId === assignment.id ||
+                            savingId === assignment.id
+                          }
+                        >
+                          {deletingId === assignment.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
+                      </div>
+
+                      {editingId === assignment.id && (
+                        <div className="teacher-assignment-edit">
+                          <div className="teacher-assignment-edit-heading">
+                            <span>EDIT ASSIGNMENT</span>
+                            <h6>Update assignment details</h6>
+                          </div>
+
+                          <div className="row g-3">
+                            <div className="col-12">
+                              <label className="form-label">
+                                Assignment Title
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={editTitle}
+                                onChange={(e) =>
+                                  setEditTitle(e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div className="col-12">
+                              <label className="form-label">
+                                Instructions
+                              </label>
+                              <textarea
+                                className="form-control"
+                                rows={3}
+                                value={editInstructions}
+                                onChange={(e) =>
+                                  setEditInstructions(e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div className="col-md-6">
+                              <label className="form-label">
+                                Due Date
+                              </label>
+                              <input
+                                type="date"
+                                className="form-control"
+                                value={editDueDate}
+                                onChange={(e) =>
+                                  setEditDueDate(e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div className="col-md-6">
+                              <label className="form-label">
+                                Due Time
+                              </label>
+                              <input
+                                type="time"
+                                className="form-control"
+                                value={editDueTime}
+                                onChange={(e) =>
+                                  setEditDueTime(e.target.value)
+                                }
+                              />
+                            </div>
+
+                            <div className="col-12">
+                              <label className="form-label">
+                                Replace Attachment
+                              </label>
+                              <input
+                                type="file"
+                                className="form-control"
+                                onChange={(e) =>
+                                  setEditAttachment(
+                                    e.target.files?.[0] || null
+                                  )
+                                }
+                              />
+                              <small className="text-muted">
+                                Leave empty to keep the current attachment.
+                              </small>
+                            </div>
+
+                            <div className="col-12">
+                              <div className="form-check">
+                                <input
+                                  id={`edit-published-${assignment.id}`}
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={editPublished}
+                                  onChange={(e) =>
+                                    setEditPublished(e.target.checked)
+                                  }
+                                />
+                                <label
+                                  htmlFor={`edit-published-${assignment.id}`}
+                                  className="form-check-label"
+                                >
+                                  Published
+                                </label>
+                              </div>
+                            </div>
+
+                            <div className="col-12">
+                              <div className="d-flex gap-2 flex-wrap">
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm"
+                                  disabled={
+                                    savingId === assignment.id ||
+                                    !editTitle.trim() ||
+                                    !editDueDate
+                                  }
+                                  onClick={() =>
+                                    handleUpdateAssignment(assignment.id)
+                                  }
+                                >
+                                  {savingId === assignment.id
+                                    ? "Saving..."
+                                    : "Save Changes"}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  className="btn btn-outline-secondary btn-sm"
+                                  onClick={cancelEditing}
+                                  disabled={savingId === assignment.id}
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
 
           </div>
         </div>
