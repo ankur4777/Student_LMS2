@@ -855,6 +855,12 @@ class StudentAssignmentsAPIView(APIView):
                 "has_attachment":
                     bool(assignment.attachment),
 
+                "attachment_filename": (
+                    assignment.attachment.name.split("/")[-1]
+                    if assignment.attachment
+                    else None
+                ),
+
                 "submitted":
                     submission is not None,
 
@@ -877,6 +883,97 @@ class StudentAssignmentsAPIView(APIView):
             "count": len(data),
             "assignments": data,
         })
+class StudentAssignmentAttachmentAPIView(APIView):
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "assignments"
+
+    def get(self, request, assignment_id):
+        user = request.user
+
+        if user.role != "student":
+            return Response(
+                {"detail": "Only students can access assignment files."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        student_profile = StudentProfile.objects.filter(
+            user=user
+        ).first()
+
+        if not student_profile:
+            return Response(
+                {"detail": "Student profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        enrollment = StudentEnrollment.objects.filter(
+            student=student_profile,
+            is_active=True,
+            section__organization=user.organization,
+        ).select_related(
+            "section",
+            "section__classroom",
+        ).first()
+
+        if not enrollment:
+            return Response(
+                {"detail": "No active enrollment found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        assignment = Assignment.objects.filter(
+            id=assignment_id,
+            organization=user.organization,
+            teacher_assignment__section=enrollment.section,
+            teacher_assignment__is_active=True,
+            is_published=True,
+        ).select_related(
+            "teacher_assignment__subject",
+            "teacher_assignment__section",
+        ).first()
+
+        if not assignment:
+            return Response(
+                {"detail": "Assignment not found or access denied."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not student_studies_subject(
+            student_profile,
+            assignment.teacher_assignment.subject,
+        ):
+            return Response(
+                {"detail": "You are not enrolled in this subject."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not assignment.attachment:
+            return Response(
+                {"detail": "This assignment has no attachment."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            file_handle = assignment.attachment.open("rb")
+        except FileNotFoundError:
+            return Response(
+                {"detail": "Attachment file not found on server."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        filename = assignment.attachment.name.split("/")[-1]
+        content_type, _ = mimetypes.guess_type(filename)
+
+        response = FileResponse(
+            file_handle,
+            content_type=content_type or "application/octet-stream",
+            as_attachment=True,
+            filename=filename,
+        )
+
+        return response
+
+
 class StudentAssignmentSubmitAPIView(APIView):
     permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
     student_feature_key = "assignments"
