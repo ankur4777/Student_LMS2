@@ -786,6 +786,16 @@ class StudentLoginAPIView(APIView):
                     if user.organization
                     else None
                 ),
+                'organization_code': (
+                    user.organization.code
+                    if user.organization
+                    else None
+                ),
+                'organization_logo': (
+                    request.build_absolute_uri(user.organization.logo.url)
+                    if user.organization and user.organization.logo
+                    else ""
+                ),
             }
         })
 class TeacherDashboardView(APIView):
@@ -1527,6 +1537,16 @@ class TeacherLoginAPIView(APIView):
                     if user.organization
                     else None
                 ),
+                'organization_code': (
+                    user.organization.code
+                    if user.organization
+                    else None
+                ),
+                'organization_logo': (
+                    request.build_absolute_uri(user.organization.logo.url)
+                    if user.organization and user.organization.logo
+                    else ""
+                ),
             }
         })
 
@@ -1585,6 +1605,11 @@ class CollegeAdminLoginAPIView(APIView):
                 "role": user.role,
                 "organization": user.organization.name,
                 "organization_code": user.organization.code,
+                "organization_logo": (
+                    request.build_absolute_uri(user.organization.logo.url)
+                    if user.organization.logo
+                    else ""
+                ),
             }
         })
 
@@ -2162,6 +2187,40 @@ def serialize_college_admin_institution(organization, request):
         "is_active": organization.is_active,
         "status": "active" if organization.is_active else "inactive",
     }
+
+
+class OrganizationBrandingAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        organization = user.organization
+
+        if not organization:
+            return Response(
+                {"detail": "Organization not found for this account."},
+                status=404,
+            )
+
+        if not organization.is_active:
+            return Response(
+                {"detail": "This organization is inactive."},
+                status=403,
+            )
+
+        return Response(
+            {
+                "name": organization.name,
+                "code": organization.code,
+                "logo": (
+                    request.build_absolute_uri(organization.logo.url)
+                    if organization.logo
+                    else ""
+                ),
+                "primary_color": organization.primary_color,
+                "secondary_color": organization.secondary_color,
+            }
+        )
 
 
 class CollegeAdminInstitutionSettingsAPIView(APIView):
