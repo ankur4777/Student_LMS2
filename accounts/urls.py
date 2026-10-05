@@ -38,6 +38,7 @@ from .views import (
     PasswordResetConfirmAPIView,
     PasswordResetRequestAPIView,
     ChangePasswordAPIView,
+    OrganizationBrandingAPIView,
 )
 
 urlpatterns = [
@@ -45,6 +46,11 @@ urlpatterns = [
         'change-password/',
         ChangePasswordAPIView.as_view(),
         name='change-password',
+    ),
+    path(
+        'organization-branding/',
+        OrganizationBrandingAPIView.as_view(),
+        name='organization-branding',
     ),
     path(
         'password-reset/request/',
