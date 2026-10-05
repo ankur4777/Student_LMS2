@@ -15,6 +15,7 @@ interface StudentUser {
   username?: string;
   name?: string;
   organization?: string;
+  profile_picture?: string;
 }
 
 interface StudentProfile {
@@ -28,6 +29,7 @@ interface StudentProfile {
   address: string;
   date_of_birth: string | null;
   admission_date: string | null;
+  profile_picture: string;
 }
 
 interface Enrollment {
@@ -72,6 +74,10 @@ export default function StudentProfilePage() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pictureFile, setPictureFile] = useState<File | null>(null);
+  const [picturePreview, setPicturePreview] = useState("");
+  const [uploadingPicture, setUploadingPicture] = useState(false);
+  const [pictureMessage, setPictureMessage] = useState("");
 
   const clearStudentSession = useCallback(() => {
     localStorage.removeItem("student_access_token");
@@ -125,8 +131,32 @@ export default function StudentProfilePage() {
         }
 
         if (isMounted) {
-          setProfile(result.profile || null);
+          const loadedProfile = result.profile || null;
+          setProfile(loadedProfile);
           setEnrollment(result.enrollment || null);
+
+          if (loadedProfile) {
+            try {
+              const saved = JSON.parse(
+                localStorage.getItem("student_user") || "{}"
+              );
+              localStorage.setItem(
+                "student_user",
+                JSON.stringify({
+                  ...saved,
+                  name: loadedProfile.name,
+                  organization: loadedProfile.organization,
+                  profile_picture:
+                    loadedProfile.profile_picture || "",
+                })
+              );
+              window.dispatchEvent(
+                new Event("student:profile-updated")
+              );
+            } catch {
+              // Ignore invalid cached user data.
+            }
+          }
         }
       } catch (err) {
         if (isMounted && err instanceof Error) {
@@ -145,6 +175,134 @@ export default function StudentProfilePage() {
       isMounted = false;
     };
   }, [clearStudentSession, getToken, router]);
+
+  const handlePictureChange = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0] || null;
+    setPictureMessage("");
+    setError("");
+
+    if (!file) {
+      setPictureFile(null);
+      setPicturePreview("");
+      return;
+    }
+
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(
+        file.type
+      )
+    ) {
+      setError("Please choose a JPG, PNG, or WebP image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Profile picture must be 5 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+
+    if (picturePreview.startsWith("blob:")) {
+      URL.revokeObjectURL(picturePreview);
+    }
+
+    setPictureFile(file);
+    setPicturePreview(URL.createObjectURL(file));
+  };
+
+  const uploadProfilePicture = async () => {
+    if (!pictureFile) {
+      setError("Please choose a profile picture first.");
+      return;
+    }
+
+    const token = getToken();
+    if (!token) {
+      return;
+    }
+
+    try {
+      setUploadingPicture(true);
+      setError("");
+      setPictureMessage("");
+
+      const formData = new FormData();
+      formData.append("profile_picture", pictureFile);
+
+      const response = await fetch(
+        `${API_BASE}/api/accounts/student/profile/`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        }
+      );
+
+      if (response.status === 401) {
+        clearStudentSession();
+        router.replace("/student/login");
+        return;
+      }
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          result?.detail || "Unable to update profile picture."
+        );
+      }
+
+      const nextPicture = result.profile_picture || "";
+
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              profile_picture: nextPicture,
+            }
+          : current
+      );
+
+      if (picturePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(picturePreview);
+      }
+
+      setPictureFile(null);
+      setPicturePreview("");
+      setPictureMessage(
+        result.message || "Profile picture updated successfully."
+      );
+
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("student_user") || "{}"
+        );
+        localStorage.setItem(
+          "student_user",
+          JSON.stringify({
+            ...saved,
+            profile_picture: nextPicture,
+          })
+        );
+        window.dispatchEvent(
+          new Event("student:profile-updated")
+        );
+      } catch {
+        // Ignore invalid cached user data.
+      }
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      }
+    } finally {
+      setUploadingPicture(false);
+    }
+  };
 
   return (
     <div className="student-dashboard">
@@ -173,7 +331,7 @@ export default function StudentProfilePage() {
               </h2>
 
               <p className="text-muted mb-0">
-                View your student account and academic details.
+                View your student account and academic details, and update your profile picture.
               </p>
             </div>
 
@@ -191,6 +349,74 @@ export default function StudentProfilePage() {
               </div>
             ) : (
               <>
+                <div className="card border-0 shadow-sm mb-4">
+                  <div className="card-body p-4">
+                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+                      <div>
+                        <h5 className="fw-bold mb-1">
+                          Profile Picture
+                        </h5>
+                        <p className="text-muted small mb-0">
+                          Upload a JPG, PNG, or WebP image up to 5 MB.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="d-flex align-items-center flex-wrap gap-4">
+                      <div
+                        className="rounded-circle border bg-light d-flex align-items-center justify-content-center overflow-hidden"
+                        style={{ width: 112, height: 112 }}
+                      >
+                        {picturePreview || profile?.profile_picture ? (
+                          <img
+                            src={
+                              picturePreview ||
+                              profile?.profile_picture ||
+                              ""
+                            }
+                            alt="Student profile"
+                            className="w-100 h-100"
+                            style={{ objectFit: "cover" }}
+                          />
+                        ) : (
+                          <span className="fw-bold fs-3 text-muted">
+                            {(profile?.name || "S")
+                              .trim()
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex-grow-1" style={{ minWidth: 260 }}>
+                        <input
+                          className="form-control mb-3"
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handlePictureChange}
+                        />
+
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          disabled={!pictureFile || uploadingPicture}
+                          onClick={uploadProfilePicture}
+                        >
+                          {uploadingPicture
+                            ? "Uploading..."
+                            : "Update Profile Picture"}
+                        </button>
+
+                        {pictureMessage && (
+                          <div className="text-success small mt-2">
+                            {pictureMessage}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="card border-0 shadow-sm mb-4">
                   <div className="card-body p-4">
                     <h5 className="fw-bold mb-4">
