@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ProductCredit from "@/components/common/ProductCredit";
+import OrganizationBrand from "@/components/common/OrganizationBrand";
 import TeacherIcon, { TeacherIconName } from "@/components/teacher/TeacherIcon";
 
 type TeacherNavItem = {
@@ -90,13 +91,11 @@ export default function TeacherSidebar() {
         className={`teacher-sidebar teacher-portal-sidebar ${open ? "sidebar-open" : ""}`}
       >
         <div className="teacher-sidebar-brand teacher-portal-brand">
-          <span className="teacher-brand-logo">
-            <TeacherIcon name="school" size={22} />
-          </span>
-          <div>
-            <strong>Shabdd LMS</strong>
-            <small>Teacher Portal</small>
-          </div>
+          <OrganizationBrand
+            tokenKey="teacher_access_token"
+            userStorageKey="teacher_user"
+            portalLabel="Teacher Portal"
+          />
         </div>
 
         <nav className="teacher-sidebar-nav teacher-portal-nav">
