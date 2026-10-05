@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -642,6 +643,73 @@ class SubjectSpecificAssignmentAccessTests(APITestCase):
             response.data["assignments"][0]["id"],
             self.assignment.id,
         )
+
+
+    def test_student_assignment_list_exposes_attachment_filename(self):
+        self.assignment.attachment = SimpleUploadedFile(
+            "worksheet.pdf",
+            b"assignment file",
+            content_type="application/pdf",
+        )
+        self.assignment.save(update_fields=["attachment"])
+
+        self.client.force_authenticate(user=self.included_user)
+
+        response = self.client.get(reverse("student-assignments"))
+
+        self.assertEqual(response.status_code, 200)
+        assignment_data = response.data["assignments"][0]
+        self.assertTrue(assignment_data["has_attachment"])
+        self.assertEqual(
+            assignment_data["attachment_filename"],
+            "worksheet.pdf",
+        )
+
+    def test_student_can_download_teacher_assignment_attachment(self):
+        self.assignment.attachment = SimpleUploadedFile(
+            "worksheet.pdf",
+            b"assignment file",
+            content_type="application/pdf",
+        )
+        self.assignment.save(update_fields=["attachment"])
+
+        self.client.force_authenticate(user=self.included_user)
+
+        response = self.client.get(
+            reverse(
+                "student-assignment-attachment",
+                args=[self.assignment.id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'attachment; filename="worksheet.pdf"',
+            response["Content-Disposition"],
+        )
+        self.assertEqual(
+            b"".join(response.streaming_content),
+            b"assignment file",
+        )
+
+    def test_excluded_student_cannot_download_subject_attachment(self):
+        self.assignment.attachment = SimpleUploadedFile(
+            "worksheet.pdf",
+            b"assignment file",
+            content_type="application/pdf",
+        )
+        self.assignment.save(update_fields=["attachment"])
+
+        self.client.force_authenticate(user=self.excluded_user)
+
+        response = self.client.get(
+            reverse(
+                "student-assignment-attachment",
+                args=[self.assignment.id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def test_excluded_student_cannot_submit_subject_assignment(self):
         self.client.force_authenticate(user=self.excluded_user)
