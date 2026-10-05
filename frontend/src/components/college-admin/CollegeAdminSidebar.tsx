@@ -141,10 +141,42 @@ const menuSections: MenuSection[] = [
   },
 ];
 
+interface OrganizationBranding {
+  name: string;
+  logo: string;
+}
+
+function getSavedBranding(): OrganizationBranding {
+  if (typeof window === "undefined") {
+    return {
+      name: "Shabdd LMS",
+      logo: "",
+    };
+  }
+
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem("college_admin_user") || "{}"
+    );
+
+    return {
+      name: saved.organization || "Shabdd LMS",
+      logo: saved.organization_logo || "",
+    };
+  } catch {
+    return {
+      name: "Shabdd LMS",
+      logo: "",
+    };
+  }
+}
+
 export default function CollegeAdminSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [branding, setBranding] =
+    useState<OrganizationBranding>(getSavedBranding);
 
   const isActive = useCallback(
     (href: string) => {
@@ -211,6 +243,78 @@ export default function CollegeAdminSidebar() {
     });
   }, [loadUnreadCount]);
 
+  const loadOrganizationBranding = useCallback(async () => {
+    const token = localStorage.getItem("college_admin_access_token");
+
+    if (!token) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/accounts/college-admin/institution-settings/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          cache: "no-store",
+        }
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const result = await response.json();
+
+      const nextBranding = {
+        name: result.name || "Shabdd LMS",
+        logo: result.logo || "",
+      };
+
+      setBranding(nextBranding);
+
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("college_admin_user") || "{}"
+        );
+
+        localStorage.setItem(
+          "college_admin_user",
+          JSON.stringify({
+            ...saved,
+            organization: nextBranding.name,
+            organization_logo: nextBranding.logo,
+          })
+        );
+      } catch {
+        // Ignore local cache errors.
+      }
+    } catch {
+      // Keep the saved fallback branding.
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadOrganizationBranding();
+
+    const handleOrganizationUpdated = () => {
+      void loadOrganizationBranding();
+    };
+
+    window.addEventListener(
+      "lms:organization-updated",
+      handleOrganizationUpdated
+    );
+
+    return () => {
+      window.removeEventListener(
+        "lms:organization-updated",
+        handleOrganizationUpdated
+      );
+    };
+  }, [loadOrganizationBranding]);
+
   const toggleGroup = (key: string) => {
     setOpenGroup((current) => (current === key ? null : key));
   };
@@ -242,8 +346,36 @@ export default function CollegeAdminSidebar() {
         }}
       >
         <div className="teacher-sidebar-brand">
-          Shabdd LMS
-          <div className="small text-muted fw-normal mt-1">College Admin</div>
+          <div className="college-admin-brand">
+            {branding.logo ? (
+              <img
+                src={branding.logo}
+                alt={`${branding.name} logo`}
+                className="college-admin-brand-logo"
+              />
+            ) : (
+              <div
+                className="college-admin-brand-fallback"
+                aria-hidden="true"
+              >
+                {branding.name
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0]?.toUpperCase())
+                  .join("") || "LMS"}
+              </div>
+            )}
+
+            <div className="college-admin-brand-copy">
+              <div className="college-admin-brand-name">
+                {branding.name}
+              </div>
+              <div className="small text-muted fw-normal mt-1">
+                College Admin
+              </div>
+            </div>
+          </div>
         </div>
 
         <nav className="teacher-sidebar-nav college-admin-grouped-nav">
