@@ -39,6 +39,7 @@ interface Assignment {
   teacher_name: string;
 
   has_attachment: boolean;
+  attachment_filename: string | null;
 
   submitted: boolean;
   submission: Submission | null;
@@ -69,6 +70,8 @@ export default function StudentAssignmentsPage() {
     useState<File | null>(null);
 
   const [submittingId, setSubmittingId] =
+    useState<number | null>(null);
+  const [downloadingAttachmentId, setDownloadingAttachmentId] =
     useState<number | null>(null);
 
   const [message, setMessage] = useState("");
@@ -315,6 +318,71 @@ export default function StudentAssignmentsPage() {
     }
   };
 
+  const handleDownloadAttachment = async (
+    assignment: Assignment
+  ) => {
+    const token = localStorage.getItem("student_access_token");
+
+    if (!token) {
+      router.replace("/student/login");
+      return;
+    }
+
+    try {
+      setDownloadingAttachmentId(assignment.id);
+      setError("");
+
+      const response = await fetch(
+        `${API_BASE}/api/assignments/student/${assignment.id}/attachment/`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        clearStudentSession();
+        router.replace("/student/login");
+        return;
+      }
+
+      if (!response.ok) {
+        const contentType = response.headers.get("content-type");
+        let detail = "Unable to download assignment attachment.";
+
+        if (contentType?.includes("application/json")) {
+          const result = await response.json();
+          detail = result?.detail || detail;
+        }
+
+        throw new Error(detail);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+
+      anchor.href = url;
+      anchor.download =
+        assignment.attachment_filename ||
+        `assignment-${assignment.id}-attachment`;
+
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to download assignment attachment."
+      );
+    } finally {
+      setDownloadingAttachmentId(null);
+    }
+  };
+
   const formatDue = (assignment: Assignment) => {
     if (assignment.due_time) {
       return `${assignment.due_date} at ${assignment.due_time.slice(
@@ -501,9 +569,22 @@ export default function StudentAssignmentsPage() {
 
                         <div className="d-flex flex-wrap gap-2 mb-3">
                           {assignment.has_attachment && (
-                            <span className="badge text-bg-light">
-                              Teacher Attachment
-                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary btn-sm"
+                              onClick={() =>
+                                void handleDownloadAttachment(assignment)
+                              }
+                              disabled={
+                                downloadingAttachmentId === assignment.id
+                              }
+                            >
+                              {downloadingAttachmentId === assignment.id
+                                ? "Downloading..."
+                                : assignment.attachment_filename
+                                  ? `Download ${assignment.attachment_filename}`
+                                  : "Download Teacher Attachment"}
+                            </button>
                           )}
 
                           {assignment.submission && (
