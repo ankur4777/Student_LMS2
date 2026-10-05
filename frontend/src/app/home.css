@@ -60,17 +60,13 @@
   color: inherit;
 }
 
-.lms-home-brand-mark {
-  width: 46px;
+.lms-home-brand-logo {
+  width: 112px;
   height: 46px;
-  display: grid;
-  place-items: center;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #ff4b42, #ed2f27);
-  color: #fff;
-  font-size: 21px;
-  font-weight: 800;
-  box-shadow: 0 10px 28px rgba(239, 68, 68, 0.22);
+  display: block;
+  object-fit: contain;
+  object-position: left center;
+  flex: 0 0 auto;
 }
 
 .lms-home-brand strong,
@@ -337,6 +333,11 @@
 
   .lms-home-header {
     min-height: 78px;
+  }
+
+  .lms-home-brand-logo {
+    width: 86px;
+    height: 38px;
   }
 
   .lms-home-brand small,
