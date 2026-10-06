@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import { formatTime12Hour } from "@/utils/time";
 
 import "../../teacher/dashboard/dashboard.css";
 
@@ -77,10 +78,6 @@ function statusClass(status: string) {
 
 function formatStatus(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function formatTime(value: string) {
-  return value ? value.slice(0, 5) : "-";
 }
 
 export default function CollegeAdminLiveClassesPage() {
@@ -397,8 +394,8 @@ export default function CollegeAdminLiveClassesPage() {
                           </td>
                           <td>{item.class_date}</td>
                           <td>
-                            {formatTime(item.start_time)} -{" "}
-                            {formatTime(item.end_time)}
+                            {formatTime12Hour(item.start_time)} -{" "}
+                            {formatTime12Hour(item.end_time)}
                           </td>
                           <td>
                             <span className={statusClass(item.status)}>
