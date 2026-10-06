@@ -7,6 +7,7 @@ from rest_framework.test import APITestCase
 
 from academics.models import (
     AcademicSession,
+    ClassFeatureAccess,
     ClassRoom,
     ParentStudent,
     Section,
@@ -258,6 +259,24 @@ class NotificationEmailTests(APITestCase):
             parent=self.parent,
             student=self.student,
             relationship=ParentStudent.Relationship.FATHER,
+        )
+
+    def test_parent_notification_api_respects_class_feature_toggle(self):
+        ClassFeatureAccess.objects.create(
+            organization=self.org,
+            classroom=self.classroom,
+            feature_key=ClassFeatureAccess.Feature.NOTIFICATIONS,
+            is_enabled=True,
+            parent_enabled=False,
+        )
+        self.client.force_authenticate(user=self.parent_user)
+
+        response = self.client.get(reverse("notification-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            str(response.data["detail"]),
+            "This feature has been restricted for parents of this class.",
         )
 
     def test_new_notification_sends_email_with_lms_link(self):
