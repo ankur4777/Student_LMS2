@@ -9,6 +9,7 @@ import StudentTopbar from "@/components/student/studentTopbar";
 import StudentFeatureRestricted, {
   isClassFeatureRestricted,
 } from "@/components/student/StudentFeatureRestricted";
+import { formatTime12Hour } from "@/utils/time";
 
 import "../dashboard/dashboard.css";
 
@@ -405,8 +406,8 @@ export default function StudentRecordedClassesPage() {
                               Date: {recording.class_date}
                             </p>
                             <p className="small mb-3">
-                              Time: {recording.start_time} -{" "}
-                              {recording.end_time}
+                              Time: {formatTime12Hour(recording.start_time)} -{" "}
+                              {formatTime12Hour(recording.end_time)}
                             </p>
 
                             {recording.recording_public_id && (
