@@ -9,6 +9,7 @@ import SecureVideoPlayer from "@/components/student/SecureVideoPlayer";
 import StudentIcon from "@/components/student/StudentIcon";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
+import { formatTime12Hour } from "@/utils/time";
 
 import "./dashboard.css";
 
@@ -442,8 +443,8 @@ export default function StudentDashboard() {
                               </small>
 
                               <small>
-                                {liveClass.start_time} -{" "}
-                                {liveClass.end_time}
+                                {formatTime12Hour(liveClass.start_time)} -{" "}
+                                {formatTime12Hour(liveClass.end_time)}
                               </small>
                             </div>
 
