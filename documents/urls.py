@@ -4,6 +4,8 @@ from .views import (
     CollegeAdminDocumentDetailAPIView,
     CollegeAdminDocumentDownloadAPIView,
     CollegeAdminDocumentListAPIView,
+    ParentStudentDocumentDownloadAPIView,
+    ParentStudentDocumentListAPIView,
     StudentDocumentDownloadAPIView,
     StudentDocumentListAPIView,
     TeacherDocumentDetailAPIView,
@@ -29,6 +31,16 @@ urlpatterns = [
         "college-admin/<int:document_id>/download/",
         CollegeAdminDocumentDownloadAPIView.as_view(),
         name="college-admin-document-download",
+    ),
+    path(
+        "parent/student/<int:student_id>/",
+        ParentStudentDocumentListAPIView.as_view(),
+        name="parent-student-document-list",
+    ),
+    path(
+        "parent/student/<int:student_id>/<int:document_id>/download/",
+        ParentStudentDocumentDownloadAPIView.as_view(),
+        name="parent-student-document-download",
     ),
     path(
         "student/",
