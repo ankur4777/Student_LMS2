@@ -159,6 +159,13 @@ export default function CollegeAdminDocumentDetailPage() {
       }
 
       if (!response.ok) {
+        const contentType = response.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const result = await response.json().catch(() => ({}));
+          throw new Error(
+            result?.detail || "Unable to download document."
+          );
+        }
         throw new Error("Unable to download document.");
       }
 
