@@ -2,7 +2,7 @@ from pathlib import Path
 
 from django.http import FileResponse
 from django.utils import timezone
-from academics.feature_access import StudentClassFeaturePermission
+from academics.feature_access import ParentChildFeaturePermission, StudentClassFeaturePermission
 from academics.subject_access import subject_access_filter, student_studies_subject
 
 from rest_framework import status
@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from notifications.services import notify_document_published
 
 from accounts.models import StudentProfile, TeacherProfile
-from academics.models import StudentEnrollment, TeacherAssignment
+from academics.models import ParentStudent, StudentEnrollment, TeacherAssignment
 
 from .models import ALLOWED_DOCUMENT_EXTENSIONS, Document
 
@@ -174,6 +174,26 @@ def student_enrollment_for(user):
     ).first()
 
     return student_profile, enrollment
+
+
+def parent_student_link_for(user, student_id):
+    if (
+        user.role != "parent"
+        or not user.is_active
+        or not user.organization
+        or not user.organization.is_active
+    ):
+        return None
+
+    return ParentStudent.objects.filter(
+        parent__user=user,
+        parent__user__organization=user.organization,
+        student_id=student_id,
+        student__user__organization=user.organization,
+    ).select_related(
+        "student",
+        "student__user",
+    ).first()
 
 
 def teacher_assignments(user, teacher_profile):
@@ -356,6 +376,117 @@ class CollegeAdminDocumentDownloadAPIView(CollegeAdminDocumentDetailAPIView):
             return Response(
                 {"detail": "Document not found."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+
+        filename = Path(document.file.name).name
+
+        return FileResponse(
+            document.file.open("rb"),
+            as_attachment=True,
+            filename=filename,
+        )
+
+
+class ParentStudentDocumentListAPIView(APIView):
+    permission_classes = [IsAuthenticated, ParentChildFeaturePermission]
+    parent_feature_key = "documents"
+
+    def get(self, request, student_id):
+        link = parent_student_link_for(request.user, student_id)
+
+        if not link:
+            return Response(
+                {"detail": "Student is not linked to this parent."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        enrollment = get_student_profile_active_enrollment(
+            link.student,
+            request.user.organization,
+        )
+
+        if not enrollment:
+            return Response(
+                {"detail": "Active enrollment not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        documents = Document.objects.filter(
+            organization=request.user.organization,
+            is_published=True,
+            teacher_assignment__section=enrollment.section,
+            teacher_assignment__section__organization=request.user.organization,
+        ).filter(
+            subject_access_filter(
+                "teacher_assignment__subject",
+                link.student,
+            )
+        ).select_related(
+            "teacher_assignment",
+            "teacher_assignment__subject",
+            "teacher_assignment__teacher",
+            "teacher_assignment__teacher__user",
+            "teacher_assignment__section",
+            "teacher_assignment__section__classroom",
+        ).order_by("-created_at")
+
+        return Response({
+            "documents": [
+                serialize_student_document(document)
+                for document in documents
+            ]
+        })
+
+
+class ParentStudentDocumentDownloadAPIView(APIView):
+    permission_classes = [IsAuthenticated, ParentChildFeaturePermission]
+    parent_feature_key = "documents"
+
+    def get(self, request, student_id, document_id):
+        link = parent_student_link_for(request.user, student_id)
+
+        if not link:
+            return Response(
+                {"detail": "Student is not linked to this parent."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        enrollment = get_student_profile_active_enrollment(
+            link.student,
+            request.user.organization,
+        )
+
+        if not enrollment:
+            return Response(
+                {"detail": "Active enrollment not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        document = Document.objects.filter(
+            id=document_id,
+            organization=request.user.organization,
+            is_published=True,
+            teacher_assignment__section=enrollment.section,
+            teacher_assignment__section__organization=request.user.organization,
+        ).select_related(
+            "teacher_assignment",
+            "teacher_assignment__subject",
+            "teacher_assignment__section",
+        ).first()
+
+        if not document or not document.file:
+            return Response(
+                {"detail": "Document not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not student_studies_subject(
+            link.student,
+            document.teacher_assignment.subject,
+        ):
+            return Response(
+                {"detail": "Your child is not enrolled in this subject."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         filename = Path(document.file.name).name
