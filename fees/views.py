@@ -25,6 +25,7 @@ from academics.models import AcademicSession, ClassRoom, ParentStudent, Section,
 from accounts.models import ParentProfile, StudentProfile
 
 from .models import (
+    ZERO,
     FeeComponent,
     FeeInstallment,
     FeePayment,
@@ -1526,6 +1527,165 @@ class StudentFeePaymentProofAPIView(APIView):
         except OSError:
             LOGGER.exception(
                 "Unable to store fee payment proof for student fee %s",
+                student_fee.id,
+            )
+            return Response(
+                {
+                    "detail": (
+                        "The server could not store the payment proof file. "
+                        "Please contact the administrator."
+                    )
+                },
+                status=500,
+            )
+
+        return Response(
+            {
+                "message": (
+                    "Payment proof submitted. It is pending college verification."
+                ),
+                "payment_proof": serialize_payment_proof(proof),
+            },
+            status=201,
+        )
+
+
+class ParentFeePaymentProofAPIView(APIView):
+    permission_classes = [IsAuthenticated, ParentChildFeaturePermission]
+    parent_feature_key = "fees"
+
+    def post(self, request, student_id, student_fee_id):
+        user = request.user
+
+        if (
+            user.role != "parent"
+            or not user.is_active
+            or not user.organization
+        ):
+            return Response(
+                {"detail": "Only parents can submit fee proof."},
+                status=403,
+            )
+
+        parent = ParentProfile.objects.filter(
+            user=user,
+            user__organization=user.organization,
+        ).first()
+        if not parent:
+            return Response(
+                {"detail": "Parent profile not found."},
+                status=404,
+            )
+
+        link = ParentStudent.objects.filter(
+            parent=parent,
+            student_id=student_id,
+            student__user__organization=user.organization,
+        ).select_related(
+            "student",
+            "student__user",
+        ).first()
+        if not link:
+            return Response(
+                {"detail": "Student is not linked to this parent."},
+                status=403,
+            )
+
+        student_fee = StudentFee.objects.filter(
+            id=student_fee_id,
+            student=link.student,
+            organization=user.organization,
+        ).first()
+        if not student_fee:
+            return Response(
+                {"detail": "Fee not found."},
+                status=404,
+            )
+
+        if student_fee.outstanding_amount <= ZERO:
+            return Response(
+                {"detail": "This fee is already paid."},
+                status=400,
+            )
+
+        if FeePaymentProof.objects.filter(
+            student_fee=student_fee,
+            status=FeePaymentProof.Status.PENDING,
+        ).exists():
+            return Response(
+                {
+                    "detail": (
+                        "A payment proof is already pending verification."
+                    )
+                },
+                status=400,
+            )
+
+        proof_document = request.FILES.get("proof_document")
+        if not proof_document:
+            return Response(
+                {"detail": "Payment proof document is required."},
+                status=400,
+            )
+
+        allowed_types = {
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        }
+        if proof_document.content_type not in allowed_types:
+            return Response(
+                {
+                    "detail": (
+                        "Upload a PDF, JPG, PNG or WEBP proof document."
+                    )
+                },
+                status=400,
+            )
+
+        if proof_document.size > 5 * 1024 * 1024:
+            return Response(
+                {"detail": "Proof document must be 5 MB or smaller."},
+                status=400,
+            )
+
+        amount, error = parse_money(
+            request.data.get("amount"),
+            "amount",
+        )
+        if error or not amount or amount <= ZERO:
+            return Response(
+                {"detail": "Enter a valid payment amount."},
+                status=400,
+            )
+
+        if amount > student_fee.outstanding_amount:
+            return Response(
+                {
+                    "detail": (
+                        "Payment amount cannot exceed outstanding balance."
+                    )
+                },
+                status=400,
+            )
+
+        proof = FeePaymentProof(
+            organization=user.organization,
+            student_fee=student_fee,
+            submitted_by=user,
+            amount=amount,
+            proof_document=proof_document,
+        )
+
+        try:
+            proof.full_clean()
+            proof.save()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except OSError:
+            LOGGER.exception(
+                "Unable to store parent fee payment proof for student fee %s",
                 student_fee.id,
             )
             return Response(
