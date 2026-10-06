@@ -2,7 +2,11 @@ from pathlib import Path
 
 from django.http import FileResponse
 from django.utils import timezone
-from academics.feature_access import ParentChildFeaturePermission, StudentClassFeaturePermission
+from academics.feature_access import (
+    ParentChildFeaturePermission,
+    StudentClassFeaturePermission,
+    get_student_profile_active_enrollment,
+)
 from academics.subject_access import subject_access_filter, student_studies_subject
 
 from rest_framework import status
