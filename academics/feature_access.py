@@ -12,7 +12,9 @@ PARENT_FEATURE_KEYS = {
     "attendance",
     "assignments",
     "results",
+    "documents",
     "fees",
+    "notifications",
     "recorded_courses",
 }
 
@@ -147,6 +149,43 @@ def get_parent_child_feature_map(user, student_id):
     return feature_map, classroom
 
 
+def parent_feature_is_enabled_for_any_child(user, feature_key):
+    if feature_key not in PARENT_FEATURE_KEYS:
+        return True
+
+    if getattr(user, "role", None) != "parent":
+        return True
+
+    if (
+        not user.is_active
+        or not user.organization
+        or not user.organization.is_active
+    ):
+        return False
+
+    student_ids = ParentStudent.objects.filter(
+        parent__user=user,
+        parent__user__organization=user.organization,
+        student__user__organization=user.organization,
+    ).values_list("student_id", flat=True)
+
+    student_ids = list(student_ids)
+
+    if not student_ids:
+        return True
+
+    for student_id in student_ids:
+        allowed = parent_child_feature_is_enabled(
+            user,
+            student_id,
+            feature_key,
+        )
+        if allowed is True:
+            return True
+
+    return False
+
+
 def student_feature_is_enabled(user, feature_key):
     valid_keys = {
         definition["key"]
@@ -250,3 +289,26 @@ class ParentChildFeaturePermission(BasePermission):
             return True
 
         return allowed
+
+
+class ParentAnyChildFeaturePermission(BasePermission):
+    message = "This feature has been restricted for parents of this class."
+
+    def has_permission(self, request, view):
+        user = request.user
+
+        if not user or not user.is_authenticated:
+            return False
+
+        if getattr(user, "role", None) != "parent":
+            return True
+
+        feature_key = getattr(view, "parent_feature_key", None)
+
+        if not feature_key:
+            return True
+
+        return parent_feature_is_enabled_for_any_child(
+            user,
+            feature_key,
+        )
