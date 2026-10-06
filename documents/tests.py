@@ -325,3 +325,98 @@ class CollegeAdminDocumentAPITests(APITestCase):
 
         self.assertEqual(student_response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(student_response.data["documents"]), 1)
+
+    def test_teacher_can_upload_image_and_excel_documents(self):
+        self.authenticate(self.teacher_user)
+
+        for filename, content_type in [
+            ("diagram.jpg", "image/jpeg"),
+            (
+                "marks.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+        ]:
+            with self.subTest(filename=filename):
+                response = self.client.post(
+                    reverse("teacher-document-upload"),
+                    {
+                        "teacher_assignment_id": self.teacher_assignment.id,
+                        "title": filename,
+                        "description": "Class resource",
+                        "document_type": Document.Type.STUDY_MATERIAL,
+                        "is_published": "true",
+                        "file": SimpleUploadedFile(
+                            filename,
+                            b"sample file content",
+                            content_type=content_type,
+                        ),
+                    },
+                    format="multipart",
+                )
+
+                self.assertEqual(
+                    response.status_code,
+                    status.HTTP_201_CREATED,
+                )
+                self.assertTrue(
+                    Document.objects.filter(
+                        organization=self.org,
+                        uploaded_by=self.teacher_user,
+                        title=filename,
+                    ).exists()
+                )
+
+    def test_teacher_can_upload_additional_common_file_formats(self):
+        self.authenticate(self.teacher_user)
+
+        for filename, content_type in [
+            ("notes.csv", "text/csv"),
+            ("presentation.odp", "application/vnd.oasis.opendocument.presentation"),
+            ("lesson.mp3", "audio/mpeg"),
+            ("resource.zip", "application/zip"),
+        ]:
+            with self.subTest(filename=filename):
+                response = self.client.post(
+                    reverse("teacher-document-upload"),
+                    {
+                        "teacher_assignment_id": self.teacher_assignment.id,
+                        "title": filename,
+                        "document_type": Document.Type.OTHER,
+                        "file": SimpleUploadedFile(
+                            filename,
+                            b"sample file content",
+                            content_type=content_type,
+                        ),
+                    },
+                    format="multipart",
+                )
+
+                self.assertEqual(
+                    response.status_code,
+                    status.HTTP_201_CREATED,
+                )
+
+    def test_teacher_document_upload_rejects_unsafe_executable_files(self):
+        self.authenticate(self.teacher_user)
+
+        response = self.client.post(
+            reverse("teacher-document-upload"),
+            {
+                "teacher_assignment_id": self.teacher_assignment.id,
+                "title": "Unsafe file",
+                "document_type": Document.Type.OTHER,
+                "file": SimpleUploadedFile(
+                    "program.exe",
+                    b"not-an-executable",
+                    content_type="application/octet-stream",
+                ),
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_400_BAD_REQUEST,
+        )
+        self.assertIn("Unsupported file type", response.data["detail"])
+
