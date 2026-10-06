@@ -748,6 +748,20 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
         self.assertFalse(StudentFee.objects.filter(student=self.other_student).exists())
         self.assertFalse(StudentFee.objects.filter(student=same_org_other_student).exists())
 
+    def test_duplicate_individual_fee_assignment_returns_clear_error(self):
+        structure = self.make_structure()
+
+        first = self.assign_student_fee(structure)
+        second = self.assign_student_fee(structure)
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(
+            second.data["detail"],
+            "This fee structure is already assigned to this student.",
+        )
+        self.assertEqual(StudentFee.objects.count(), 1)
+
     def test_student_fee_detail_cross_tenant_blocked(self):
         foreign_structure = self.make_structure(self.other_org)
         foreign_fee = StudentFee.objects.create(
