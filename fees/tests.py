@@ -1,8 +1,9 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from academics.models import (
@@ -761,6 +762,42 @@ class CollegeAdminFeeStructureAPITests(APITestCase):
             "This fee structure is already assigned to this student.",
         )
         self.assertEqual(StudentFee.objects.count(), 1)
+
+    def test_fine_is_blocked_until_due_date_has_passed(self):
+        structure = self.make_structure()
+        future_due_date = (
+            timezone.localdate() + timedelta(days=1)
+        ).isoformat()
+
+        response = self.assign_student_fee(
+            structure,
+            fine_amount="100.00",
+            due_date=future_due_date,
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(
+            "Fine can only be added after the due date has passed.",
+            str(response.data.get("fine_amount")),
+        )
+        self.assertFalse(StudentFee.objects.exists())
+
+    def test_fine_is_allowed_after_due_date_has_passed(self):
+        structure = self.make_structure()
+        past_due_date = (
+            timezone.localdate() - timedelta(days=1)
+        ).isoformat()
+
+        response = self.assign_student_fee(
+            structure,
+            fine_amount="100.00",
+            due_date=past_due_date,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        student_fee = StudentFee.objects.get()
+        self.assertEqual(student_fee.fine_amount, Decimal("100.00"))
+        self.assertEqual(student_fee.payable_amount, Decimal("1600.00"))
 
     def test_student_fee_detail_cross_tenant_blocked(self):
         foreign_structure = self.make_structure(self.other_org)
