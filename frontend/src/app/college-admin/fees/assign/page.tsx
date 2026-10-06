@@ -129,6 +129,22 @@ function apiErrorMessage(result: unknown, fallback: string) {
   return fallback;
 }
 
+function dueDateHasPassed(value: string) {
+  if (!value) {
+    return false;
+  }
+
+  const dueDate = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(dueDate.getTime())) {
+    return false;
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return dueDate.getTime() < today.getTime();
+}
+
 function money(value: string | number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -250,10 +266,17 @@ export default function AssignFeePage() {
     () => structures.find((item) => String(item.id) === structureId),
     [structureId, structures],
   );
+  const fineEnabled = dueDateHasPassed(dueDate);
   const payable = Math.max(
     0,
-    Number(structure?.total_amount || 0) - Number(discount || 0) + Number(fine || 0),
+    Number(structure?.total_amount || 0) - Number(discount || 0) + Number(fineEnabled ? fine || 0 : 0),
   );
+
+  useEffect(() => {
+    if (!fineEnabled && fine !== "0") {
+      setFine("0");
+    }
+  }, [fine, fineEnabled]);
 
   const resetFeeDetails = () => {
     setStructureId("");
@@ -355,7 +378,7 @@ export default function AssignFeePage() {
           academic_session_id: structure.academic_session.id,
           fee_structure_id: structure.id,
           discount_amount: Number(discount || 0).toFixed(2),
-          fine_amount: Number(fine || 0).toFixed(2),
+          fine_amount: Number(fineEnabled ? fine || 0 : 0).toFixed(2),
           due_date: dueDate,
         }),
       });
@@ -400,7 +423,7 @@ export default function AssignFeePage() {
           section_id: sectionId,
           fee_structure_id: structure.id,
           discount_amount: Number(discount || 0).toFixed(2),
-          fine_amount: Number(fine || 0).toFixed(2),
+          fine_amount: Number(fineEnabled ? fine || 0 : 0).toFixed(2),
           due_date: dueDate,
         }),
       });
@@ -481,7 +504,20 @@ export default function AssignFeePage() {
       </div>
       <div className="col-md-4">
         <label className="form-label">Fine</label>
-        <input type="number" min="0" step="0.01" className="form-control" value={fine} onChange={(event) => setFine(event.target.value)} />
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          className="form-control"
+          value={fine}
+          onChange={(event) => setFine(event.target.value)}
+          disabled={!fineEnabled}
+        />
+        {!fineEnabled && (
+          <small className="text-muted">
+            Fine becomes available only after the due date has passed.
+          </small>
+        )}
       </div>
       <div className="col-md-4">
         <label className="form-label">Due Date</label>
