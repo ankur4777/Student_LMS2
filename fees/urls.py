@@ -12,6 +12,7 @@ from .views import (
     CollegeAdminStudentFeesAPIView,
     StudentFeesAPIView,
     ParentStudentFeesAPIView,
+    ParentFeePaymentProofAPIView,
     FeeInvoicePDFAPIView,
     FeeReceiptPDFAPIView,
     StudentFeePaymentProofAPIView,
@@ -40,6 +41,11 @@ urlpatterns = [
         name="college-admin-fee-payment-proof-review",
     ),
     path("parent/student/<int:student_id>/", ParentStudentFeesAPIView.as_view(), name="parent-student-fees"),
+    path(
+        "parent/student/<int:student_id>/fee/<int:student_fee_id>/payment-proof/",
+        ParentFeePaymentProofAPIView.as_view(),
+        name="parent-fee-payment-proof",
+    ),
     path(
         "college-admin/setup/",
         CollegeAdminFeeSetupAPIView.as_view(),
