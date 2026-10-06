@@ -6,8 +6,8 @@ from pathlib import Path
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
-from django.core.validators import FileExtensionValidator
-from django.utils.deconstruct import deconstructible, MinValueValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator
+from django.utils.deconstruct import deconstructible
 from django.db import models
 from django.utils import timezone
 
