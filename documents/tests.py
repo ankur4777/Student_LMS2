@@ -220,6 +220,36 @@ class CollegeAdminDocumentAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+    def test_college_admin_can_download_teacher_uploaded_image(self):
+        image_document = Document.objects.create(
+            organization=self.org,
+            uploaded_by=self.teacher_user,
+            teacher_assignment=self.teacher_assignment,
+            title="Class Image",
+            description="Diagram",
+            document_type=Document.Type.STUDY_MATERIAL,
+            file=SimpleUploadedFile(
+                "diagram.jpeg",
+                b"fake-image-content",
+                content_type="image/jpeg",
+            ),
+            is_published=True,
+        )
+        self.authenticate()
+
+        response = self.client.get(
+            reverse(
+                "college-admin-document-download",
+                kwargs={"document_id": image_document.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(
+            'filename="diagram.jpeg"',
+            response.headers.get("Content-Disposition", ""),
+        )
+
     def test_foreign_document_download_returns_404(self):
         self.authenticate()
 
