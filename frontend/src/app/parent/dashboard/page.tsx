@@ -52,8 +52,10 @@ type ParentFeatureKey =
   | "attendance"
   | "assignments"
   | "results"
+  | "documents"
   | "recorded_courses"
-  | "fees";
+  | "fees"
+  | "notifications";
 
 interface ChildDashboard extends Child {
   attendancePercentage: number | null;
@@ -222,10 +224,14 @@ export default function ParentDashboardPage() {
           accessResult.features?.assignments !== false,
         results:
           accessResult.features?.results !== false,
+        documents:
+          accessResult.features?.documents !== false,
         recorded_courses:
           accessResult.features?.recorded_courses !== false,
         fees:
           accessResult.features?.fees !== false,
+        notifications:
+          accessResult.features?.notifications !== false,
       } satisfies Record<ParentFeatureKey, boolean>;
 
       const [attendance, assignments, results] =
@@ -353,6 +359,13 @@ export default function ParentDashboardPage() {
       featureKey: "results" as const,
     },
     {
+      label: "Documents",
+      description: "View class files and study material",
+      href: "/parent/documents",
+      icon: "documents" as const,
+      featureKey: "documents" as const,
+    },
+    {
       label: "Fees",
       description: "Track payment status",
       href: "/parent/fees",
@@ -365,6 +378,13 @@ export default function ParentDashboardPage() {
       href: "/parent/recorded-courses",
       icon: "courses" as const,
       featureKey: "recorded_courses" as const,
+    },
+    {
+      label: "Notifications",
+      description: "Review academic updates",
+      href: "/parent/notifications",
+      icon: "notifications" as const,
+      featureKey: "notifications" as const,
     },
   ].filter((item) => hasFeatureAccess(item.featureKey));
 
@@ -396,10 +416,12 @@ export default function ParentDashboardPage() {
                   <ParentIcon name="children" size={16} />
                   My Children
                 </Link>
-                <Link className="btn btn-outline-primary" href="/parent/notifications">
-                  <ParentIcon name="notifications" size={16} />
-                  Notifications
-                </Link>
+                {hasFeatureAccess("notifications") && (
+                  <Link className="btn btn-outline-primary" href="/parent/notifications">
+                    <ParentIcon name="notifications" size={16} />
+                    Notifications
+                  </Link>
+                )}
               </div>
             </section>
 
