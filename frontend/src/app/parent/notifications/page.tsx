@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import ParentFeatureRestricted, { isParentClassFeatureRestricted } from "@/components/parent/ParentFeatureRestricted";
 import ParentSidebar from "@/components/parent/ParentSidebar";
 import ParentTopbar from "@/components/parent/ParentTopbar";
 
@@ -68,6 +69,8 @@ export default function ParentNotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const featureRestricted = isParentClassFeatureRestricted(error);
 
   const clearParentSession = useCallback(() => {
     localStorage.removeItem("parent_access_token");
@@ -252,13 +255,15 @@ export default function ParentNotificationsPage() {
               </button>
             </div>
 
-            {error && (
+            {error && !featureRestricted && (
               <div className="alert alert-danger">
                 {error}
               </div>
             )}
 
-            {loading ? (
+            {featureRestricted ? (
+              <ParentFeatureRestricted featureName="Notifications" />
+            ) : loading ? (
               <div className="card border-0 shadow-sm">
                 <div className="card-body py-5 text-center text-muted">
                   Loading notifications...
