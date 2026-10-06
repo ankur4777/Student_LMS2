@@ -5,11 +5,16 @@ from django.db import models
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.core.validators import FileExtensionValidator
+from django.utils.deconstruct import deconstructible
 
 
-private_recording_storage = FileSystemStorage(
-    location=settings.PRIVATE_MEDIA_ROOT
-)
+@deconstructible
+class PrivateRecordingStorage(FileSystemStorage):
+    def __init__(self):
+        super().__init__(location=settings.PRIVATE_MEDIA_ROOT)
+
+
+private_recording_storage = PrivateRecordingStorage()
 
 
 def live_class_recording_upload_path(instance, filename):
