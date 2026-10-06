@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import { formatTime12Hour } from "@/utils/time";
 
 import "../../../teacher/dashboard/dashboard.css";
 
@@ -59,10 +60,6 @@ function getSavedAdmin() {
 
 function formatValue(value?: string | null) {
   return value || "-";
-}
-
-function formatTime(value: string) {
-  return value ? value.slice(0, 5) : "-";
 }
 
 function statusClass(status: string) {
@@ -262,13 +259,13 @@ export default function CollegeAdminLiveClassDetailPage() {
                       <div className="col-md-4">
                         <div className="text-muted small">Start Time</div>
                         <div className="fw-semibold">
-                          {formatTime(liveClass.start_time)}
+                          {formatTime12Hour(liveClass.start_time)}
                         </div>
                       </div>
                       <div className="col-md-4">
                         <div className="text-muted small">End Time</div>
                         <div className="fw-semibold">
-                          {formatTime(liveClass.end_time)}
+                          {formatTime12Hour(liveClass.end_time)}
                         </div>
                       </div>
                       <div className="col-12">
