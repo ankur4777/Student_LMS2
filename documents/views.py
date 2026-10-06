@@ -15,10 +15,28 @@ from notifications.services import notify_document_published
 from accounts.models import StudentProfile, TeacherProfile
 from academics.models import StudentEnrollment, TeacherAssignment
 
-from .models import Document
+from .models import ALLOWED_DOCUMENT_EXTENSIONS, Document
 
 
 MAX_DOCUMENT_SIZE = 20 * 1024 * 1024
+
+
+def validate_document_upload(upload):
+    extension = Path(upload.name).suffix.lower().lstrip(".")
+
+    if not extension or extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        supported = ", ".join(
+            f".{item}" for item in ALLOWED_DOCUMENT_EXTENSIONS
+        )
+        return (
+            "Unsupported file type. Supported formats: "
+            f"{supported}."
+        )
+
+    if upload.size > MAX_DOCUMENT_SIZE:
+        return "File size cannot exceed 20 MB."
+
+    return None
 
 
 def teacher_profile_for(user):
@@ -434,9 +452,10 @@ class TeacherDocumentUploadAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if upload.size > MAX_DOCUMENT_SIZE:
+        upload_error = validate_document_upload(upload)
+        if upload_error:
             return Response(
-                {"detail": "File size cannot exceed 20 MB."},
+                {"detail": upload_error},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
