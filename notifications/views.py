@@ -1,4 +1,7 @@
-from academics.feature_access import StudentClassFeaturePermission
+from academics.feature_access import (
+    ParentAnyChildFeaturePermission,
+    StudentClassFeaturePermission,
+)
 
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -28,8 +31,13 @@ def user_notifications(user):
 
 
 class NotificationListAPIView(APIView):
-    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        StudentClassFeaturePermission,
+        ParentAnyChildFeaturePermission,
+    ]
     student_feature_key = "notifications"
+    parent_feature_key = "notifications"
 
     def get(self, request):
         notifications = user_notifications(request.user)
@@ -43,8 +51,13 @@ class NotificationListAPIView(APIView):
 
 
 class NotificationUnreadCountAPIView(APIView):
-    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        StudentClassFeaturePermission,
+        ParentAnyChildFeaturePermission,
+    ]
     student_feature_key = "notifications"
+    parent_feature_key = "notifications"
 
     def get(self, request):
         unread_count = user_notifications(request.user).filter(
@@ -57,8 +70,13 @@ class NotificationUnreadCountAPIView(APIView):
 
 
 class NotificationMarkReadAPIView(APIView):
-    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        StudentClassFeaturePermission,
+        ParentAnyChildFeaturePermission,
+    ]
     student_feature_key = "notifications"
+    parent_feature_key = "notifications"
 
     def patch(self, request, notification_id):
         notification = user_notifications(request.user).filter(
@@ -82,8 +100,13 @@ class NotificationMarkReadAPIView(APIView):
 
 
 class NotificationMarkAllReadAPIView(APIView):
-    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    permission_classes = [
+        IsAuthenticated,
+        StudentClassFeaturePermission,
+        ParentAnyChildFeaturePermission,
+    ]
     student_feature_key = "notifications"
+    parent_feature_key = "notifications"
 
     def patch(self, request):
         notifications = user_notifications(request.user).filter(
