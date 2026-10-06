@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
 import AdminIcon, { AdminIconName } from "@/components/college-admin/AdminIcon";
+import { formatTime12Hour } from "@/utils/time";
 
 import "../../teacher/dashboard/dashboard.css";
 import "./college-admin-dashboard.css";
@@ -144,11 +145,6 @@ function formatDate(value?: string | null) {
     month: "short",
     year: "numeric",
   });
-}
-
-function formatTime(value?: string | null) {
-  if (!value) return "";
-  return value.slice(0, 5);
 }
 
 function money(value?: string | number | null) {
@@ -756,7 +752,7 @@ export default function CollegeAdminDashboardPage() {
                       data.recent_live_classes.slice(0, 3).map((item) => (
                         <div className="cad-activity-row" key={`${item.title}-${item.class_date}-${item.start_time}`}>
                           <div><strong>{item.title}</strong><small>{contextLine(item)}</small></div>
-                          <span>{formatDate(item.class_date)} {formatTime(item.start_time)}</span>
+                          <span>{formatDate(item.class_date)} {formatTime12Hour(item.start_time)}</span>
                         </div>
                       ))
                     ) : <div className="cad-empty-state compact">No recent live classes.</div>}
