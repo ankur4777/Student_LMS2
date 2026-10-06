@@ -946,6 +946,16 @@ class CollegeAdminStudentFeesAPIView(APIView):
         if error:
             return Response(error, status=status_code)
 
+        if StudentFee.objects.filter(
+            student=values["student"],
+            academic_session=values["academic_session"],
+            fee_structure=values["fee_structure"],
+        ).exists():
+            return Response(
+                {"detail": "This fee structure is already assigned to this student."},
+                status=400,
+            )
+
         try:
             student_fee = StudentFee(organization=organization, **values)
             student_fee.full_clean()
@@ -954,7 +964,10 @@ class CollegeAdminStudentFeesAPIView(APIView):
         except ValidationError as exc:
             return validation_error_response(exc)
         except IntegrityError:
-            return Response({"detail": "Fee already assigned to this student."}, status=400)
+            return Response(
+                {"detail": "This fee structure is already assigned to this student."},
+                status=400,
+            )
 
         return Response({"student_fee": serialize_student_fee(student_fee, True)}, status=201)
 
