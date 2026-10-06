@@ -8,7 +8,9 @@ from rest_framework.test import APITestCase
 
 from academics.models import (
     AcademicSession,
+    ClassFeatureAccess,
     ClassRoom,
+    ParentStudent,
     Section,
     StudentEnrollment,
     Subject,
@@ -64,7 +66,9 @@ class CollegeAdminDocumentAPITests(APITestCase):
             user=self.student_user,
             admission_number="S-1",
         )
-        ParentProfile.objects.create(user=self.parent_user)
+        self.parent = ParentProfile.objects.create(
+            user=self.parent_user
+        )
 
         self.session = AcademicSession.objects.create(
             organization=self.org,
@@ -96,6 +100,11 @@ class CollegeAdminDocumentAPITests(APITestCase):
             student=self.student,
             section=self.section,
             roll_number="5",
+        )
+        ParentStudent.objects.create(
+            parent=self.parent,
+            student=self.student,
+            relationship=ParentStudent.Relationship.GUARDIAN,
         )
         self.document = Document.objects.create(
             organization=self.org,
@@ -288,6 +297,55 @@ class CollegeAdminDocumentAPITests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 0)
+
+    def test_parent_can_list_and_download_published_child_documents(self):
+        self.authenticate(self.parent_user)
+
+        list_response = self.client.get(
+            reverse(
+                "parent-student-document-list",
+                kwargs={"student_id": self.student.id},
+            )
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        ids = [item["id"] for item in list_response.data["documents"]]
+        self.assertIn(self.document.id, ids)
+
+        download_response = self.client.get(
+            reverse(
+                "parent-student-document-download",
+                kwargs={
+                    "student_id": self.student.id,
+                    "document_id": self.document.id,
+                },
+            )
+        )
+
+        self.assertEqual(download_response.status_code, status.HTTP_200_OK)
+
+    def test_parent_document_access_respects_class_feature_toggle(self):
+        ClassFeatureAccess.objects.create(
+            organization=self.org,
+            classroom=self.classroom,
+            feature_key=ClassFeatureAccess.Feature.DOCUMENTS,
+            is_enabled=True,
+            parent_enabled=False,
+        )
+        self.authenticate(self.parent_user)
+
+        response = self.client.get(
+            reverse(
+                "parent-student-document-list",
+                kwargs={"student_id": self.student.id},
+            )
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            str(response.data["detail"]),
+            "This feature has been restricted for parents of this class.",
+        )
 
     def test_student_denied(self):
         self.authenticate(self.student_user)
