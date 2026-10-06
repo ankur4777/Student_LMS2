@@ -8,6 +8,7 @@ import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import TeacherTopbar from "@/components/teacher/TeacherTopbar";
 import TeacherIcon from "@/components/teacher/TeacherIcon";
 import NoticeFeed from "@/components/notices/NoticeFeed";
+import { formatTime12Hour } from "@/utils/time";
 
 import "./dashboard.css";
 
@@ -336,7 +337,7 @@ export default function TeacherDashboard() {
                             {liveClass.subject_name} · {liveClass.section_name}
                           </small>
                           <div className="teacher-class-meta">
-                            <span>{liveClass.start_time} - {liveClass.end_time}</span>
+                            <span>{formatTime12Hour(liveClass.start_time)} - {formatTime12Hour(liveClass.end_time)}</span>
                             <span>{liveClass.status}</span>
                           </div>
                         </div>
