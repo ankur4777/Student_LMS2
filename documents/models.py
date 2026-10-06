@@ -12,6 +12,37 @@ private_document_storage = FileSystemStorage(
 )
 
 
+ALLOWED_DOCUMENT_EXTENSIONS = [
+    "pdf",
+    "doc",
+    "docx",
+    "odt",
+    "rtf",
+    "txt",
+    "md",
+    "xls",
+    "xlsx",
+    "csv",
+    "ods",
+    "ppt",
+    "pptx",
+    "odp",
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+    "gif",
+    "bmp",
+    "mp3",
+    "wav",
+    "m4a",
+    "mp4",
+    "mov",
+    "webm",
+    "zip",
+]
+
+
 def document_upload_path(instance, filename):
     filename = Path(filename).name
 
@@ -60,16 +91,7 @@ class Document(models.Model):
         storage=private_document_storage,
         validators=[
             FileExtensionValidator(
-                allowed_extensions=[
-                    'pdf',
-                    'doc',
-                    'docx',
-                    'ppt',
-                    'pptx',
-                    'xls',
-                    'xlsx',
-                    'txt',
-                ]
+                allowed_extensions=ALLOWED_DOCUMENT_EXTENSIONS
             )
         ],
     )
