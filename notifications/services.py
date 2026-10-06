@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
 
+from academics.feature_access import parent_child_feature_is_enabled
 from academics.models import ParentStudent, StudentEnrollment
 from academics.subject_access import eligible_enrollments_for_subject
 from accounts.models import User
@@ -405,6 +406,20 @@ def notify_document_published(document):
     )
 
     for link in parent_links:
+        if not parent_child_feature_is_enabled(
+            link.parent.user,
+            link.student_id,
+            "documents",
+        ):
+            continue
+
+        if not parent_child_feature_is_enabled(
+            link.parent.user,
+            link.student_id,
+            "notifications",
+        ):
+            continue
+
         create_notification(
             organization=organization,
             user=link.parent.user,
@@ -414,7 +429,7 @@ def notify_document_published(document):
                 "published for your child."
             ),
             notification_type=Notification.Type.GENERAL,
-            related_url="/parent/dashboard",
+            related_url="/parent/documents",
         )
 
     college_admins = User.objects.filter(
