@@ -16,8 +16,10 @@ type ParentFeatureKey =
   | "attendance"
   | "assignments"
   | "results"
+  | "documents"
   | "recorded_courses"
-  | "fees";
+  | "fees"
+  | "notifications";
 
 type ParentNavItem = {
   label: string;
@@ -72,6 +74,12 @@ const navSections: ParentNavSection[] = [
         icon: "results",
         featureKey: "results",
       },
+      {
+        label: "Documents",
+        href: "/parent/documents",
+        icon: "documents",
+        featureKey: "documents",
+      },
     ],
   },
   {
@@ -103,6 +111,7 @@ const navSections: ParentNavSection[] = [
         label: "Notifications",
         href: "/parent/notifications",
         icon: "notifications",
+        featureKey: "notifications",
       },
     ],
   },
@@ -122,8 +131,10 @@ const parentFeatureKeys: ParentFeatureKey[] = [
   "attendance",
   "assignments",
   "results",
+  "documents",
   "recorded_courses",
   "fees",
+  "notifications",
 ];
 
 function allParentFeaturesAllowed() {
