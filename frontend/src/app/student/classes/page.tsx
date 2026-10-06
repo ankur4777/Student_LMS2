@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
 import StudentFeatureRestricted, { isClassFeatureRestricted } from "@/components/student/StudentFeatureRestricted";
+import { formatTime12Hour } from "@/utils/time";
 
 import "../dashboard/dashboard.css";
 
@@ -220,7 +221,7 @@ export default function StudentClassesPage() {
                         </p>
 
                         <p className="small mb-3">
-                          Time: {liveClass.start_time} - {liveClass.end_time}
+                          Time: {formatTime12Hour(liveClass.start_time)} - {formatTime12Hour(liveClass.end_time)}
                         </p>
 
                         {liveClass.description && (
