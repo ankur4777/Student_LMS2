@@ -15,6 +15,12 @@ from .models import Notification
 LOGGER = logging.getLogger(__name__)
 
 
+def _format_time_12_hour(value):
+    if not value:
+        return "-"
+    return value.strftime("%I:%M %p").lstrip("0")
+
+
 def _notification_link(notification):
     related_url = str(notification.related_url or "").strip()
     if not related_url:
@@ -552,6 +558,7 @@ def notify_exam_published(exam):
 def notify_live_class_scheduled(live_class):
     teacher_assignment = live_class.teacher_assignment
     organization = live_class.organization
+    start_time = _format_time_12_hour(live_class.start_time)
 
     teacher_user = teacher_assignment.teacher.user
     if teacher_user.organization_id == organization.id:
@@ -562,7 +569,7 @@ def notify_live_class_scheduled(live_class):
             message=(
                 f'Live class "{live_class.title}" has been scheduled '
                 f"for {teacher_assignment.subject.name} on "
-                f"{live_class.class_date} at {live_class.start_time}."
+                f"{live_class.class_date} at {start_time}."
             ),
             notification_type=Notification.Type.LIVE_CLASS,
             related_url="/teacher/classes",
@@ -589,7 +596,7 @@ def notify_live_class_scheduled(live_class):
                 f'A live class "{live_class.title}" has been '
                 f"scheduled for {teacher_assignment.subject.name} "
                 f"on {live_class.class_date} at "
-                f"{live_class.start_time}."
+                f"{start_time}."
             ),
             notification_type=Notification.Type.LIVE_CLASS,
             related_url="/student/dashboard",
