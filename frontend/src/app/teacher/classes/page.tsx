@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import TeacherSidebar from "@/components/teacher/TeacherSidebar";
 import TeacherTopbar from "@/components/teacher/TeacherTopbar";
+import { formatTime12Hour } from "@/utils/time";
 import "../dashboard/dashboard.css";
 
 interface TeacherClass {
@@ -321,8 +322,8 @@ export default function TeacherClassesPage() {
 
                         <div className="small mt-1">
                           <strong>Time:</strong>{" "}
-                          {liveClass.start_time} -{" "}
-                          {liveClass.end_time}
+                          {formatTime12Hour(liveClass.start_time)} -{" "}
+                          {formatTime12Hour(liveClass.end_time)}
                         </div>
 
                         {liveClass.description && (
