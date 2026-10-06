@@ -86,6 +86,49 @@ function savedAdmin(): Admin {
   }
 }
 
+function apiErrorMessage(result: unknown, fallback: string) {
+  if (!result || typeof result !== "object") {
+    return fallback;
+  }
+
+  const payload = result as Record<string, unknown>;
+  const preferredKeys = [
+    "detail",
+    "student",
+    "academic_session",
+    "fee_structure",
+    "enrollment",
+    "due_date",
+    "original_amount",
+    "discount_amount",
+    "fine_amount",
+    "payable_amount",
+    "__all__",
+    "non_field_errors",
+  ];
+
+  for (const key of preferredKeys) {
+    const value = payload[key];
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+    if (Array.isArray(value) && value.length) {
+      return value.map(String).join(", ");
+    }
+  }
+
+  for (const value of Object.values(payload)) {
+    if (typeof value === "string" && value.trim()) {
+      return value;
+    }
+    if (Array.isArray(value) && value.length) {
+      return value.map(String).join(", ");
+    }
+  }
+
+  return fallback;
+}
+
 function money(value: string | number) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -319,8 +362,7 @@ export default function AssignFeePage() {
       const result = await response.json();
 
       if (!response.ok) {
-        const message = result.detail || result.discount_amount || result.fine_amount || "Unable to assign fee.";
-        throw new Error(Array.isArray(message) ? message.join(", ") : String(message));
+        throw new Error(apiErrorMessage(result, "Unable to assign fee."));
       }
 
       router.replace("/college-admin/fees");
@@ -365,7 +407,7 @@ export default function AssignFeePage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.detail || "Unable to assign fees to class.");
+        throw new Error(apiErrorMessage(result, "Unable to assign fees to class."));
       }
 
       setSuccess(result.message || "Fees assigned successfully.");
