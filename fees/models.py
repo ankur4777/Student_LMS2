@@ -224,6 +224,19 @@ class StudentFee(models.Model):
             if getattr(self, field) < ZERO:
                 raise ValidationError({field: "Amount cannot be negative."})
 
+        if (
+            self.fine_amount > ZERO
+            and self.due_date
+            and self.due_date >= timezone.localdate()
+        ):
+            raise ValidationError(
+                {
+                    "fine_amount": (
+                        "Fine can only be added after the due date has passed."
+                    )
+                }
+            )
+
         if self.discount_amount > self.original_amount + self.fine_amount:
             raise ValidationError(
                 {"discount_amount": "Discount cannot exceed fee plus fine."}
