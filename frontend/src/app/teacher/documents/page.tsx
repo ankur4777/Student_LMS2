@@ -10,6 +10,38 @@ import "../dashboard/dashboard.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
 
+const ALLOWED_FILE_EXTENSIONS = [
+  ".pdf",
+  ".doc",
+  ".docx",
+  ".odt",
+  ".rtf",
+  ".txt",
+  ".md",
+  ".xls",
+  ".xlsx",
+  ".csv",
+  ".ods",
+  ".ppt",
+  ".pptx",
+  ".odp",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".gif",
+  ".bmp",
+  ".mp3",
+  ".wav",
+  ".m4a",
+  ".mp4",
+  ".mov",
+  ".webm",
+  ".zip",
+];
+
+const ACCEPTED_FILE_TYPES = ALLOWED_FILE_EXTENSIONS.join(",");
+
 const DOCUMENT_TYPES = [
   { value: "notes", label: "Notes" },
   { value: "syllabus", label: "Syllabus" },
@@ -501,12 +533,18 @@ export default function TeacherDocumentsPage() {
                             <input
                               className="form-control"
                               type="file"
-                              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"
+                              accept={ACCEPTED_FILE_TYPES}
                               onChange={(event) =>
                                 setFile(event.target.files?.[0] || null)
                               }
                               required
                             />
+
+                            <div className="form-text">
+                              PDF, Word, Excel, PowerPoint, images, audio/video,
+                              text/CSV/OpenDocument and ZIP files are supported.
+                              Maximum size: 20 MB.
+                            </div>
                           </div>
 
                           <div className="col-12">
