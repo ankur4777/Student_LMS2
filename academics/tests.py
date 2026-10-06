@@ -532,6 +532,51 @@ class ClassFeatureAccessTests(TestCase):
 
 
 
+    def test_documents_and_notifications_support_parent_toggles(self):
+        self.client.force_authenticate(user=self.admin_a)
+
+        response = self.client.patch(
+            "/api/academics/college-admin/class-feature-access/",
+            {
+                "class_id": self.classroom_a.id,
+                "features": {
+                    "documents": {
+                        "student_enabled": True,
+                        "parent_enabled": False,
+                    },
+                    "notifications": {
+                        "student_enabled": True,
+                        "parent_enabled": False,
+                    },
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        feature_map = {
+            item["key"]: item
+            for item in response.data["features"]
+        }
+        self.assertTrue(feature_map["documents"]["parent_supported"])
+        self.assertTrue(feature_map["notifications"]["parent_supported"])
+        self.assertFalse(feature_map["documents"]["parent_enabled"])
+        self.assertFalse(feature_map["notifications"]["parent_enabled"])
+
+        self.client.force_authenticate(user=self.parent_user)
+        parent_response = self.client.get(
+            (
+                "/api/academics/parent/student/"
+                f"{self.student_profile.id}/feature-access/"
+            )
+        )
+
+        self.assertEqual(parent_response.status_code, 200)
+        self.assertFalse(parent_response.data["features"]["documents"])
+        self.assertFalse(parent_response.data["features"]["notifications"])
+
+
 class ClassCreationWithSectionsTests(TestCase):
     def setUp(self):
         self.client = APIClient()
