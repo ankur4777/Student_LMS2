@@ -358,15 +358,6 @@ class CollegeAdminDocumentDownloadAPIView(CollegeAdminDocumentDetailAPIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if not student_studies_subject(
-            student_profile,
-            document.teacher_assignment.subject,
-        ):
-            return Response(
-                {"detail": "You are not enrolled in this subject."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         filename = Path(document.file.name).name
 
         return FileResponse(
