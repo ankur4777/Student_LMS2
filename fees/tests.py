@@ -2,6 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APITestCase
 
 from academics.models import (
@@ -14,7 +15,7 @@ from academics.models import (
 from accounts.models import ParentProfile, StudentProfile, TeacherProfile
 from institutions.models import Organization
 
-from .models import FeeInstallment, FeePayment, FeeStructure, StudentFee
+from .models import FeeInstallment, FeePayment, FeePaymentProof, FeeStructure, StudentFee
 
 
 User = get_user_model()
@@ -1409,3 +1410,99 @@ class ParentFeesAndDocumentsSecurityTests(APITestCase):
         response = self.client.get(f"/api/fees/documents/receipt/{payment.id}/")
 
         self.assert_denied(response)
+
+    def test_linked_parent_can_submit_fee_payment_proof(self):
+        fee = self.make_fee()
+        self.authenticate(self.parent_user)
+        proof_file = SimpleUploadedFile(
+            "payment-proof.png",
+            b"payment-proof",
+            content_type="image/png",
+        )
+
+        response = self.client.post(
+            (
+                f"/api/fees/parent/student/{self.student.id}/fee/"
+                f"{fee.id}/payment-proof/"
+            ),
+            {
+                "amount": "500.00",
+                "proof_document": proof_file,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        proof = FeePaymentProof.objects.get(student_fee=fee)
+        self.assertEqual(proof.submitted_by, self.parent_user)
+        self.assertEqual(proof.organization, self.org)
+        self.assertEqual(proof.amount, Decimal("500.00"))
+        self.assertEqual(proof.status, FeePaymentProof.Status.PENDING)
+
+    def test_parent_cannot_submit_payment_proof_for_unlinked_student(self):
+        fee = self.make_fee(student=self.same_org_unlinked_student)
+        self.authenticate(self.parent_user)
+        proof_file = SimpleUploadedFile(
+            "payment-proof.png",
+            b"payment-proof",
+            content_type="image/png",
+        )
+
+        response = self.client.post(
+            (
+                f"/api/fees/parent/student/{self.same_org_unlinked_student.id}/"
+                f"fee/{fee.id}/payment-proof/"
+            ),
+            {
+                "amount": "500.00",
+                "proof_document": proof_file,
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(FeePaymentProof.objects.exists())
+
+    def test_parent_payment_proof_rejects_duplicate_pending_submission(self):
+        fee = self.make_fee()
+        self.authenticate(self.parent_user)
+
+        first = self.client.post(
+            (
+                f"/api/fees/parent/student/{self.student.id}/fee/"
+                f"{fee.id}/payment-proof/"
+            ),
+            {
+                "amount": "500.00",
+                "proof_document": SimpleUploadedFile(
+                    "first-proof.png",
+                    b"first-proof",
+                    content_type="image/png",
+                ),
+            },
+            format="multipart",
+        )
+        second = self.client.post(
+            (
+                f"/api/fees/parent/student/{self.student.id}/fee/"
+                f"{fee.id}/payment-proof/"
+            ),
+            {
+                "amount": "400.00",
+                "proof_document": SimpleUploadedFile(
+                    "second-proof.png",
+                    b"second-proof",
+                    content_type="image/png",
+                ),
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(FeePaymentProof.objects.filter(student_fee=fee).count(), 1)
+        self.assertEqual(
+            second.data["detail"],
+            "A payment proof is already pending verification.",
+        )
+
