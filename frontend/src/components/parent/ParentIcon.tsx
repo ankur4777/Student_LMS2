@@ -8,6 +8,7 @@ export type ParentIconName =
   | "results"
   | "courses"
   | "fees"
+  | "documents"
   | "notifications"
   | "profile"
   | "school"
@@ -87,6 +88,13 @@ export default function ParentIcon({
         <svg {...common} className={className}>
           <rect x="2.5" y="5" width="19" height="14" rx="2.5" />
           <path d="M2.5 9h19M15 14h3" />
+        </svg>
+      );
+    case "documents":
+      return (
+        <svg {...common} className={className}>
+          <path d="M6 2h8l4 4v16H6z" />
+          <path d="M14 2v5h5M9 12h6M9 16h6" />
         </svg>
       );
     case "notifications":
