@@ -532,21 +532,35 @@
 
 .recorded-library-panel {
   overflow: hidden;
+  height: auto;
+  padding: clamp(18px, 2.2vw, 28px);
 }
 
 .recorded-library-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 24px;
+  padding-bottom: 20px;
   margin-bottom: 22px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .recorded-library-title-wrap {
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex: 1;
+  gap: 16px;
   min-width: 0;
+}
+
+.recorded-library-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  text-align: left;
 }
 
 .recorded-library-icon {
@@ -564,7 +578,7 @@
 
 .recorded-library-kicker {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 0;
   color: var(--brand-primary);
   font-size: 11px;
   font-weight: 800;
@@ -572,7 +586,7 @@
 }
 
 .recorded-library-heading h5 {
-  margin: 0 0 4px;
+  margin: 0;
   color: var(--text-primary);
   font-size: 19px;
   font-weight: 750;
@@ -580,11 +594,14 @@
 
 .recorded-library-heading p {
   margin: 0;
+  max-width: 65ch;
   color: var(--text-muted);
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .recorded-library-count {
+  flex: 0 0 auto;
   min-width: 78px;
   padding: 9px 12px;
   border: 1px solid var(--border-color);
@@ -614,7 +631,53 @@
 .recorded-course-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  align-items: stretch;
+  gap: 20px;
+}
+
+/* One purchased course uses a horizontal card instead of leaving two
+   empty grid columns. Multiple courses retain the three-column grid. */
+.recorded-course-grid-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.recorded-course-grid-single .recorded-course-card {
+  display: grid;
+  width: 100%;
+  max-width: 1100px;
+  margin-inline: auto;
+  grid-template-columns: minmax(280px, 42%) minmax(0, 1fr);
+}
+
+.recorded-course-grid-single .recorded-course-cover {
+  aspect-ratio: auto;
+  min-height: 310px;
+}
+
+.recorded-course-grid-single .recorded-course-body {
+  padding: 26px;
+}
+
+.recorded-course-grid-single .recorded-course-copy {
+  flex: 0 0 auto;
+}
+
+.recorded-course-grid-single .recorded-course-copy h3 {
+  font-size: 21px;
+}
+
+.recorded-course-grid-single .recorded-course-copy p {
+  -webkit-line-clamp: 3;
+}
+
+.recorded-course-grid-single .recorded-course-meta {
+  margin-top: auto;
+}
+
+.recorded-course-grid-single .recorded-course-meta,
+.recorded-course-grid-single .recorded-course-open {
+  width: 100%;
+  max-width: 460px;
 }
 
 .recorded-course-card {
@@ -717,7 +780,9 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  padding: 18px;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
   text-align: left;
 }
 
@@ -751,8 +816,8 @@
 .recorded-course-meta {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 9px;
-  margin: 16px 0;
+  gap: 10px;
+  margin: 0;
 }
 
 .recorded-course-meta > div {
@@ -787,7 +852,8 @@
 }
 
 .recorded-course-open {
-  min-height: 42px;
+  min-height: 44px;
+  margin-top: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -845,15 +911,63 @@
   font-size: 12px;
 }
 
+/* Regular class recordings keep the same aligned spacing as course cards. */
+.recorded-class-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: left;
+}
+
+.recorded-class-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 12px 0 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.recorded-class-details p {
+  overflow-wrap: anywhere;
+}
+
+.recorded-class-card > .btn {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
 @media (max-width: 1199px) {
-  .recorded-course-grid {
+  .recorded-course-grid:not(.recorded-course-grid-single) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .recorded-course-grid-single .recorded-course-card {
+    max-width: 560px;
+    display: flex;
+  }
+
+  .recorded-course-grid-single .recorded-course-cover {
+    aspect-ratio: 16 / 9;
+    min-height: 0;
+  }
+
+  .recorded-course-grid-single .recorded-course-body {
+    padding: 20px;
+  }
+
+  .recorded-course-grid-single .recorded-course-meta,
+  .recorded-course-grid-single .recorded-course-open {
+    max-width: none;
   }
 }
 
 @media (max-width: 700px) {
   .recorded-library-heading {
     align-items: flex-start;
+    gap: 14px;
   }
 
   .recorded-library-count {
@@ -861,13 +975,22 @@
   }
 
   .recorded-course-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 520px) {
+  .recorded-library-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .recorded-library-title-wrap {
     align-items: flex-start;
+  }
+
+  .recorded-library-count {
+    align-self: flex-end;
   }
 
   .recorded-library-icon {
