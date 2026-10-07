@@ -173,11 +173,22 @@ export default function ParentChildrenPage() {
                         <div className="d-flex justify-content-between align-items-start gap-3 mb-4">
                           <div>
                             <h5 className="fw-bold mb-1">
-                              {child.name}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/parent/children/${child.student_profile_id}`}
+                                title="Open student details"
+                              >
+                                {child.name}
+                              </Link>
                             </h5>
 
                             <div className="text-muted">
-                              {child.username}
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/parent/children/${child.student_profile_id}`}
+                              >
+                                @{child.username}
+                              </Link>
                             </div>
                           </div>
 
@@ -193,7 +204,12 @@ export default function ParentChildrenPage() {
                             </div>
 
                             <div className="fw-semibold">
-                              {child.roll_number || "-"}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/parent/children/${child.student_profile_id}`}
+                              >
+                                {child.roll_number || "-"}
+                              </Link>
                             </div>
                           </div>
 
@@ -239,6 +255,12 @@ export default function ParentChildrenPage() {
                         </div>
 
                         <div className="d-flex flex-wrap gap-2">
+                          <Link
+                            className="btn btn-primary btn-sm"
+                            href={`/parent/children/${child.student_profile_id}`}
+                          >
+                            View Details
+                          </Link>
                           <Link
                             className="btn btn-outline-primary btn-sm"
                             href="/parent/attendance"
