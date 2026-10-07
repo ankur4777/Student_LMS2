@@ -587,6 +587,30 @@ class StudentProfileAPIView(APIView):
             "section__classroom",
         ).first()
 
+        parent_links = ParentStudent.objects.filter(
+            student=student_profile,
+            parent__user__role="parent",
+            parent__user__organization=user.organization,
+        ).select_related(
+            "parent",
+            "parent__user",
+        ).order_by("id")
+
+        parents = [
+            {
+                "name": (
+                    link.parent.user.get_full_name().strip()
+                    or link.parent.user.username
+                ),
+                "relationship": link.relationship,
+                "relationship_label": link.get_relationship_display(),
+                "email": link.parent.user.email,
+                "phone": link.parent.phone,
+                "occupation": link.parent.occupation,
+            }
+            for link in parent_links
+        ]
+
         return Response({
             "profile": {
                 "student_profile_id": student_profile.id,
@@ -613,6 +637,7 @@ class StudentProfileAPIView(APIView):
                     student_profile.profile_picture,
                 ),
             },
+            "parents": parents,
             "enrollment": (
                 {
                     "roll_number": enrollment.roll_number,
