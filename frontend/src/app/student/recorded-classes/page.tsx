@@ -122,52 +122,6 @@ function RecordedCourseThumbnail({
   }, [lessonId]);
 
   if (!lessonId || failed) {
-    async function purchaseRecording(publicId: string) {
-    const token = localStorage.getItem("student_access_token");
-
-    if (!token) {
-      router.replace("/student/login");
-      return;
-    }
-
-    setBusyRecording(publicId);
-    setError("");
-
-    try {
-      const response = await fetch(
-        `${API_BASE}/api/recorded-courses/student/recorded-class-purchases/`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            recording_public_id: publicId,
-          }),
-        }
-      );
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(
-          result?.detail || "Unable to purchase this recorded class."
-        );
-      }
-
-      setRefreshIndex((value) => value + 1);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to purchase this recorded class."
-      );
-    } finally {
-      setBusyRecording(null);
-    }
-  }
-
   return (
       <div
         className="recorded-course-thumbnail recorded-course-thumbnail-fallback"
@@ -306,6 +260,52 @@ export default function StudentRecordedClassesPage() {
 
     void load();
   }, [refreshIndex, router]);
+
+  async function purchaseRecording(publicId: string) {
+    const token = localStorage.getItem("student_access_token");
+
+    if (!token) {
+      router.replace("/student/login");
+      return;
+    }
+
+    setBusyRecording(publicId);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/recorded-courses/student/recorded-class-purchases/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            recording_public_id: publicId,
+          }),
+        }
+      );
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result?.detail || "Unable to purchase this recorded class."
+        );
+      }
+
+      setRefreshIndex((value) => value + 1);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to purchase this recorded class."
+      );
+    } finally {
+      setBusyRecording(null);
+    }
+  }
 
   return (
     <div className="student-dashboard">
