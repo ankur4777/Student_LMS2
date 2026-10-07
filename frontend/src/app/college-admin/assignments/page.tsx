@@ -32,9 +32,13 @@ interface SetupData {
 interface Assignment {
   id: number;
   title: string;
+  teacher_id: number;
   teacher_name: string;
+  subject_id: number;
   subject_name: string;
+  class_id: number;
   classroom_name: string;
+  section_id: number;
   section_name: string;
   due_date: string;
   due_time: string | null;
@@ -361,12 +365,49 @@ export default function CollegeAdminAssignmentsPage() {
                     <tbody>
                       {assignments.map((assignment) => (
                         <tr key={assignment.id}>
-                          <td className="fw-semibold">{assignment.title}</td>
-                          <td>{assignment.teacher_name}</td>
-                          <td>{assignment.subject_name}</td>
+                          <td className="fw-semibold">
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/assignments/${assignment.id}`}
+                              title="Open assignment details"
+                            >
+                              {assignment.title}
+                            </Link>
+                          </td>
                           <td>
-                            {assignment.classroom_name} /{" "}
-                            {assignment.section_name}
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/teachers/${assignment.teacher_id}`}
+                              title="Open teacher details"
+                            >
+                              {assignment.teacher_name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/subjects/${assignment.subject_id}/edit`}
+                              title="Open subject"
+                            >
+                              {assignment.subject_name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/classes/${assignment.class_id}/edit`}
+                              title="Open class"
+                            >
+                              {assignment.classroom_name}
+                            </Link>{" "}
+                            /{" "}
+                            <Link
+                              className="lms-entity-link lms-entity-link-muted"
+                              href={`/college-admin/classes/${assignment.class_id}/edit`}
+                              title="Open class and section"
+                            >
+                              {assignment.section_name}
+                            </Link>
                           </td>
                           <td>
                             {assignment.due_date}
