@@ -893,3 +893,154 @@
   box-shadow: 0 4px 14px rgba(239, 68, 68, .18);
 }
 
+
+
+/* Live class popup */
+.student-ui-scope .student-live-class-popup {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1090;
+  width: min(390px, calc(100vw - 32px));
+  padding: 18px;
+  border: 1px solid #ffd4d4;
+  border-left: 4px solid #ef4444;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, .18);
+  animation: studentLiveClassPopupIn .2s ease-out;
+}
+
+.student-ui-scope .student-live-class-popup-close {
+  position: absolute;
+  top: 10px;
+  right: 11px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f8f9fb;
+  color: #667085;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.student-ui-scope .student-live-class-popup-close:hover {
+  background: #f1f3f5;
+  color: #344054;
+}
+
+.student-ui-scope .student-live-class-popup-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  color: #d92d20;
+  font-size: .66rem;
+  font-weight: 750;
+  letter-spacing: .08em;
+}
+
+.student-ui-scope .student-live-class-popup-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, .35);
+  animation: studentLiveClassPulse 1.6s infinite;
+}
+
+.student-ui-scope .student-live-class-popup h3 {
+  margin: 0 34px 8px 0;
+  color: #1f2937;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.student-ui-scope .student-live-class-popup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-bottom: 14px;
+  color: #667085;
+  font-size: .72rem;
+}
+
+.student-ui-scope .student-live-class-popup-meta span {
+  position: relative;
+}
+
+.student-ui-scope .student-live-class-popup-more {
+  margin: -4px 0 12px;
+  color: #8b95a5;
+  font-size: .68rem;
+}
+
+.student-ui-scope .student-live-class-popup-join {
+  min-height: 40px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 1px solid #ef4444;
+  border-radius: 9px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: .75rem;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.student-ui-scope .student-live-class-popup-join:hover {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.student-ui-scope .student-live-class-popup-join:disabled {
+  border-color: #e5e7eb;
+  background: #f3f4f6;
+  color: #98a2b3;
+  cursor: not-allowed;
+}
+
+@keyframes studentLiveClassPopupIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes studentLiveClassPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, .34);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@media (max-width: 576px) {
+  .student-ui-scope .student-live-class-popup {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    width: auto;
+    padding: 16px;
+  }
+}
