@@ -41,6 +41,9 @@ interface Student {
 
 interface Enrollment {
   enrollment_id: number;
+  academic_session_id: number;
+  class_id: number;
+  section_id: number;
   roll_number: string;
   classroom_name: string;
   section_name: string;
@@ -318,19 +321,47 @@ export default function CollegeAdminStudentDetailPage() {
                           <div className="student-detail-grid">
                             <div className="student-detail-item">
                               <span><AdminIcon name="enrollments" size={14} />Roll Number</span>
-                              <strong>{formatValue(enrollment.roll_number)}</strong>
+                              <strong>
+                                <Link
+                                  className="lms-entity-link"
+                                  href={`/college-admin/enrollments/${enrollment.enrollment_id}/edit`}
+                                >
+                                  {formatValue(enrollment.roll_number)}
+                                </Link>
+                              </strong>
                             </div>
                             <div className="student-detail-item">
                               <span><AdminIcon name="calendar" size={14} />Academic Session</span>
-                              <strong>{enrollment.academic_session}</strong>
+                              <strong>
+                                <Link
+                                  className="lms-entity-link"
+                                  href={`/college-admin/academic-sessions/${enrollment.academic_session_id}/edit`}
+                                >
+                                  {enrollment.academic_session}
+                                </Link>
+                              </strong>
                             </div>
                             <div className="student-detail-item">
                               <span><AdminIcon name="classes" size={14} />Class</span>
-                              <strong>{enrollment.classroom_name}</strong>
+                              <strong>
+                                <Link
+                                  className="lms-entity-link"
+                                  href={`/college-admin/classes/${enrollment.class_id}/edit`}
+                                >
+                                  {enrollment.classroom_name}
+                                </Link>
+                              </strong>
                             </div>
                             <div className="student-detail-item">
                               <span><AdminIcon name="sections" size={14} />Section</span>
-                              <strong>{enrollment.section_name}</strong>
+                              <strong>
+                                <Link
+                                  className="lms-entity-link lms-entity-link-muted"
+                                  href={`/college-admin/classes/${enrollment.class_id}/edit`}
+                                >
+                                  {enrollment.section_name}
+                                </Link>
+                              </strong>
                             </div>
                             <div className="student-detail-item">
                               <span><AdminIcon name="status" size={14} />Enrollment Status</span>
