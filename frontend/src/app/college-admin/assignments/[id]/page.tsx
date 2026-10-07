@@ -21,10 +21,15 @@ interface Assignment {
   id: number;
   title: string;
   instructions: string;
+  teacher_id: number;
   teacher_name: string;
+  subject_id: number;
   subject_name: string;
+  class_id: number;
   classroom_name: string;
+  section_id: number;
   section_name: string;
+  academic_session_id: number;
   academic_session_name: string;
   due_date: string;
   due_time: string | null;
@@ -43,6 +48,8 @@ interface Summary {
 
 interface StudentSubmission {
   student_profile_id: number;
+  student_user_id: number;
+  enrollment_id: number;
   student_name: string;
   username: string;
   roll_number: string;
@@ -217,13 +224,39 @@ export default function CollegeAdminAssignmentDetailPage() {
                     <div className="card border-0 shadow-sm h-100">
                       <div className="card-body">
                         <h5 className="fw-bold">Academic Information</h5>
-                        <div>Subject: {assignment.subject_name}</div>
                         <div>
-                          Class / Section: {assignment.classroom_name} /{" "}
-                          {assignment.section_name}
+                          Subject:{" "}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/subjects/${assignment.subject_id}/edit`}
+                          >
+                            {assignment.subject_name}
+                          </Link>
                         </div>
                         <div>
-                          Session: {assignment.academic_session_name || "-"}
+                          Class / Section:{" "}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/classes/${assignment.class_id}/edit`}
+                          >
+                            {assignment.classroom_name}
+                          </Link>{" "}
+                          /{" "}
+                          <Link
+                            className="lms-entity-link lms-entity-link-muted"
+                            href={`/college-admin/classes/${assignment.class_id}/edit`}
+                          >
+                            {assignment.section_name}
+                          </Link>
+                        </div>
+                        <div>
+                          Session:{" "}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/academic-sessions/${assignment.academic_session_id}/edit`}
+                          >
+                            {assignment.academic_session_name || "-"}
+                          </Link>
                         </div>
                       </div>
                     </div>
@@ -232,7 +265,14 @@ export default function CollegeAdminAssignmentDetailPage() {
                     <div className="card border-0 shadow-sm h-100">
                       <div className="card-body">
                         <h5 className="fw-bold">Teacher Information</h5>
-                        <div>{assignment.teacher_name}</div>
+                        <div>
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/teachers/${assignment.teacher_id}`}
+                          >
+                            {assignment.teacher_name}
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -280,9 +320,32 @@ export default function CollegeAdminAssignmentDetailPage() {
                           <tbody>
                             {students.map((student) => (
                               <tr key={student.student_profile_id}>
-                                <td>{student.student_name}</td>
-                                <td>{student.username}</td>
-                                <td>{student.roll_number || "-"}</td>
+                                <td>
+                                  <Link
+                                    className="lms-entity-link"
+                                    href={`/college-admin/students/${student.student_user_id}`}
+                                  >
+                                    {student.student_name}
+                                  </Link>
+                                </td>
+                                <td>
+                                  <Link
+                                    className="lms-entity-link lms-entity-link-muted"
+                                    href={`/college-admin/students/${student.student_user_id}`}
+                                  >
+                                    {student.username}
+                                  </Link>
+                                </td>
+                                <td>
+                                  {student.roll_number ? (
+                                    <Link
+                                      className="lms-entity-link"
+                                      href={`/college-admin/enrollments/${student.enrollment_id}/edit`}
+                                    >
+                                      {student.roll_number}
+                                    </Link>
+                                  ) : "-"}
+                                </td>
                                 <td>
                                   <span className={statusClass(student.status)}>
                                     {student.status}
