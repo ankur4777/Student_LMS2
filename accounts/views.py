@@ -16,7 +16,11 @@ from django.core.mail import send_mail
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from .models import StudentProfile, User
+from .models import (
+    StudentProfile,
+    User,
+    generate_available_employee_id,
+)
 
 from attendance.models import AttendanceSession, StudentAttendance
 from assignments.models import Assignment, AssignmentSubmission
@@ -2884,7 +2888,20 @@ class CollegeAdminTeachersAPIView(APIView):
                 {"detail": "This email is already used by another teacher account."},
                 status=400,
             )
-        employee_id = request.data.get("employee_id", "").strip()
+        requested_employee_id = str(
+            request.data.get("employee_id", "") or ""
+        ).strip()
+        employee_id_auto = request_boolean(
+            request.data.get(
+                "employee_id_auto",
+                not requested_employee_id,
+            )
+        )
+        employee_id = (
+            None
+            if employee_id_auto or not requested_employee_id
+            else requested_employee_id
+        )
         phone = request.data.get("phone", "").strip()
         qualification = request.data.get("qualification", "").strip()
         joining_date = request.data.get("joining_date") or None
@@ -2892,12 +2909,6 @@ class CollegeAdminTeachersAPIView(APIView):
         if not password:
             return Response(
                 {"detail": "Password is required."},
-                status=400
-            )
-
-        if not employee_id:
-            return Response(
-                {"detail": "Employee ID is required."},
                 status=400
             )
 
@@ -2909,7 +2920,9 @@ class CollegeAdminTeachersAPIView(APIView):
                 status=400
             )
 
-        if TeacherProfile.objects.filter(employee_id=employee_id).exists():
+        if employee_id and TeacherProfile.objects.filter(
+            employee_id__iexact=employee_id
+        ).exists():
             return Response(
                 {"detail": "Employee ID already exists."},
                 status=400
@@ -2926,9 +2939,18 @@ class CollegeAdminTeachersAPIView(APIView):
                 organization=organization,
             )
 
+            resolved_employee_id = (
+                employee_id
+                or generate_available_employee_id(
+                    TeacherProfile,
+                    first_name,
+                    last_name,
+                )
+            )
+
             TeacherProfile.objects.create(
                 user=teacher,
-                employee_id=employee_id,
+                employee_id=resolved_employee_id,
                 phone=phone,
                 qualification=qualification,
                 joining_date=joining_date,
