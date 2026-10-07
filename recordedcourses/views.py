@@ -10,6 +10,7 @@ from academics.feature_access import (
     StudentClassFeaturePermission,
     parent_child_feature_is_enabled,
 )
+from academics.subject_access import subject_access_filter
 
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -18,7 +19,15 @@ from rest_framework.views import APIView
 
 from accounts.models import ParentProfile, StudentProfile
 from academics.models import ParentStudent
-from .models import RecordedCourse, RecordedCourseAccess, RecordedCoursePurchase, RecordedLesson
+from liveclasses.models import LiveClass, LiveClassRecording
+from .models import (
+    RecordedClassAccess,
+    RecordedClassPurchase,
+    RecordedCourse,
+    RecordedCourseAccess,
+    RecordedCoursePurchase,
+    RecordedLesson,
+)
 
 
 def college_admin_organization(user):
@@ -56,6 +65,90 @@ def serialize_course(course, include_lessons=False):
     if include_lessons:
         data["lessons"] = [serialize_lesson(lesson) for lesson in course.lessons.all()]
     return data
+
+
+def serialize_recorded_class_purchase(purchase):
+    recording = purchase.recording
+    live_class = recording.live_class
+    return {
+        "id": purchase.id,
+        "recording": {
+            "id": recording.id,
+            "public_id": recording.public_id,
+            "title": recording.title or live_class.title,
+            "live_class_title": live_class.title,
+            "class_date": live_class.class_date,
+            "subject_name": live_class.teacher_assignment.subject.name,
+        },
+        "student": {
+            "id": purchase.student_id,
+            "name": str(purchase.student),
+            "admission_number": purchase.student.admission_number,
+        },
+        "buyer_type": purchase.buyer_type,
+        "amount": purchase.amount,
+        "status": purchase.status,
+        "payment_method": purchase.payment_method,
+        "payment_reference": purchase.payment_reference,
+        "paid_at": purchase.paid_at,
+        "created_at": purchase.created_at,
+    }
+
+
+def student_recording_for_purchase(student, public_id):
+    return (
+        LiveClassRecording.objects.filter(
+            public_id=public_id,
+            is_available=True,
+            live_class__organization=student.user.organization,
+            live_class__status=LiveClass.Status.COMPLETED,
+            live_class__teacher_assignment__section__student_enrollments__student=student,
+            live_class__teacher_assignment__section__student_enrollments__is_active=True,
+        )
+        .exclude(video="")
+        .filter(
+            subject_access_filter(
+                "live_class__teacher_assignment__subject",
+                student,
+            )
+        )
+        .select_related(
+            "live_class",
+            "live_class__teacher_assignment__subject",
+            "live_class__teacher_assignment__section",
+        )
+        .distinct()
+        .first()
+    )
+
+
+def grant_recorded_class_access(purchase):
+    now = timezone.now()
+    recording = purchase.recording
+
+    access, created = RecordedClassAccess.objects.get_or_create(
+        organization=purchase.organization,
+        recording=recording,
+        student=purchase.student,
+        defaults={
+            "purchase": purchase,
+            "starts_at": now,
+            "is_active": True,
+        },
+    )
+
+    if not created:
+        access.purchase = purchase
+        access.starts_at = now
+        access.expires_at = now + timedelta(
+            days=recording.access_duration_days
+        )
+        access.is_active = True
+        access.revoked_at = None
+        access.revoke_reason = ""
+        access.save()
+
+    return access
 
 
 def parse_price(value):
@@ -377,6 +470,239 @@ class ParentRecordedCourseCatalogAPIView(APIView):
                 for link in children
             ],
             "courses": [serialize_catalog_course(course) for course in courses],
+        })
+
+
+class StudentRecordedClassPurchasesAPIView(APIView):
+    permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
+    student_feature_key = "recorded_classes"
+
+    def get(self, request):
+        student = student_profile_for_user(request.user)
+        if not student:
+            return Response(
+                {"detail": "Only students can access recorded class purchases."},
+                status=403,
+            )
+
+        purchases = RecordedClassPurchase.objects.filter(
+            organization=request.user.organization,
+            student=student,
+            purchased_by_student=student,
+        ).select_related(
+            "recording",
+            "recording__live_class",
+            "recording__live_class__teacher_assignment__subject",
+            "student__user",
+        )
+
+        return Response({
+            "purchases": [
+                serialize_recorded_class_purchase(purchase)
+                for purchase in purchases
+            ]
+        })
+
+    def post(self, request):
+        student = student_profile_for_user(request.user)
+        if not student:
+            return Response(
+                {"detail": "Only students can purchase recorded classes."},
+                status=403,
+            )
+
+        public_id = request.data.get("recording_public_id")
+        recording = student_recording_for_purchase(student, public_id)
+
+        if not recording:
+            return Response(
+                {"detail": "Recorded class not found."},
+                status=404,
+            )
+
+        if recording.price is None:
+            return Response(
+                {
+                    "detail": (
+                        "This recording is not available for purchase yet. "
+                        "The college admin must set a price first."
+                    )
+                },
+                status=400,
+            )
+
+        access = RecordedClassAccess.objects.filter(
+            organization=request.user.organization,
+            recording=recording,
+            student=student,
+        ).first()
+
+        if access and access.has_access:
+            return Response(
+                {"detail": "You already have active access to this recording."},
+                status=400,
+            )
+
+        pending = RecordedClassPurchase.objects.filter(
+            organization=request.user.organization,
+            recording=recording,
+            student=student,
+            status=RecordedClassPurchase.Status.PENDING,
+        ).first()
+
+        if pending:
+            return Response(
+                {
+                    "detail": (
+                        "A purchase for this recording is already pending "
+                        "verification."
+                    )
+                },
+                status=400,
+            )
+
+        with transaction.atomic():
+            purchase = RecordedClassPurchase.objects.create(
+                organization=request.user.organization,
+                recording=recording,
+                student=student,
+                buyer_type=RecordedClassPurchase.BuyerType.STUDENT,
+                purchased_by_student=student,
+                amount=recording.price,
+                status=RecordedClassPurchase.Status.PENDING,
+            )
+
+            granted_access = None
+
+            if recording.price == Decimal("0.00"):
+                purchase.status = RecordedClassPurchase.Status.PAID
+                purchase.payment_method = "free"
+                purchase.paid_at = timezone.now()
+                purchase.save()
+                granted_access = grant_recorded_class_access(purchase)
+
+        payload = {
+            "message": (
+                "Free recording access granted."
+                if granted_access
+                else (
+                    "Purchase created. Access will be granted after "
+                    "payment verification."
+                )
+            ),
+            "purchase": serialize_recorded_class_purchase(purchase),
+        }
+
+        if granted_access:
+            payload["access"] = {
+                "id": granted_access.id,
+                "expires_at": granted_access.expires_at,
+                "is_active": granted_access.has_access,
+            }
+
+        return Response(payload, status=201)
+
+
+class CollegeAdminRecordedClassPurchasesAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can access recorded class "
+                        "purchases."
+                    )
+                },
+                status=403,
+            )
+
+        purchases = RecordedClassPurchase.objects.filter(
+            organization=organization
+        ).select_related(
+            "recording",
+            "recording__live_class",
+            "recording__live_class__teacher_assignment__subject",
+            "student__user",
+            "purchased_by_parent__user",
+            "purchased_by_student__user",
+        )
+
+        return Response({
+            "purchases": [
+                serialize_recorded_class_purchase(purchase)
+                for purchase in purchases
+            ]
+        })
+
+
+class CollegeAdminVerifyRecordedClassPurchaseAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, purchase_id):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response(
+                {"detail": "Only college admins can verify purchases."},
+                status=403,
+            )
+
+        purchase = RecordedClassPurchase.objects.select_related(
+            "recording",
+            "recording__live_class",
+            "recording__live_class__teacher_assignment__subject",
+            "student__user",
+        ).filter(
+            id=purchase_id,
+            organization=organization,
+        ).first()
+
+        if not purchase:
+            return Response(
+                {"detail": "Recorded class purchase not found."},
+                status=404,
+            )
+
+        if purchase.status == RecordedClassPurchase.Status.PAID:
+            return Response(
+                {"detail": "Purchase is already verified."},
+                status=400,
+            )
+
+        payment_method = str(
+            request.data.get("payment_method", "")
+        ).strip()
+        payment_reference = str(
+            request.data.get("payment_reference", "")
+        ).strip()
+
+        if not payment_method:
+            return Response(
+                {"payment_method": "Payment method is required."},
+                status=400,
+            )
+
+        with transaction.atomic():
+            purchase.status = RecordedClassPurchase.Status.PAID
+            purchase.payment_method = payment_method
+            purchase.payment_reference = payment_reference
+            purchase.paid_at = timezone.now()
+            purchase.save()
+
+            access = grant_recorded_class_access(purchase)
+
+        return Response({
+            "message": (
+                "Payment verified and recorded class access granted."
+            ),
+            "purchase": serialize_recorded_class_purchase(purchase),
+            "access": {
+                "id": access.id,
+                "expires_at": access.expires_at,
+                "is_active": access.has_access,
+            },
         })
 
 
