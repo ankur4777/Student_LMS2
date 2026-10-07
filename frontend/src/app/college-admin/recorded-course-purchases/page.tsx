@@ -65,6 +65,20 @@ type VerifyTarget =
       title: string;
     };
 
+function getSavedAdmin() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    return JSON.parse(
+      localStorage.getItem("college_admin_user") || "{}"
+    );
+  } catch {
+    return {};
+  }
+}
+
 function purchaseBadge(status: string) {
   if (status === "paid") {
     return "badge bg-success";
@@ -77,15 +91,7 @@ function purchaseBadge(status: string) {
 
 export default function RecordedContentPurchasesPage() {
   const router = useRouter();
-  const [admin] = useState<any>(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("college_admin_user") || "{}"
-      );
-    } catch {
-      return {};
-    }
-  });
+  const [admin] = useState<any>(getSavedAdmin);
 
   const [coursePurchases, setCoursePurchases] = useState<CoursePurchase[]>([]);
   const [classPurchases, setClassPurchases] = useState<ClassPurchase[]>([]);
