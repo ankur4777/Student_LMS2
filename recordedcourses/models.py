@@ -185,3 +185,247 @@ class RecordedCourseAccess(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.course.title}"
+
+
+
+class RecordedClassPurchase(models.Model):
+    class BuyerType(models.TextChoices):
+        STUDENT = "student", "Student"
+        PARENT = "parent", "Parent"
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PAID = "paid", "Paid"
+        FAILED = "failed", "Failed"
+        REFUNDED = "refunded", "Refunded"
+        CANCELLED = "cancelled", "Cancelled"
+
+    organization = models.ForeignKey(
+        "institutions.Organization",
+        on_delete=models.CASCADE,
+        related_name="recorded_class_purchases",
+    )
+    recording = models.ForeignKey(
+        "liveclasses.LiveClassRecording",
+        on_delete=models.PROTECT,
+        related_name="purchases",
+    )
+    student = models.ForeignKey(
+        "accounts.StudentProfile",
+        on_delete=models.PROTECT,
+        related_name="recorded_class_purchases",
+    )
+    buyer_type = models.CharField(
+        max_length=10,
+        choices=BuyerType.choices,
+    )
+    purchased_by_student = models.ForeignKey(
+        "accounts.StudentProfile",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="self_recorded_class_purchases",
+    )
+    purchased_by_parent = models.ForeignKey(
+        "accounts.ParentProfile",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="recorded_class_purchases",
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+    status = models.CharField(
+        max_length=12,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    payment_method = models.CharField(max_length=40, blank=True)
+    payment_reference = models.CharField(max_length=120, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def clean(self):
+        errors = {}
+
+        if self.recording_id and self.organization_id:
+            recording_organization_id = (
+                self.recording.live_class.organization_id
+            )
+            if recording_organization_id != self.organization_id:
+                errors["recording"] = (
+                    "Recording must belong to the purchase organization."
+                )
+
+        if (
+            self.student_id
+            and self.organization_id
+            and self.student.user.organization_id != self.organization_id
+        ):
+            errors["student"] = (
+                "Student must belong to the purchase organization."
+            )
+
+        if self.buyer_type == self.BuyerType.STUDENT:
+            if self.purchased_by_student_id != self.student_id:
+                errors["purchased_by_student"] = (
+                    "A student purchase must be made by the same student."
+                )
+            if self.purchased_by_parent_id:
+                errors["purchased_by_parent"] = (
+                    "Parent buyer must be empty for a student purchase."
+                )
+        elif self.buyer_type == self.BuyerType.PARENT:
+            if not self.purchased_by_parent_id:
+                errors["purchased_by_parent"] = (
+                    "Parent is required for a parent purchase."
+                )
+            elif (
+                self.purchased_by_parent.user.organization_id
+                != self.organization_id
+            ):
+                errors["purchased_by_parent"] = (
+                    "Parent must belong to the purchase organization."
+                )
+            elif not self.purchased_by_parent.student_links.filter(
+                student_id=self.student_id
+            ).exists():
+                errors["student"] = (
+                    "Parent can purchase only for a linked child."
+                )
+            if self.purchased_by_student_id:
+                errors["purchased_by_student"] = (
+                    "Student buyer must be empty for a parent purchase."
+                )
+
+        if self.recording_id and self.recording.price is None:
+            errors["recording"] = (
+                "Recording price must be configured before purchase."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.recording} - {self.student}"
+
+
+class RecordedClassAccess(models.Model):
+    organization = models.ForeignKey(
+        "institutions.Organization",
+        on_delete=models.CASCADE,
+        related_name="recorded_class_accesses",
+    )
+    recording = models.ForeignKey(
+        "liveclasses.LiveClassRecording",
+        on_delete=models.CASCADE,
+        related_name="student_accesses",
+    )
+    student = models.ForeignKey(
+        "accounts.StudentProfile",
+        on_delete=models.CASCADE,
+        related_name="recorded_class_accesses",
+    )
+    purchase = models.OneToOneField(
+        RecordedClassPurchase,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="granted_access",
+    )
+    starts_at = models.DateTimeField(default=timezone.now)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    revoke_reason = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recording", "student"],
+                name="unique_recorded_class_access",
+            )
+        ]
+
+    @property
+    def has_access(self):
+        now = timezone.now()
+        return (
+            self.is_active
+            and not self.revoked_at
+            and self.starts_at <= now
+            and (self.expires_at is None or self.expires_at > now)
+        )
+
+    def clean(self):
+        errors = {}
+
+        if self.recording_id and self.organization_id:
+            if (
+                self.recording.live_class.organization_id
+                != self.organization_id
+            ):
+                errors["recording"] = (
+                    "Recording must belong to the access organization."
+                )
+
+        if (
+            self.student_id
+            and self.organization_id
+            and self.student.user.organization_id != self.organization_id
+        ):
+            errors["student"] = (
+                "Student must belong to the access organization."
+            )
+
+        if self.purchase_id:
+            if self.purchase.status != RecordedClassPurchase.Status.PAID:
+                errors["purchase"] = (
+                    "Purchase must be paid before access is granted."
+                )
+            elif (
+                self.purchase.organization_id != self.organization_id
+                or self.purchase.recording_id != self.recording_id
+                or self.purchase.student_id != self.student_id
+            ):
+                errors["purchase"] = (
+                    "Purchase does not match this organization, recording, "
+                    "and student."
+                )
+
+        if self.expires_at and self.expires_at <= self.starts_at:
+            errors["expires_at"] = (
+                "Expiry must be later than the access start."
+            )
+
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args, **kwargs):
+        if (
+            self.expires_at is None
+            and self.recording_id
+            and self.recording.access_duration_days
+        ):
+            self.expires_at = self.starts_at + timedelta(
+                days=self.recording.access_duration_days
+            )
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.student} - {self.recording}"
