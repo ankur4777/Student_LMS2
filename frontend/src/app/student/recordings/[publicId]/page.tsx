@@ -129,9 +129,9 @@ export default function StudentRecordingPage() {
 
             <button
               className="btn btn-primary"
-              onClick={() => router.push("/student/dashboard")}
+              onClick={() => router.push("/student/recorded-classes")}
             >
-              Back to Dashboard
+              Back to Recorded Classes
             </button>
           </>
         )}
@@ -162,9 +162,9 @@ export default function StudentRecordingPage() {
       <button
         type="button"
         className="btn btn-outline-secondary mt-4"
-        onClick={() => router.push("/student/dashboard")}
+        onClick={() => router.push("/student/recorded-classes")}
       >
-        Back to Dashboard
+        Back to Recorded Classes
       </button>
     </div>
   );
