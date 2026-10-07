@@ -9,6 +9,7 @@ import StudentTopbar from "@/components/student/studentTopbar";
 import StudentFeatureRestricted, {
   isClassFeatureRestricted,
 } from "@/components/student/StudentFeatureRestricted";
+import { useCurrency } from "@/hooks/useCurrency";
 import { formatTime12Hour } from "@/utils/time";
 
 import "../dashboard/dashboard.css";
@@ -31,6 +32,13 @@ type RecordedClass = {
   subject_name: string;
   section_name: string;
   recording_public_id: string | null;
+  recording_price: string | null;
+  recording_access_duration_days: number | null;
+  recording_price_configured: boolean;
+  recording_has_access: boolean;
+  recording_access_expires_at: string | null;
+  recording_purchase_status: string | null;
+  recording_playback_url: string | null;
 };
 
 type PurchasedCourse = {
@@ -114,7 +122,53 @@ function RecordedCourseThumbnail({
   }, [lessonId]);
 
   if (!lessonId || failed) {
-    return (
+    async function purchaseRecording(publicId: string) {
+    const token = localStorage.getItem("student_access_token");
+
+    if (!token) {
+      router.replace("/student/login");
+      return;
+    }
+
+    setBusyRecording(publicId);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/recorded-courses/student/recorded-class-purchases/`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            recording_public_id: publicId,
+          }),
+        }
+      );
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          result?.detail || "Unable to purchase this recorded class."
+        );
+      }
+
+      setRefreshIndex((value) => value + 1);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to purchase this recorded class."
+      );
+    } finally {
+      setBusyRecording(null);
+    }
+  }
+
+  return (
       <div
         className="recorded-course-thumbnail recorded-course-thumbnail-fallback"
         aria-hidden="true"
@@ -173,6 +227,9 @@ export default function StudentRecordedClassesPage() {
   const [courses, setCourses] = useState<PurchasedCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [busyRecording, setBusyRecording] = useState<string | null>(null);
+  const [refreshIndex, setRefreshIndex] = useState(0);
+  const { formatCurrency: money } = useCurrency();
 
   useEffect(() => {
     const token = localStorage.getItem("student_access_token");
@@ -248,7 +305,7 @@ export default function StudentRecordedClassesPage() {
     }
 
     void load();
-  }, [router]);
+  }, [refreshIndex, router]);
 
   return (
     <div className="student-dashboard">
@@ -417,13 +474,73 @@ export default function StudentRecordedClassesPage() {
                               </p>
                             </div>
 
-                            {recording.recording_public_id && (
-                              <Link
-                                href={`/student/recordings/${recording.recording_public_id}`}
-                                className="btn btn-primary btn-sm"
-                              >
-                                Watch Recording
-                              </Link>
+                            {recording.recording_has_access &&
+                            recording.recording_public_id ? (
+                              <>
+                                {recording.recording_access_expires_at && (
+                                  <div className="small text-success mb-2">
+                                    Access until{" "}
+                                    {new Date(
+                                      recording.recording_access_expires_at
+                                    ).toLocaleDateString()}
+                                  </div>
+                                )}
+                                <Link
+                                  href={`/student/recordings/${recording.recording_public_id}`}
+                                  className="btn btn-primary btn-sm"
+                                >
+                                  Watch Recording
+                                </Link>
+                              </>
+                            ) : recording.recording_purchase_status ===
+                              "pending" ? (
+                              <div className="alert alert-warning py-2 mb-0">
+                                Purchase Pending Verification
+                              </div>
+                            ) : recording.recording_price_configured &&
+                              recording.recording_public_id ? (
+                              <div className="mt-auto">
+                                <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
+                                  <div>
+                                    <div className="text-muted small">Price</div>
+                                    <div className="fw-bold">
+                                      {money(recording.recording_price || 0)}
+                                    </div>
+                                  </div>
+                                  <div className="text-end">
+                                    <div className="text-muted small">Access</div>
+                                    <div className="fw-semibold">
+                                      {recording.recording_access_duration_days ||
+                                        180}{" "}
+                                      days
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary btn-sm w-100"
+                                  disabled={
+                                    busyRecording ===
+                                    recording.recording_public_id
+                                  }
+                                  onClick={() =>
+                                    void purchaseRecording(
+                                      recording.recording_public_id as string
+                                    )
+                                  }
+                                >
+                                  {busyRecording ===
+                                  recording.recording_public_id
+                                    ? "Processing..."
+                                    : Number(recording.recording_price || 0) === 0
+                                      ? "Get Access"
+                                      : "Purchase Recording"}
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="small text-muted mt-auto">
+                                Purchase price has not been configured yet.
+                              </div>
                             )}
                           </div>
                         </div>
