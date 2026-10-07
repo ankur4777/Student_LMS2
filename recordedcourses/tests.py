@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import time, timedelta
 from decimal import Decimal
 import tempfile
 from pathlib import Path
@@ -689,8 +689,8 @@ class RecordedClassPurchaseAccessSecurityTests(APITestCase):
             teacher_assignment=self.assignment_a,
             title="Paid Mathematics Recording",
             class_date=timezone.localdate() - timedelta(days=1),
-            start_time="10:00:00",
-            end_time="11:00:00",
+            start_time=time(10, 0),
+            end_time=time(11, 0),
             status=LiveClass.Status.COMPLETED,
         )
         self.recording_a = LiveClassRecording.objects.create(
@@ -708,8 +708,8 @@ class RecordedClassPurchaseAccessSecurityTests(APITestCase):
             teacher_assignment=self.assignment_b,
             title="Other College Recording",
             class_date=timezone.localdate() - timedelta(days=1),
-            start_time="12:00:00",
-            end_time="13:00:00",
+            start_time=time(12, 0),
+            end_time=time(13, 0),
             status=LiveClass.Status.COMPLETED,
         )
         self.recording_b = LiveClassRecording.objects.create(
@@ -818,8 +818,8 @@ class RecordedClassPurchaseAccessSecurityTests(APITestCase):
             teacher_assignment=self.assignment_a,
             title="Free Revision Recording",
             class_date=timezone.localdate() - timedelta(days=2),
-            start_time="14:00:00",
-            end_time="15:00:00",
+            start_time=time(14, 0),
+            end_time=time(15, 0),
             status=LiveClass.Status.COMPLETED,
         )
         free_recording = LiveClassRecording.objects.create(
