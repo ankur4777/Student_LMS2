@@ -10,6 +10,38 @@ def username_base_from_name(first_name, last_name):
     return (base or "user")[:140]
 
 
+def employee_id_base_from_name(first_name, last_name):
+    first = slugify(str(first_name or "")).replace("-", "")
+    last = slugify(str(last_name or "")).replace("-", "")
+
+    initials = "".join(
+        part[:1]
+        for part in (first, last)
+        if part
+    ).upper()
+
+    return f"EMP-{initials or 'T'}"
+
+
+def generate_available_employee_id(
+    teacher_profile_model,
+    first_name,
+    last_name,
+):
+    base = employee_id_base_from_name(first_name, last_name)
+    sequence = 1
+
+    while True:
+        candidate = f"{base}-{sequence:02d}"
+
+        if not teacher_profile_model.objects.filter(
+            employee_id__iexact=candidate
+        ).exists():
+            return candidate
+
+        sequence += 1
+
+
 def generate_available_username(user_model, first_name, last_name):
     base = username_base_from_name(first_name, last_name)
     sequence = 1
