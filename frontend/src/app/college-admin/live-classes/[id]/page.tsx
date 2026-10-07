@@ -22,11 +22,16 @@ interface LiveClass {
   id: number;
   title: string;
   description: string;
+  teacher_id: number;
   teacher_name: string;
+  subject_id: number;
   subject_name: string;
   subject_code: string;
+  class_id: number;
   class_name: string;
+  section_id: number;
   section_name: string;
+  academic_session_id: number;
   academic_session: string;
   class_date: string;
   start_time: string;
@@ -287,22 +292,44 @@ export default function CollegeAdminLiveClassDetailPage() {
                       <div className="col-md-4">
                         <div className="text-muted small">Teacher</div>
                         <div className="fw-semibold">
-                          {liveClass.teacher_name}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/teachers/${liveClass.teacher_id}`}
+                          >
+                            {liveClass.teacher_name}
+                          </Link>
                         </div>
                       </div>
                       <div className="col-md-4">
                         <div className="text-muted small">Subject</div>
                         <div className="fw-semibold">
-                          {liveClass.subject_name}
-                          {liveClass.subject_code
-                            ? ` (${liveClass.subject_code})`
-                            : ""}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/subjects/${liveClass.subject_id}/edit`}
+                          >
+                            {liveClass.subject_name}
+                            {liveClass.subject_code
+                              ? ` (${liveClass.subject_code})`
+                              : ""}
+                          </Link>
                         </div>
                       </div>
                       <div className="col-md-4">
                         <div className="text-muted small">Class / Section</div>
                         <div className="fw-semibold">
-                          {liveClass.class_name} / {liveClass.section_name}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/classes/${liveClass.class_id}/edit`}
+                          >
+                            {liveClass.class_name}
+                          </Link>{" "}
+                          /{" "}
+                          <Link
+                            className="lms-entity-link lms-entity-link-muted"
+                            href={`/college-admin/classes/${liveClass.class_id}/edit`}
+                          >
+                            {liveClass.section_name}
+                          </Link>
                         </div>
                       </div>
                       <div className="col-md-4">
@@ -310,7 +337,12 @@ export default function CollegeAdminLiveClassDetailPage() {
                           Academic Session
                         </div>
                         <div className="fw-semibold">
-                          {liveClass.academic_session}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/academic-sessions/${liveClass.academic_session_id}/edit`}
+                          >
+                            {liveClass.academic_session}
+                          </Link>
                         </div>
                       </div>
                     </div>
