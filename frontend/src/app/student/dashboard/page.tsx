@@ -405,7 +405,7 @@ export default function StudentDashboard() {
                     <div className="student-overview-copy">
                       <small>Recorded Classes</small>
                       <strong>{data.recorded_classes.length}</strong>
-                      <span>Available recordings</span>
+                      <span>Class recordings</span>
                     </div>
                   </div>
                 )}
@@ -536,7 +536,7 @@ export default function StudentDashboard() {
                       <div>
                         <h2>Recent Recordings</h2>
                         <p>
-                          Watch your latest available class recordings.
+                          Purchase or watch your latest class recordings.
                         </p>
                       </div>
 
