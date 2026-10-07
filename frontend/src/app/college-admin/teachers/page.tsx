@@ -290,13 +290,37 @@ export default function CollegeAdminTeachersPage() {
                             <div className="teacher-person-cell">
                               <span className="teacher-avatar">{initials(teacher.name, teacher.username)}</span>
                               <div>
-                                <strong>{teacher.name || teacher.username}</strong>
-                                <small>Employee ID {teacher.profile?.employee_id || "-"}</small>
+                                <strong>
+                                  <Link
+                                    className="lms-entity-link"
+                                    href={`/college-admin/teachers/${teacher.id}`}
+                                    title="Open teacher details"
+                                  >
+                                    {teacher.name || teacher.username}
+                                  </Link>
+                                </strong>
+                                <small>
+                                  Employee ID{" "}
+                                  {teacher.profile?.employee_id ? (
+                                    <Link
+                                      className="lms-entity-link lms-entity-link-muted"
+                                      href={`/college-admin/teachers/${teacher.id}`}
+                                    >
+                                      {teacher.profile.employee_id}
+                                    </Link>
+                                  ) : "-"}
+                                </small>
                               </div>
                             </div>
                           </td>
                           <td>
-                            <span className="teacher-username">@{teacher.username}</span>
+                            <Link
+                              className="teacher-username lms-entity-link"
+                              href={`/college-admin/teachers/${teacher.id}`}
+                              title="Open teacher details"
+                            >
+                              @{teacher.username}
+                            </Link>
                           </td>
                           <td>
                             <div className="teacher-contact-cell">
