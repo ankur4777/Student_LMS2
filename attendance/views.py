@@ -362,6 +362,11 @@ class CollegeAdminAttendanceSessionDetailAPIView(APIView):
                         or record.student.user.username
                     ),
                     'username': record.student.user.username,
+                    'enrollment_id': (
+                        enrollments.get(record.student_id).id
+                        if enrollments.get(record.student_id)
+                        else None
+                    ),
                     'roll_number': (
                         enrollments.get(record.student_id).roll_number
                         if enrollments.get(record.student_id)
