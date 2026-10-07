@@ -2603,6 +2603,26 @@ def serialize_parent_student_link(link):
             if enrollment
             else ""
         ),
+        "enrollment_id": (
+            enrollment.id
+            if enrollment
+            else None
+        ),
+        "class_id": (
+            enrollment.section.classroom_id
+            if enrollment
+            else None
+        ),
+        "section_id": (
+            enrollment.section_id
+            if enrollment
+            else None
+        ),
+        "academic_session_id": (
+            enrollment.section.classroom.academic_session_id
+            if enrollment
+            else None
+        ),
         "relationship": link.relationship,
         "classroom_name": (
             enrollment.section.classroom.name
@@ -2726,6 +2746,9 @@ def serialize_college_teacher(user):
         assignments = [
             {
                 "id": assignment.id,
+                "subject_id": assignment.subject_id,
+                "class_id": assignment.section.classroom_id,
+                "section_id": assignment.section_id,
                 "subject_name": assignment.subject.name,
                 "classroom_name": assignment.section.classroom.name,
                 "section_name": assignment.section.name,
@@ -4420,6 +4443,7 @@ def serialize_college_enrollment(enrollment):
     return {
         "enrollment_id": enrollment.id,
         "student_id": enrollment.student_id,
+        "student_user_id": student_user.id,
         "academic_session_id": academic_session.id,
         "class_id": classroom.id,
         "section_id": section.id,
@@ -5488,16 +5512,40 @@ class ParentChildrenAPIView(APIView):
 
             children.append({
                 "student_profile_id": student.id,
+                "student_user_id": student_user.id,
                 "name": (
                     student_user.get_full_name().strip()
                     or student_user.username
                 ),
                 "username": student_user.username,
+                "email": student_user.email,
+                "phone": student.phone,
                 "address": student.address,
+                "admission_number": student.admission_number,
                 "roll_number": (
                     enrollment.roll_number
                     if enrollment
                     else ""
+                ),
+                "enrollment_id": (
+                    enrollment.id
+                    if enrollment
+                    else None
+                ),
+                "class_id": (
+                    enrollment.section.classroom_id
+                    if enrollment
+                    else None
+                ),
+                "section_id": (
+                    enrollment.section_id
+                    if enrollment
+                    else None
+                ),
+                "academic_session_id": (
+                    enrollment.section.classroom.academic_session_id
+                    if enrollment
+                    else None
                 ),
                 "classroom_name": (
                     enrollment.section.classroom.name
@@ -5506,6 +5554,11 @@ class ParentChildrenAPIView(APIView):
                 ),
                 "section_name": (
                     enrollment.section.name
+                    if enrollment
+                    else ""
+                ),
+                "academic_session_name": (
+                    enrollment.section.classroom.academic_session.name
                     if enrollment
                     else ""
                 ),
