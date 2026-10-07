@@ -1065,7 +1065,6 @@ class TeacherRecordingEligibleClassesAPIView(APIView):
         serializer = LiveClassSerializer(
             live_classes,
             many=True,
-            context={'student_profile': student_profile},
         )
 
         return Response(serializer.data)
