@@ -3318,3 +3318,120 @@ class OrganizationBrandingPortalTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 404)
+
+
+
+class CollegeAdminTeacherEmployeeIdGenerationTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.organization = Organization.objects.create(
+            name="Employee ID College",
+            code="EID",
+        )
+        self.admin = User.objects.create_user(
+            username="employee-id-admin",
+            email="employee-id-admin@example.com",
+            password="pass12345",
+            role="college_admin",
+            organization=self.organization,
+        )
+        self.client.force_authenticate(user=self.admin)
+        self.url = "/api/accounts/college-admin/teachers/"
+
+    def create_teacher(self, email, **overrides):
+        payload = {
+            "first_name": "Pardeep",
+            "last_name": "Singh",
+            "email": email,
+            "password": "pass12345",
+            "employee_id_auto": True,
+        }
+        payload.update(overrides)
+        return self.client.post(
+            self.url,
+            payload,
+            format="json",
+        )
+
+    def test_employee_id_auto_generates_from_teacher_name(self):
+        first = self.create_teacher("pardeep-one@example.com")
+        second = self.create_teacher("pardeep-two@example.com")
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 201)
+
+        first_teacher = User.objects.get(
+            id=first.data["teacher"]["id"]
+        )
+        second_teacher = User.objects.get(
+            id=second.data["teacher"]["id"]
+        )
+
+        self.assertEqual(
+            first_teacher.teacher_profile.employee_id,
+            "EMP-PS-01",
+        )
+        self.assertEqual(
+            second_teacher.teacher_profile.employee_id,
+            "EMP-PS-02",
+        )
+
+    def test_frontend_suggestion_is_ignored_when_auto_mode_is_enabled(self):
+        response = self.create_teacher(
+            "pardeep-auto@example.com",
+            employee_id="SHOULD-NOT-BE-USED",
+            employee_id_auto=True,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        teacher = User.objects.get(
+            id=response.data["teacher"]["id"]
+        )
+        self.assertEqual(
+            teacher.teacher_profile.employee_id,
+            "EMP-PS-01",
+        )
+
+    def test_manual_employee_id_is_preserved_and_can_be_edited(self):
+        response = self.create_teacher(
+            "manual-id@example.com",
+            employee_id="EMP101",
+            employee_id_auto=False,
+        )
+
+        self.assertEqual(response.status_code, 201)
+        teacher_id = response.data["teacher"]["id"]
+
+        teacher = User.objects.get(id=teacher_id)
+        self.assertEqual(
+            teacher.teacher_profile.employee_id,
+            "EMP101",
+        )
+
+        update = self.client.patch(
+            f"/api/accounts/college-admin/teachers/{teacher_id}/",
+            {"employee_id": "FACULTY-2026-01"},
+            format="json",
+        )
+
+        self.assertEqual(update.status_code, 200)
+        teacher.teacher_profile.refresh_from_db()
+        self.assertEqual(
+            teacher.teacher_profile.employee_id,
+            "FACULTY-2026-01",
+        )
+
+    def test_blank_employee_id_defaults_to_auto_generation(self):
+        response = self.create_teacher(
+            "blank-id@example.com",
+            employee_id="",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        teacher = User.objects.get(
+            id=response.data["teacher"]["id"]
+        )
+        self.assertEqual(
+            teacher.teacher_profile.employee_id,
+            "EMP-PS-01",
+        )
