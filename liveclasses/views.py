@@ -140,15 +140,21 @@ def serialize_college_admin_live_class(live_class):
         'recording': (
             {
                 'exists': True,
+                'public_id': recording.public_id,
                 'title': recording.title,
                 'is_available': recording.is_available,
+                'price': recording.price,
+                'access_duration_days': recording.access_duration_days,
                 'uploaded_at': recording.uploaded_at,
             }
             if recording
             else {
                 'exists': False,
+                'public_id': None,
                 'title': '',
                 'is_available': False,
+                'price': None,
+                'access_duration_days': None,
                 'uploaded_at': None,
             }
         ),
@@ -617,7 +623,8 @@ class StudentLiveClassesAPIView(APIView):
 
         serializer = LiveClassSerializer(
             live_classes,
-            many=True
+            many=True,
+            context={'student_profile': student_profile},
         )
 
         return Response(serializer.data)    
@@ -662,7 +669,8 @@ class StudentTodayClassesAPIView(APIView):
 
         serializer = LiveClassSerializer(
             live_classes,
-            many=True
+            many=True,
+            context={'student_profile': student_profile},
         )
 
         return Response(serializer.data)
@@ -711,7 +719,8 @@ class StudentUpcomingClassesAPIView(APIView):
 
         serializer = LiveClassSerializer(
             live_classes,
-            many=True
+            many=True,
+            context={'student_profile': student_profile},
         )
 
         return Response(serializer.data)
@@ -757,7 +766,8 @@ class StudentCompletedClassesAPIView(APIView):
 
         serializer = LiveClassSerializer(
             live_classes,
-            many=True
+            many=True,
+            context={'student_profile': student_profile},
         )
 
         return Response(serializer.data)
@@ -809,7 +819,10 @@ class StudentRecordedClassesAPIView(APIView):
         serializer = LiveClassSerializer(
             live_classes,
             many=True,
-            context={'request': request}
+            context={
+                'request': request,
+                'student_profile': student_profile,
+            },
         )
 
         return Response(serializer.data)
@@ -887,6 +900,28 @@ class StudentRecordingPlaybackAPIView(APIView):
                 status=403,
             )
 
+        from recordedcourses.models import RecordedClassAccess
+
+        access = RecordedClassAccess.objects.filter(
+            organization=user.organization,
+            recording=recording,
+            student=student_profile,
+            is_active=True,
+            revoked_at__isnull=True,
+            starts_at__lte=timezone.now(),
+        ).first()
+
+        if not access or not access.has_access:
+            return Response(
+                {
+                    'detail': (
+                        'Purchase this recorded class and wait for payment '
+                        'verification before watching it.'
+                    )
+                },
+                status=403,
+            )
+
         if not recording.video:
             return Response(
                 {'detail': 'Recording file not found.'},
@@ -907,6 +942,7 @@ class StudentRecordingPlaybackAPIView(APIView):
         )
 
         response['X-Content-Type-Options'] = 'nosniff'
+        response['Cache-Control'] = 'private, no-store'
 
         return response
     
@@ -1028,7 +1064,8 @@ class TeacherRecordingEligibleClassesAPIView(APIView):
 
         serializer = LiveClassSerializer(
             live_classes,
-            many=True
+            many=True,
+            context={'student_profile': student_profile},
         )
 
         return Response(serializer.data)
