@@ -272,7 +272,7 @@ export default function StudentRecordedClassesPage() {
                       <div className="recorded-library-icon" aria-hidden="true">
                         ▶
                       </div>
-                      <div>
+                      <div className="recorded-library-text">
                         <span className="recorded-library-kicker">
                           MY LEARNING LIBRARY
                         </span>
@@ -310,7 +310,9 @@ export default function StudentRecordedClassesPage() {
                   )}
 
                   {!loading && !error && courses.length > 0 && (
-                    <div className="recorded-course-grid">
+                    <div
+                      className={`recorded-course-grid${courses.length === 1 ? " recorded-course-grid-single" : ""}`}
+                    >
                       {courses.map((course) => (
                         <article className="recorded-course-card" key={course.id}>
                           <div className="recorded-course-cover">
@@ -393,22 +395,27 @@ export default function StudentRecordedClassesPage() {
                           key={recording.id}
                           className="col-lg-4 col-md-6"
                         >
-                          <div className="border rounded p-3 h-100">
-                            <h6 className="fw-bold">{recording.title}</h6>
+                          <div className="border rounded p-3 h-100 recorded-class-card">
+                            <h6 className="fw-bold mb-2">{recording.title}</h6>
                             <p className="text-muted small mb-2">
                               {recording.subject_name} •{" "}
                               {recording.section_name}
                             </p>
-                            <p className="small mb-1">
-                              Teacher: {recording.teacher_name || "-"}
-                            </p>
-                            <p className="small mb-1">
-                              Date: {recording.class_date}
-                            </p>
-                            <p className="small mb-3">
-                              Time: {formatTime12Hour(recording.start_time)} -{" "}
-                              {formatTime12Hour(recording.end_time)}
-                            </p>
+                            <div className="recorded-class-details">
+                              <p className="small mb-1">
+                                <span className="text-muted">Teacher:</span>{" "}
+                                {recording.teacher_name || "-"}
+                              </p>
+                              <p className="small mb-1">
+                                <span className="text-muted">Date:</span>{" "}
+                                {recording.class_date}
+                              </p>
+                              <p className="small mb-0">
+                                <span className="text-muted">Time:</span>{" "}
+                                {formatTime12Hour(recording.start_time)} -{" "}
+                                {formatTime12Hour(recording.end_time)}
+                              </p>
+                            </div>
 
                             {recording.recording_public_id && (
                               <Link
