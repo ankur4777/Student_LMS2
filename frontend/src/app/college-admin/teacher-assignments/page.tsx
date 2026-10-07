@@ -19,6 +19,11 @@ interface AdminUser {
 
 interface TeacherAssignment {
   assignment_id: number;
+  teacher_id: number;
+  subject_id: number;
+  section_id: number;
+  class_id: number;
+  academic_session_id: number;
   teacher_name: string;
   subject_name: string;
   subject_code: string;
@@ -276,20 +281,63 @@ export default function CollegeAdminTeacherAssignmentsPage() {
                     <tbody>
                       {assignments.map((assignment) => (
                         <tr key={assignment.assignment_id}>
-                          <td>{assignment.teacher_name}</td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/teachers/${assignment.teacher_id}`}
+                              title="Open teacher details"
+                            >
+                              {assignment.teacher_name}
+                            </Link>
+                          </td>
                           <td>
                             <div className="fw-semibold">
-                              {assignment.subject_name}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/subjects/${assignment.subject_id}/edit`}
+                                title="Open subject"
+                              >
+                                {assignment.subject_name}
+                              </Link>
                             </div>
                             {assignment.subject_code && (
                               <div className="text-muted small">
-                                {assignment.subject_code}
+                                <Link
+                                  className="lms-entity-link lms-entity-link-muted"
+                                  href={`/college-admin/subjects/${assignment.subject_id}/edit`}
+                                >
+                                  {assignment.subject_code}
+                                </Link>
                               </div>
                             )}
                           </td>
-                          <td>{assignment.class_name}</td>
-                          <td>{assignment.section_name}</td>
-                          <td>{assignment.academic_session}</td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/classes/${assignment.class_id}/edit`}
+                              title="Open class"
+                            >
+                              {assignment.class_name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link lms-entity-link-muted"
+                              href={`/college-admin/classes/${assignment.class_id}/edit`}
+                              title="Open class and section"
+                            >
+                              {assignment.section_name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/academic-sessions/${assignment.academic_session_id}/edit`}
+                              title="Open academic session"
+                            >
+                              {assignment.academic_session}
+                            </Link>
+                          </td>
                           <td>
                             <span
                               className={
