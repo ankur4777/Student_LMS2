@@ -473,6 +473,102 @@ class ParentRecordedCourseCatalogAPIView(APIView):
         })
 
 
+class CollegeAdminRecordedClassPurchaseSettingsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, public_id):
+        organization = college_admin_organization(request.user)
+        if not organization:
+            return Response(
+                {
+                    "detail": (
+                        "Only college admins can configure recorded class "
+                        "purchase settings."
+                    )
+                },
+                status=403,
+            )
+
+        recording = LiveClassRecording.objects.select_related(
+            "live_class",
+            "live_class__teacher_assignment__subject",
+        ).filter(
+            public_id=public_id,
+            live_class__organization=organization,
+        ).first()
+
+        if not recording:
+            return Response(
+                {"detail": "Recorded class not found."},
+                status=404,
+            )
+
+        update_fields = []
+
+        if "price" in request.data:
+            raw_price = request.data.get("price")
+
+            if raw_price in (None, ""):
+                recording.price = None
+            else:
+                price = parse_price(raw_price)
+                if price is None:
+                    return Response(
+                        {
+                            "price": (
+                                "Enter a valid non-negative recording price."
+                            )
+                        },
+                        status=400,
+                    )
+                recording.price = price
+
+            update_fields.append("price")
+
+        if "access_duration_days" in request.data:
+            duration = parse_positive_int(
+                request.data.get("access_duration_days")
+            )
+            if duration is None:
+                return Response(
+                    {
+                        "access_duration_days": (
+                            "Access duration must be greater than zero."
+                        )
+                    },
+                    status=400,
+                )
+
+            recording.access_duration_days = duration
+            update_fields.append("access_duration_days")
+
+        if not update_fields:
+            return Response(
+                {
+                    "detail": (
+                        "Provide price or access_duration_days to update."
+                    )
+                },
+                status=400,
+            )
+
+        recording.save(
+            update_fields=[*update_fields, "updated_at"]
+        )
+
+        return Response({
+            "message": "Recorded class purchase settings updated.",
+            "recording": {
+                "id": recording.id,
+                "public_id": recording.public_id,
+                "title": recording.title or recording.live_class.title,
+                "price": recording.price,
+                "access_duration_days": recording.access_duration_days,
+                "is_available": recording.is_available,
+            },
+        })
+
+
 class StudentRecordedClassPurchasesAPIView(APIView):
     permission_classes = [IsAuthenticated, StudentClassFeaturePermission]
     student_feature_key = "recorded_classes"
