@@ -23,10 +23,15 @@ interface AttendanceSession {
   start_time: string | null;
   end_time: string | null;
   topic: string;
+  teacher_id: number;
   teacher_name: string;
+  subject_id: number;
   subject_name: string;
+  class_id: number;
   class_name: string;
+  section_id: number;
   section_name: string;
+  academic_session_id: number;
   academic_session_name: string;
   total_students: number;
   present: number;
@@ -41,6 +46,7 @@ interface StudentRecord {
   student_id: number;
   student_name: string;
   username: string;
+  enrollment_id: number | null;
   roll_number: string;
   status: string;
   remarks: string;
@@ -220,21 +226,54 @@ export default function CollegeAdminAttendanceSessionPage() {
                       </div>
                       <div className="col-md-3">
                         <div className="text-muted small">Teacher</div>
-                        <strong>{session.teacher_name}</strong>
+                        <strong>
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/teachers/${session.teacher_id}`}
+                          >
+                            {session.teacher_name}
+                          </Link>
+                        </strong>
                       </div>
                       <div className="col-md-3">
                         <div className="text-muted small">Subject</div>
-                        <strong>{session.subject_name}</strong>
+                        <strong>
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/subjects/${session.subject_id}/edit`}
+                          >
+                            {session.subject_name}
+                          </Link>
+                        </strong>
                       </div>
                       <div className="col-md-3">
                         <div className="text-muted small">Class / Section</div>
                         <strong>
-                          {session.class_name} / {session.section_name}
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/classes/${session.class_id}/edit`}
+                          >
+                            {session.class_name}
+                          </Link>{" "}
+                          /{" "}
+                          <Link
+                            className="lms-entity-link lms-entity-link-muted"
+                            href={`/college-admin/classes/${session.class_id}/edit`}
+                          >
+                            {session.section_name}
+                          </Link>
                         </strong>
                       </div>
                       <div className="col-md-3">
                         <div className="text-muted small">Academic Session</div>
-                        <strong>{session.academic_session_name}</strong>
+                        <strong>
+                          <Link
+                            className="lms-entity-link"
+                            href={`/college-admin/academic-sessions/${session.academic_session_id}/edit`}
+                          >
+                            {session.academic_session_name}
+                          </Link>
+                        </strong>
                       </div>
                       <div className="col-md-6">
                         <div className="text-muted small">Topic</div>
@@ -262,13 +301,30 @@ export default function CollegeAdminAttendanceSessionPage() {
                             <tr key={record.attendance_id}>
                               <td>
                                 <Link
-                                  href={`/college-admin/attendance/students/${record.student_id}`}
+                                  className="lms-entity-link"
+                                  href={`/college-admin/students/${record.student_id}`}
                                 >
                                   {record.student_name}
                                 </Link>
                               </td>
-                              <td>{record.username}</td>
-                              <td>{record.roll_number || "-"}</td>
+                              <td>
+                                <Link
+                                  className="lms-entity-link lms-entity-link-muted"
+                                  href={`/college-admin/students/${record.student_id}`}
+                                >
+                                  {record.username}
+                                </Link>
+                              </td>
+                              <td>
+                                {record.roll_number && record.enrollment_id ? (
+                                  <Link
+                                    className="lms-entity-link"
+                                    href={`/college-admin/enrollments/${record.enrollment_id}/edit`}
+                                  >
+                                    {record.roll_number}
+                                  </Link>
+                                ) : (record.roll_number || "-")}
+                              </td>
                               <td>
                                 <span className="badge bg-light text-dark border">
                                   {record.status}
