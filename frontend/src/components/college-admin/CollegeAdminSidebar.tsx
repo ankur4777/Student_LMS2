@@ -107,7 +107,7 @@ const menuSections: MenuSection[] = [
     items: [
       { label: "Fees", href: "/college-admin/fees", icon: "fees" },
       {
-        label: "Course Purchases",
+        label: "Recorded Purchases",
         href: "/college-admin/recorded-course-purchases",
         icon: "fees",
       },
