@@ -299,6 +299,8 @@ class CollegeAdminAssignmentDetailAPIView(APIView):
 
             students.append({
                 "student_profile_id": student.id,
+                "student_user_id": student_user.id,
+                "enrollment_id": enrollment.id,
                 "student_name": _display_name(student_user),
                 "username": student_user.username,
                 "roll_number": enrollment.roll_number,
