@@ -258,12 +258,28 @@ export default function CollegeAdminParentsPage() {
                       {parents.map((parent) => (
                         <tr key={parent.id}>
                           <td>
-                            <div className="fw-semibold">{parent.name}</div>
+                            <div className="fw-semibold">
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/parents/${parent.id}`}
+                                title="Open parent details"
+                              >
+                                {parent.name}
+                              </Link>
+                            </div>
                             <div className="text-muted small">
                               {parent.profile?.occupation || "-"}
                             </div>
                           </td>
-                          <td>{parent.username}</td>
+                          <td>
+                            <Link
+                              className="lms-entity-link lms-entity-link-muted"
+                              href={`/college-admin/parents/${parent.id}`}
+                              title="Open parent details"
+                            >
+                              @{parent.username}
+                            </Link>
+                          </td>
                           <td>
                             <div>{parent.email || "-"}</div>
                             <div className="text-muted small">
@@ -281,7 +297,15 @@ export default function CollegeAdminParentsPage() {
                               {parent.is_active ? "Active" : "Inactive"}
                             </span>
                           </td>
-                          <td>{parent.linked_students_count}</td>
+                          <td>
+                            <Link
+                              className="lms-entity-link-pill"
+                              href={`/college-admin/parents/${parent.id}`}
+                              title="View linked students"
+                            >
+                              {parent.linked_students_count} linked
+                            </Link>
+                          </td>
                           <td>
                             <div className="d-flex flex-wrap gap-2">
                               <Link
