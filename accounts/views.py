@@ -532,17 +532,20 @@ class StudentDashboardAPIView(APIView):
 
             'today_classes': LiveClassSerializer(
                 today_classes,
-                many=True
+                many=True,
+                context={'student_profile': student_profile},
             ).data,
 
             'upcoming_classes': LiveClassSerializer(
                 upcoming_classes,
-                many=True
+                many=True,
+                context={'student_profile': student_profile},
             ).data,
 
             'recorded_classes': LiveClassSerializer(
                 recorded_classes,
-                many=True
+                many=True,
+                context={'student_profile': student_profile},
             ).data,
 
             'feature_access': feature_access,
