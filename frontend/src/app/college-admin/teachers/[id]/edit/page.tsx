@@ -280,7 +280,18 @@ export default function CollegeAdminEditTeacherPage() {
                       <div className="teacher-form-grid">
                         <div className="teacher-form-group">
                           <label htmlFor="employee-id">Employee ID</label>
-                          <input id="employee-id" value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} required />
+                          <input
+                            id="employee-id"
+                            value={employeeId}
+                            onChange={(event) =>
+                              setEmployeeId(event.target.value)
+                            }
+                            required
+                          />
+                          <small>
+                            Employee ID is editable. Keep it unique for this
+                            teacher.
+                          </small>
                         </div>
                         <div className="teacher-form-group">
                           <label htmlFor="qualification">Qualification</label>
