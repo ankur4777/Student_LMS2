@@ -58,6 +58,10 @@ interface LiveClass {
   subject_name: string;
   section_name: string;
   recording_public_id: string | null;
+  recording_price: string | null;
+  recording_price_configured: boolean;
+  recording_has_access: boolean;
+  recording_purchase_status: string | null;
   recording_playback_url: string | null;
 }
 
@@ -563,7 +567,7 @@ export default function StudentDashboard() {
                                 </small>
                               </div>
 
-                              {recording.recording_playback_url && (
+                              {recording.recording_playback_url ? (
                                 <div className="d-flex gap-2 flex-wrap">
                                   <button
                                     type="button"
@@ -589,6 +593,22 @@ export default function StudentDashboard() {
                                     </button>
                                   )}
                                 </div>
+                              ) : recording.recording_purchase_status ===
+                                "pending" ? (
+                                <span className="badge bg-warning text-dark">
+                                  Purchase Pending
+                                </span>
+                              ) : recording.recording_price_configured ? (
+                                <Link
+                                  href="/student/recorded-classes"
+                                  className="btn btn-outline-primary btn-sm"
+                                >
+                                  Purchase
+                                </Link>
+                              ) : (
+                                <span className="text-muted small">
+                                  Not for sale yet
+                                </span>
                               )}
                             </div>
                           ))
