@@ -42,8 +42,11 @@ interface LiveClass {
   can_cancel: boolean;
   recording: {
     exists: boolean;
+    public_id: string | null;
     title: string;
     is_available: boolean;
+    price: string | null;
+    access_duration_days: number | null;
     uploaded_at: string | null;
   };
 }
@@ -91,6 +94,10 @@ export default function CollegeAdminLiveClassDetailPage() {
   const [liveClass, setLiveClass] = useState<LiveClass | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingRecordingSettings, setSavingRecordingSettings] = useState(false);
+  const [recordingPrice, setRecordingPrice] = useState("");
+  const [recordingAccessDays, setRecordingAccessDays] = useState("180");
+  const [recordingMessage, setRecordingMessage] = useState("");
   const [error, setError] = useState("");
 
   const clearSession = useCallback(() => {
@@ -139,7 +146,19 @@ export default function CollegeAdminLiveClassDetailPage() {
     const result = await fetchJson(
       `${API_BASE}/api/live-classes/college-admin/classes/${params.id}/`
     );
-    setLiveClass(result.class || null);
+    const nextClass = result.class || null;
+    setLiveClass(nextClass);
+
+    if (nextClass?.recording?.exists) {
+      setRecordingPrice(
+        nextClass.recording.price === null
+          ? ""
+          : String(nextClass.recording.price)
+      );
+      setRecordingAccessDays(
+        String(nextClass.recording.access_duration_days || 180)
+      );
+    }
   }, [fetchJson, params.id]);
 
   useEffect(() => {
@@ -166,6 +185,43 @@ export default function CollegeAdminLiveClassDetailPage() {
       isMounted = false;
     };
   }, [loadClass]);
+
+  const saveRecordingSettings = async () => {
+    if (!liveClass?.recording?.public_id) {
+      return;
+    }
+
+    setSavingRecordingSettings(true);
+    setError("");
+    setRecordingMessage("");
+
+    try {
+      const result = await fetchJson(
+        `${API_BASE}/api/recorded-courses/college-admin/recorded-classes/${liveClass.recording.public_id}/purchase-settings/`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            price: recordingPrice.trim() || null,
+            access_duration_days: Number(recordingAccessDays),
+          }),
+        }
+      );
+
+      setRecordingMessage(
+        result.message || "Recording purchase settings updated."
+      );
+      await loadClass();
+    } catch (err) {
+      if (err instanceof Error && err.message !== "Unauthorized") {
+        setError(err.message);
+      }
+    } finally {
+      setSavingRecordingSettings(false);
+    }
+  };
 
   const cancelClass = async () => {
     setSaving(true);
@@ -371,34 +427,103 @@ export default function CollegeAdminLiveClassDetailPage() {
                       Recording Information
                     </h5>
                     {liveClass.recording.exists ? (
-                      <div className="row g-4">
-                        <div className="col-md-4">
-                          <div className="text-muted small">Title</div>
-                          <div className="fw-semibold">
-                            {formatValue(liveClass.recording.title)}
+                      <>
+                        <div className="row g-4">
+                          <div className="col-md-4">
+                            <div className="text-muted small">Title</div>
+                            <div className="fw-semibold">
+                              {formatValue(liveClass.recording.title)}
+                            </div>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="text-muted small">Status</div>
+                            <span
+                              className={
+                                liveClass.recording.is_available
+                                  ? "badge bg-success"
+                                  : "badge bg-secondary"
+                              }
+                            >
+                              {liveClass.recording.is_available
+                                ? "Available"
+                                : "Unavailable"}
+                            </span>
+                          </div>
+                          <div className="col-md-4">
+                            <div className="text-muted small">Uploaded At</div>
+                            <div className="fw-semibold">
+                              {formatValue(liveClass.recording.uploaded_at)}
+                            </div>
                           </div>
                         </div>
-                        <div className="col-md-4">
-                          <div className="text-muted small">Status</div>
-                          <span
-                            className={
-                              liveClass.recording.is_available
-                                ? "badge bg-success"
-                                : "badge bg-secondary"
-                            }
-                          >
-                            {liveClass.recording.is_available
-                              ? "Available"
-                              : "Unavailable"}
-                          </span>
-                        </div>
-                        <div className="col-md-4">
-                          <div className="text-muted small">Uploaded At</div>
-                          <div className="fw-semibold">
-                            {formatValue(liveClass.recording.uploaded_at)}
+
+                        <hr className="my-4" />
+
+                        <div className="row g-3 align-items-end">
+                          <div className="col-md-4">
+                            <label className="form-label fw-semibold">
+                              Student Purchase Price
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control"
+                              min="0"
+                              step="0.01"
+                              value={recordingPrice}
+                              onChange={(event) =>
+                                setRecordingPrice(event.target.value)
+                              }
+                              placeholder="Set price"
+                            />
+                            <div className="form-text">
+                              Leave empty to keep this recording unavailable for
+                              purchase. Use 0 for free unlock.
+                            </div>
+                          </div>
+
+                          <div className="col-md-4">
+                            <label className="form-label fw-semibold">
+                              Access Duration
+                            </label>
+                            <div className="input-group">
+                              <input
+                                type="number"
+                                className="form-control"
+                                min="1"
+                                step="1"
+                                value={recordingAccessDays}
+                                onChange={(event) =>
+                                  setRecordingAccessDays(event.target.value)
+                                }
+                              />
+                              <span className="input-group-text">days</span>
+                            </div>
+                          </div>
+
+                          <div className="col-md-4">
+                            <button
+                              type="button"
+                              className="btn btn-primary"
+                              disabled={
+                                savingRecordingSettings ||
+                                !recordingAccessDays ||
+                                Number(recordingAccessDays) <= 0
+                              }
+                              onClick={() => void saveRecordingSettings()}
+                            >
+                              {savingRecordingSettings
+                                ? "Saving..."
+                                : "Save Purchase Settings"}
+                            </button>
                           </div>
                         </div>
-                      </div>
+
+                        {recordingMessage && (
+                          <div className="alert alert-success mt-3 mb-0">
+                            {recordingMessage}
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="text-muted">
                         No recording is available for this live class.
