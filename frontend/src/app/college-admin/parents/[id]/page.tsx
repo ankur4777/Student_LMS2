@@ -26,6 +26,10 @@ interface LinkedStudent {
   link_id: number;
   student_id: number;
   student_profile_id: number;
+  enrollment_id: number | null;
+  class_id: number | null;
+  section_id: number | null;
+  academic_session_id: number | null;
   name: string;
   username: string;
   address: string;
@@ -441,28 +445,70 @@ export default function CollegeAdminParentDetailPage() {
                               <tr key={student.link_id}>
                                 <td>
                                   <div className="fw-semibold">
-                                    {student.name}
+                                    <Link
+                                      className="lms-entity-link"
+                                      href={`/college-admin/students/${student.student_id}`}
+                                      title="Open student details"
+                                    >
+                                      {student.name}
+                                    </Link>
                                   </div>
                                   <div className="text-muted small">
-                                    {student.admission_number}
+                                    <Link
+                                      className="lms-entity-link lms-entity-link-muted"
+                                      href={`/college-admin/students/${student.student_id}`}
+                                    >
+                                      {student.admission_number || "-"}
+                                    </Link>
                                   </div>
                                   <div className="text-muted small">
                                     {student.address || "-"}
                                   </div>
                                 </td>
-                                <td>{student.roll_number || "-"}</td>
                                 <td>
-                                  {student.classroom_name ? (
+                                  {student.roll_number && student.enrollment_id ? (
+                                    <Link
+                                      className="lms-entity-link"
+                                      href={`/college-admin/enrollments/${student.enrollment_id}/edit`}
+                                      title="Open enrollment"
+                                    >
+                                      {student.roll_number}
+                                    </Link>
+                                  ) : "-"}
+                                </td>
+                                <td>
+                                  {student.classroom_name && student.class_id ? (
                                     <>
-                                      {student.classroom_name} /{" "}
-                                      {student.section_name || "-"}
+                                      <Link
+                                        className="lms-entity-link"
+                                        href={`/college-admin/classes/${student.class_id}/edit`}
+                                        title="Open class"
+                                      >
+                                        {student.classroom_name}
+                                      </Link>
+                                      {" / "}
+                                      <Link
+                                        className="lms-entity-link lms-entity-link-muted"
+                                        href={`/college-admin/classes/${student.class_id}/edit`}
+                                        title="Open class and section"
+                                      >
+                                        {student.section_name || "-"}
+                                      </Link>
                                     </>
                                   ) : (
                                     "-"
                                   )}
                                 </td>
                                 <td>
-                                  {student.academic_session_name || "-"}
+                                  {student.academic_session_name && student.academic_session_id ? (
+                                    <Link
+                                      className="lms-entity-link"
+                                      href={`/college-admin/academic-sessions/${student.academic_session_id}/edit`}
+                                      title="Open academic session"
+                                    >
+                                      {student.academic_session_name}
+                                    </Link>
+                                  ) : "-"}
                                 </td>
                                 <td>
                                   {formatRelationship(student.relationship)}
