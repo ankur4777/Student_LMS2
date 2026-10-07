@@ -2951,6 +2951,97 @@ class StudentAddressVisibilityTests(TestCase):
         )
 
 
+    def test_student_profile_shows_only_linked_same_org_parents(self):
+        self.parent.phone = "9876543210"
+        self.parent.occupation = "Engineer"
+        self.parent.save(update_fields=["phone", "occupation"])
+
+        second_parent_user = User.objects.create_user(
+            username="secondaddressparent",
+            email="second-parent@example.com",
+            password="pass12345",
+            first_name="Second",
+            last_name="Parent",
+            role="parent",
+            organization=self.organization,
+        )
+        second_parent = ParentProfile.objects.create(
+            user=second_parent_user,
+            phone="1234567890",
+            occupation="Teacher",
+        )
+        ParentStudent.objects.create(
+            parent=second_parent,
+            student=self.student,
+            relationship=ParentStudent.Relationship.MOTHER,
+        )
+
+        other_organization = Organization.objects.create(
+            name="Unrelated College",
+            code="UNRELATED",
+        )
+        foreign_parent_user = User.objects.create_user(
+            username="foreignaddressparent",
+            email="foreign-parent@example.com",
+            password="pass12345",
+            role="parent",
+            organization=other_organization,
+        )
+        foreign_parent = ParentProfile.objects.create(
+            user=foreign_parent_user,
+        )
+        ParentStudent.objects.create(
+            parent=foreign_parent,
+            student=self.student,
+            relationship=ParentStudent.Relationship.OTHER,
+        )
+
+        unlinked_user = User.objects.create_user(
+            username="unlinkedaddressparent",
+            email="unlinked-parent@example.com",
+            password="pass12345",
+            role="parent",
+            organization=self.organization,
+        )
+        ParentProfile.objects.create(user=unlinked_user)
+
+        self.client.force_authenticate(user=self.student_user)
+        response = self.client.get("/api/accounts/student/profile/")
+
+        self.assertEqual(response.status_code, 200)
+        parents = response.data["parents"]
+        self.assertEqual(len(parents), 2)
+        self.assertEqual(
+            {(parent["name"], parent["relationship"]) for parent in parents},
+            {("Address Parent", "guardian"), ("Second Parent", "mother")},
+        )
+        guardian = next(
+            parent for parent in parents
+            if parent["relationship"] == "guardian"
+        )
+        self.assertEqual(guardian["relationship_label"], "Guardian")
+        self.assertEqual(guardian["phone"], "9876543210")
+        self.assertEqual(guardian["occupation"], "Engineer")
+        self.assertEqual(guardian["email"], "parent-address@example.com")
+        self.assertNotIn("password", guardian)
+
+    def test_student_profile_without_linked_parent_returns_empty_list(self):
+        ParentStudent.objects.filter(student=self.student).delete()
+        self.client.force_authenticate(user=self.student_user)
+
+        response = self.client.get("/api/accounts/student/profile/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["parents"], [])
+
+    def test_parent_cannot_open_student_profile(self):
+        self.client.force_authenticate(user=self.parent_user)
+
+        response = self.client.get("/api/accounts/student/profile/")
+
+        self.assertEqual(response.status_code, 403)
+
+
 class TeacherDashboardAssignedClassStudentCountTests(TestCase):
     def setUp(self):
         self.client = APIClient()
