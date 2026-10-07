@@ -242,12 +242,32 @@ export default function CollegeAdminClassesPage() {
                     <tbody>
                       {classes.map((item) => (
                         <tr key={item.id}>
-                          <td className="fw-semibold">{item.name}</td>
-                          <td>{item.academic_session}</td>
+                          <td className="fw-semibold">
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/classes/${item.id}/edit`}
+                              title="Open class"
+                            >
+                              {item.name}
+                            </Link>
+                          </td>
                           <td>
-                            <span className="badge bg-light text-dark border">
-                              {item.roll_number_prefix}
-                            </span>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/academic-sessions/${item.academic_session_id}/edit`}
+                              title="Open academic session"
+                            >
+                              {item.academic_session}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link-pill"
+                              href={`/college-admin/classes/${item.id}/edit`}
+                              title="Open roll number settings"
+                            >
+                              {item.roll_number_prefix || "No prefix"}
+                            </Link>
                           </td>
                           <td>
                             <Link
