@@ -301,13 +301,37 @@ export default function CollegeAdminStudentsPage() {
                             <div className="student-person-cell">
                               <span className="student-avatar">{initials(student.name, student.username)}</span>
                               <div>
-                                <strong>{student.name || student.username}</strong>
-                                <small>Admission No. {student.profile?.admission_number || "-"}</small>
+                                <strong>
+                                  <Link
+                                    className="lms-entity-link"
+                                    href={`/college-admin/students/${student.id}`}
+                                    title="Open student details"
+                                  >
+                                    {student.name || student.username}
+                                  </Link>
+                                </strong>
+                                <small>
+                                  Admission No.{" "}
+                                  {student.profile?.admission_number ? (
+                                    <Link
+                                      className="lms-entity-link lms-entity-link-muted"
+                                      href={`/college-admin/students/${student.id}`}
+                                    >
+                                      {student.profile.admission_number}
+                                    </Link>
+                                  ) : "-"}
+                                </small>
                               </div>
                             </div>
                           </td>
                           <td>
-                            <span className="student-username">@{student.username}</span>
+                            <Link
+                              className="student-username lms-entity-link"
+                              href={`/college-admin/students/${student.id}`}
+                              title="Open student details"
+                            >
+                              @{student.username}
+                            </Link>
                           </td>
                           <td>
                             <div className="student-contact-cell">
