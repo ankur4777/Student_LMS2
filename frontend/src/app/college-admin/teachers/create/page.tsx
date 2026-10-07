@@ -2,7 +2,10 @@
 
 import { FormEvent, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { buildUsernameSuggestion } from "@/lib/username";
+import {
+  buildEmployeeIdSuggestion,
+  buildUsernameSuggestion,
+} from "@/lib/username";
 
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
@@ -37,6 +40,8 @@ export default function CollegeAdminCreateTeacherPage() {
   const [usernameManuallyEdited, setUsernameManuallyEdited] = useState(false);
   const [email, setEmail] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [employeeIdManuallyEdited, setEmployeeIdManuallyEdited] =
+    useState(false);
   const [phone, setPhone] = useState("");
   const [qualification, setQualification] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
@@ -47,6 +52,10 @@ export default function CollegeAdminCreateTeacherPage() {
 
   const autoUsername = buildUsernameSuggestion(firstName, lastName);
   const displayedUsername = usernameManuallyEdited ? username : autoUsername;
+  const autoEmployeeId = buildEmployeeIdSuggestion(firstName, lastName);
+  const displayedEmployeeId = employeeIdManuallyEdited
+    ? employeeId
+    : autoEmployeeId;
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
@@ -92,7 +101,8 @@ export default function CollegeAdminCreateTeacherPage() {
             username: displayedUsername,
             username_auto: !usernameManuallyEdited,
             email,
-            employee_id: employeeId,
+            employee_id: displayedEmployeeId,
+            employee_id_auto: !employeeIdManuallyEdited,
             phone,
             qualification,
             joining_date: joiningDate || null,
@@ -195,7 +205,19 @@ export default function CollegeAdminCreateTeacherPage() {
                   <div className="teacher-form-grid">
                     <div className="teacher-form-group">
                       <label htmlFor="employee-id">Employee ID</label>
-                      <input id="employee-id" value={employeeId} onChange={(event) => setEmployeeId(event.target.value)} required />
+                      <input
+                        id="employee-id"
+                        value={displayedEmployeeId}
+                        onChange={(event) => {
+                          setEmployeeId(event.target.value);
+                          setEmployeeIdManuallyEdited(true);
+                        }}
+                        required
+                      />
+                      <small>
+                        Auto generated from the teacher&apos;s name. You can
+                        edit it before creating the account.
+                      </small>
                     </div>
                     <div className="teacher-form-group">
                       <label htmlFor="qualification">Qualification</label>
