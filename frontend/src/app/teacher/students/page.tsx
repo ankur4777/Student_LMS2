@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -227,25 +228,39 @@ export default function TeacherStudentsPage() {
                       {students.map((student) => (
                         <tr key={student.student_profile_id}>
                           <td>
-                            <button
-                              type="button"
-                              className="btn btn-link p-0 fw-semibold text-decoration-none text-start"
-                              onClick={() =>
-                                router.push(
-                                  `/teacher/students/${student.student_profile_id}`
-                                )
-                              }
+                            <Link
+                              className="lms-entity-link fw-semibold"
+                              href={`/teacher/students/${student.student_profile_id}`}
+                              title="Open student details"
                             >
                               {student.name}
-                            </button>
+                            </Link>
                             <small className="text-muted d-block">
-                              @{student.username}
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/teacher/students/${student.student_profile_id}`}
+                              >
+                                @{student.username}
+                              </Link>
                             </small>
                           </td>
                           <td>
-                            <div>{student.admission_number || "-"}</div>
+                            <div>
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/teacher/students/${student.student_profile_id}`}
+                              >
+                                {student.admission_number || "-"}
+                              </Link>
+                            </div>
                             <small className="text-muted">
-                              Roll: {student.roll_number || "-"}
+                              Roll:{" "}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/teacher/students/${student.student_profile_id}`}
+                              >
+                                {student.roll_number || "-"}
+                              </Link>
                             </small>
                           </td>
                           <td>
