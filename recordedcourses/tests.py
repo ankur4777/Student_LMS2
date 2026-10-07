@@ -774,6 +774,93 @@ class RecordedClassPurchaseAccessSecurityTests(APITestCase):
         )
         self.assertEqual(cross_org.status_code, 404)
 
+    def test_recorded_class_list_hides_playback_until_access_is_granted(self):
+        self.authenticate(self.student_user_a)
+
+        before = self.client.get(
+            "/api/live-classes/student/recorded/"
+        )
+
+        self.assertEqual(before.status_code, 200)
+        item = next(
+            row for row in before.data
+            if str(row["recording_public_id"]) == str(
+                self.recording_a.public_id
+            )
+        )
+        self.assertEqual(item["recording_price"], Decimal("1200.00"))
+        self.assertTrue(item["recording_price_configured"])
+        self.assertFalse(item["recording_has_access"])
+        self.assertIsNone(item["recording_playback_url"])
+
+        purchase_response = self.create_student_purchase()
+        purchase_id = purchase_response.data["purchase"]["id"]
+
+        self.authenticate(self.admin_a)
+        verify_response = self.client.post(
+            (
+                "/api/recorded-courses/college-admin/"
+                f"recorded-class-purchases/{purchase_id}/verify/"
+            ),
+            {"payment_method": "cash"},
+            format="json",
+        )
+        self.assertEqual(verify_response.status_code, 200)
+
+        self.authenticate(self.student_user_a)
+        after = self.client.get(
+            "/api/live-classes/student/recorded/"
+        )
+        item = next(
+            row for row in after.data
+            if str(row["recording_public_id"]) == str(
+                self.recording_a.public_id
+            )
+        )
+        self.assertTrue(item["recording_has_access"])
+        self.assertIsNotNone(item["recording_access_expires_at"])
+        self.assertEqual(
+            item["recording_playback_url"],
+            (
+                "/api/live-classes/student/recordings/"
+                f"{self.recording_a.public_id}/play/"
+            ),
+        )
+
+    def test_unpriced_recording_cannot_be_purchased(self):
+        self.recording_a.price = None
+        self.recording_a.save(update_fields=["price", "updated_at"])
+        self.authenticate(self.student_user_a)
+
+        response = self.client.post(
+            "/api/recorded-courses/student/recorded-class-purchases/",
+            {
+                "recording_public_id": str(self.recording_a.public_id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn(
+            "college admin must set a price",
+            str(response.data["detail"]).lower(),
+        )
+        self.assertFalse(RecordedClassPurchase.objects.exists())
+
+    def test_student_cannot_purchase_cross_organization_recording(self):
+        self.authenticate(self.student_user_a)
+
+        response = self.client.post(
+            "/api/recorded-courses/student/recorded-class-purchases/",
+            {
+                "recording_public_id": str(self.recording_b.public_id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertFalse(RecordedClassPurchase.objects.exists())
+
     def test_student_purchase_uses_server_price_and_stays_pending(self):
         response = self.create_student_purchase()
 
