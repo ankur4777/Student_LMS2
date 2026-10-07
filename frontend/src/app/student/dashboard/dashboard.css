@@ -674,6 +674,10 @@
   margin-top: auto;
 }
 
+.recorded-course-grid-single .recorded-course-open {
+  margin-top: 0;
+}
+
 .recorded-course-grid-single .recorded-course-meta,
 .recorded-course-grid-single .recorded-course-open {
   width: 100%;
