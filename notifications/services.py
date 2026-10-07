@@ -662,15 +662,14 @@ def notify_recording_available(recording):
         create_notification(
             organization=organization,
             user=enrollment.student.user,
-            title="Class Recording Available",
+            title="Class Recording Uploaded",
             message=(
                 f'The recording for "{live_class.title}" - '
-                f"{teacher_assignment.subject.name} is now available."
+                f"{teacher_assignment.subject.name} has been uploaded. "
+                "Open Recorded Classes to check purchase availability."
             ),
             notification_type=Notification.Type.LIVE_CLASS,
-            related_url=(
-                f"/student/recordings/{recording.public_id}"
-            ),
+            related_url="/student/recorded-classes",
         )
 
     parent_links = ParentStudent.objects.filter(
@@ -686,10 +685,10 @@ def notify_recording_available(recording):
         create_notification(
             organization=organization,
             user=link.parent.user,
-            title="Class Recording Available",
+            title="Class Recording Uploaded",
             message=(
-                f'The recording for "{live_class.title}" is now '
-                "available for your child."
+                f'The recording for "{live_class.title}" has been '
+                "uploaded for your child."
             ),
             notification_type=Notification.Type.LIVE_CLASS,
             related_url="/parent/dashboard",
