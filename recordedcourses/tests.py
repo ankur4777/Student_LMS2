@@ -8,10 +8,31 @@ from django.test import override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from accounts.models import ParentProfile, StudentProfile, User
-from academics.models import ParentStudent
+from accounts.models import (
+    ParentProfile,
+    StudentProfile,
+    TeacherProfile,
+    User,
+)
+from academics.models import (
+    AcademicSession,
+    ClassRoom,
+    ParentStudent,
+    Section,
+    StudentEnrollment,
+    Subject,
+    TeacherAssignment,
+)
 from institutions.models import Organization
-from recordedcourses.models import RecordedCourse, RecordedCourseAccess, RecordedCoursePurchase, RecordedLesson
+from liveclasses.models import LiveClass, LiveClassRecording
+from recordedcourses.models import (
+    RecordedClassAccess,
+    RecordedClassPurchase,
+    RecordedCourse,
+    RecordedCourseAccess,
+    RecordedCoursePurchase,
+    RecordedLesson,
+)
 
 
 class CollegeAdminRecordedCourseAPITests(APITestCase):
@@ -519,3 +540,444 @@ class RecordedCoursePlaybackSecurityTests(RecordedCoursePurchaseAccessSecurityTe
             self.assertEqual(self.client.get(url).status_code, 403)
         self.client.force_authenticate(user=None)
         self.assertEqual(self.client.get(url).status_code, 401)
+
+
+
+@override_settings(
+    PRIVATE_MEDIA_ROOT=Path(tempfile.gettempdir()) / "lms-recorded-class-tests"
+)
+class RecordedClassPurchaseAccessSecurityTests(APITestCase):
+    def setUp(self):
+        self.org_a = Organization.objects.create(
+            name="Recorded Class College A",
+            code="RCCA",
+        )
+        self.org_b = Organization.objects.create(
+            name="Recorded Class College B",
+            code="RCCB",
+        )
+
+        self.admin_a = User.objects.create_user(
+            username="recording_admin_a",
+            password="pass12345",
+            role="college_admin",
+            organization=self.org_a,
+        )
+        self.admin_b = User.objects.create_user(
+            username="recording_admin_b",
+            password="pass12345",
+            role="college_admin",
+            organization=self.org_b,
+        )
+
+        self.teacher_user_a = User.objects.create_user(
+            username="recording_teacher_a",
+            password="pass12345",
+            role="teacher",
+            organization=self.org_a,
+        )
+        self.teacher_a = TeacherProfile.objects.create(
+            user=self.teacher_user_a,
+            employee_id="RCT-A",
+        )
+        self.teacher_user_b = User.objects.create_user(
+            username="recording_teacher_b",
+            password="pass12345",
+            role="teacher",
+            organization=self.org_b,
+        )
+        self.teacher_b = TeacherProfile.objects.create(
+            user=self.teacher_user_b,
+            employee_id="RCT-B",
+        )
+
+        self.student_user_a = User.objects.create_user(
+            username="recording_student_a",
+            password="pass12345",
+            role="student",
+            organization=self.org_a,
+        )
+        self.student_a = StudentProfile.objects.create(
+            user=self.student_user_a,
+            admission_number="RCS-A",
+        )
+        self.student_user_b = User.objects.create_user(
+            username="recording_student_b",
+            password="pass12345",
+            role="student",
+            organization=self.org_b,
+        )
+        self.student_b = StudentProfile.objects.create(
+            user=self.student_user_b,
+            admission_number="RCS-B",
+        )
+
+        self.session_a = AcademicSession.objects.create(
+            organization=self.org_a,
+            name="2026-A",
+            start_date=timezone.localdate() - timedelta(days=60),
+            end_date=timezone.localdate() + timedelta(days=300),
+            is_active=True,
+        )
+        self.classroom_a = ClassRoom.objects.create(
+            organization=self.org_a,
+            name="Class A",
+            academic_session=self.session_a,
+        )
+        self.section_a = Section.objects.create(
+            organization=self.org_a,
+            name="A",
+            classroom=self.classroom_a,
+        )
+        self.subject_a = Subject.objects.create(
+            organization=self.org_a,
+            name="Mathematics",
+            code="MATH-RC",
+            classroom=self.classroom_a,
+        )
+        self.assignment_a = TeacherAssignment.objects.create(
+            teacher=self.teacher_a,
+            subject=self.subject_a,
+            section=self.section_a,
+            is_active=True,
+        )
+        self.enrollment_a = StudentEnrollment.objects.create(
+            student=self.student_a,
+            section=self.section_a,
+            roll_number="RCA-001",
+            is_active=True,
+        )
+
+        self.session_b = AcademicSession.objects.create(
+            organization=self.org_b,
+            name="2026-B",
+            start_date=timezone.localdate() - timedelta(days=60),
+            end_date=timezone.localdate() + timedelta(days=300),
+            is_active=True,
+        )
+        self.classroom_b = ClassRoom.objects.create(
+            organization=self.org_b,
+            name="Class B",
+            academic_session=self.session_b,
+        )
+        self.section_b = Section.objects.create(
+            organization=self.org_b,
+            name="B",
+            classroom=self.classroom_b,
+        )
+        self.subject_b = Subject.objects.create(
+            organization=self.org_b,
+            name="Science",
+            code="SCI-RC",
+            classroom=self.classroom_b,
+        )
+        self.assignment_b = TeacherAssignment.objects.create(
+            teacher=self.teacher_b,
+            subject=self.subject_b,
+            section=self.section_b,
+            is_active=True,
+        )
+        StudentEnrollment.objects.create(
+            student=self.student_b,
+            section=self.section_b,
+            roll_number="RCB-001",
+            is_active=True,
+        )
+
+        self.live_class_a = LiveClass.objects.create(
+            organization=self.org_a,
+            teacher_assignment=self.assignment_a,
+            title="Paid Mathematics Recording",
+            class_date=timezone.localdate() - timedelta(days=1),
+            start_time="10:00:00",
+            end_time="11:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        self.recording_a = LiveClassRecording.objects.create(
+            live_class=self.live_class_a,
+            uploaded_by=self.teacher_a,
+            title="Paid Mathematics Recording",
+            video=self.video("paid-math.mp4"),
+            is_available=True,
+            price=Decimal("1200.00"),
+            access_duration_days=30,
+        )
+
+        self.live_class_b = LiveClass.objects.create(
+            organization=self.org_b,
+            teacher_assignment=self.assignment_b,
+            title="Other College Recording",
+            class_date=timezone.localdate() - timedelta(days=1),
+            start_time="12:00:00",
+            end_time="13:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        self.recording_b = LiveClassRecording.objects.create(
+            live_class=self.live_class_b,
+            uploaded_by=self.teacher_b,
+            title="Other College Recording",
+            video=self.video("other-college.mp4"),
+            is_available=True,
+            price=Decimal("1500.00"),
+            access_duration_days=30,
+        )
+
+    def video(self, name):
+        return SimpleUploadedFile(
+            name,
+            b"recorded-class-video",
+            content_type="video/mp4",
+        )
+
+    def authenticate(self, user):
+        self.client.force_authenticate(user=user)
+
+    def create_student_purchase(self):
+        self.authenticate(self.student_user_a)
+        return self.client.post(
+            "/api/recorded-courses/student/recorded-class-purchases/",
+            {
+                "recording_public_id": str(self.recording_a.public_id),
+                "amount": "1.00",
+                "status": "paid",
+            },
+            format="json",
+        )
+
+    def test_admin_can_configure_own_recording_purchase_settings(self):
+        self.authenticate(self.admin_a)
+
+        response = self.client.patch(
+            (
+                "/api/recorded-courses/college-admin/recorded-classes/"
+                f"{self.recording_a.public_id}/purchase-settings/"
+            ),
+            {
+                "price": "999.00",
+                "access_duration_days": 45,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.recording_a.refresh_from_db()
+        self.assertEqual(self.recording_a.price, Decimal("999.00"))
+        self.assertEqual(self.recording_a.access_duration_days, 45)
+
+        cross_org = self.client.patch(
+            (
+                "/api/recorded-courses/college-admin/recorded-classes/"
+                f"{self.recording_b.public_id}/purchase-settings/"
+            ),
+            {"price": "1.00"},
+            format="json",
+        )
+        self.assertEqual(cross_org.status_code, 404)
+
+    def test_student_purchase_uses_server_price_and_stays_pending(self):
+        response = self.create_student_purchase()
+
+        self.assertEqual(response.status_code, 201)
+        purchase = RecordedClassPurchase.objects.get(
+            id=response.data["purchase"]["id"]
+        )
+        self.assertEqual(purchase.student, self.student_a)
+        self.assertEqual(
+            purchase.purchased_by_student,
+            self.student_a,
+        )
+        self.assertEqual(purchase.amount, Decimal("1200.00"))
+        self.assertEqual(
+            purchase.status,
+            RecordedClassPurchase.Status.PENDING,
+        )
+        self.assertFalse(
+            RecordedClassAccess.objects.filter(
+                purchase=purchase
+            ).exists()
+        )
+
+    def test_duplicate_pending_recorded_class_purchase_is_rejected(self):
+        first = self.create_student_purchase()
+        second = self.create_student_purchase()
+
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(
+            RecordedClassPurchase.objects.filter(
+                recording=self.recording_a,
+                student=self.student_a,
+                status=RecordedClassPurchase.Status.PENDING,
+            ).count(),
+            1,
+        )
+
+    def test_free_recording_grants_access_immediately(self):
+        free_live_class = LiveClass.objects.create(
+            organization=self.org_a,
+            teacher_assignment=self.assignment_a,
+            title="Free Revision Recording",
+            class_date=timezone.localdate() - timedelta(days=2),
+            start_time="14:00:00",
+            end_time="15:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        free_recording = LiveClassRecording.objects.create(
+            live_class=free_live_class,
+            uploaded_by=self.teacher_a,
+            title="Free Revision Recording",
+            video=self.video("free-revision.mp4"),
+            is_available=True,
+            price=Decimal("0.00"),
+            access_duration_days=15,
+        )
+
+        self.authenticate(self.student_user_a)
+        response = self.client.post(
+            "/api/recorded-courses/student/recorded-class-purchases/",
+            {
+                "recording_public_id": str(free_recording.public_id),
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        purchase = RecordedClassPurchase.objects.get(
+            id=response.data["purchase"]["id"]
+        )
+        self.assertEqual(
+            purchase.status,
+            RecordedClassPurchase.Status.PAID,
+        )
+        access = RecordedClassAccess.objects.get(purchase=purchase)
+        self.assertTrue(access.has_access)
+        self.assertEqual(access.recording, free_recording)
+
+    def test_admin_verification_grants_recorded_class_access(self):
+        purchase_response = self.create_student_purchase()
+        purchase_id = purchase_response.data["purchase"]["id"]
+
+        self.authenticate(self.admin_a)
+        response = self.client.post(
+            (
+                "/api/recorded-courses/college-admin/"
+                f"recorded-class-purchases/{purchase_id}/verify/"
+            ),
+            {
+                "payment_method": "upi",
+                "payment_reference": "UTR-RC-100",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        purchase = RecordedClassPurchase.objects.get(id=purchase_id)
+        self.assertEqual(
+            purchase.status,
+            RecordedClassPurchase.Status.PAID,
+        )
+        access = RecordedClassAccess.objects.get(purchase=purchase)
+        self.assertEqual(access.recording, self.recording_a)
+        self.assertEqual(access.student, self.student_a)
+        self.assertTrue(access.has_access)
+        self.assertIsNotNone(access.expires_at)
+
+    def test_cross_org_admin_cannot_verify_recorded_class_purchase(self):
+        purchase_response = self.create_student_purchase()
+        purchase_id = purchase_response.data["purchase"]["id"]
+
+        self.authenticate(self.admin_b)
+        response = self.client.post(
+            (
+                "/api/recorded-courses/college-admin/"
+                f"recorded-class-purchases/{purchase_id}/verify/"
+            ),
+            {"payment_method": "cash"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 404)
+        purchase = RecordedClassPurchase.objects.get(id=purchase_id)
+        self.assertEqual(
+            purchase.status,
+            RecordedClassPurchase.Status.PENDING,
+        )
+        self.assertFalse(
+            RecordedClassAccess.objects.filter(
+                purchase=purchase
+            ).exists()
+        )
+
+    def test_playback_requires_verified_recorded_class_access(self):
+        playback_url = (
+            "/api/live-classes/student/recordings/"
+            f"{self.recording_a.public_id}/play/"
+        )
+
+        self.authenticate(self.student_user_a)
+        blocked = self.client.get(playback_url)
+        self.assertEqual(blocked.status_code, 403)
+        self.assertIn(
+            "Purchase this recorded class",
+            str(blocked.data["detail"]),
+        )
+
+        purchase_response = self.create_student_purchase()
+        purchase_id = purchase_response.data["purchase"]["id"]
+        self.authenticate(self.admin_a)
+        verify_response = self.client.post(
+            (
+                "/api/recorded-courses/college-admin/"
+                f"recorded-class-purchases/{purchase_id}/verify/"
+            ),
+            {"payment_method": "cash"},
+            format="json",
+        )
+        self.assertEqual(verify_response.status_code, 200)
+
+        self.authenticate(self.student_user_a)
+        allowed = self.client.get(playback_url)
+        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(allowed["Content-Type"], "video/mp4")
+        self.assertEqual(
+            allowed["Cache-Control"],
+            "private, no-store",
+        )
+
+    def test_expired_or_revoked_recorded_class_access_is_blocked(self):
+        paid_purchase = RecordedClassPurchase.objects.create(
+            organization=self.org_a,
+            recording=self.recording_a,
+            student=self.student_a,
+            buyer_type=RecordedClassPurchase.BuyerType.STUDENT,
+            purchased_by_student=self.student_a,
+            amount=self.recording_a.price,
+            status=RecordedClassPurchase.Status.PAID,
+            payment_method="cash",
+            paid_at=timezone.now(),
+        )
+        access = RecordedClassAccess.objects.create(
+            organization=self.org_a,
+            recording=self.recording_a,
+            student=self.student_a,
+            purchase=paid_purchase,
+            starts_at=timezone.now() - timedelta(days=3),
+            expires_at=timezone.now() - timedelta(days=1),
+            is_active=True,
+        )
+
+        playback_url = (
+            "/api/live-classes/student/recordings/"
+            f"{self.recording_a.public_id}/play/"
+        )
+        self.authenticate(self.student_user_a)
+
+        expired = self.client.get(playback_url)
+        self.assertEqual(expired.status_code, 403)
+
+        access.expires_at = timezone.now() + timedelta(days=1)
+        access.revoked_at = timezone.now()
+        access.save()
+
+        revoked = self.client.get(playback_url)
+        self.assertEqual(revoked.status_code, 403)
