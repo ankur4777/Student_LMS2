@@ -248,10 +248,39 @@ export default function CollegeAdminSubjectsPage() {
                     <tbody>
                       {subjects.map((subject) => (
                         <tr key={subject.id}>
-                          <td className="fw-semibold">{subject.name}</td>
-                          <td>{subject.code || "-"}</td>
-                          <td>{subject.class_name}</td>
-                          <td>{subject.academic_session}</td>
+                          <td className="fw-semibold">
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/subjects/${subject.id}/edit`}
+                              title="Open subject"
+                            >
+                              {subject.name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link lms-entity-link-muted"
+                              href={`/college-admin/subjects/${subject.id}/edit`}
+                            >
+                              {subject.code || "-"}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/classes/${subject.class_id}/edit`}
+                            >
+                              {subject.class_name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/academic-sessions/${subject.academic_session_id}/edit`}
+                            >
+                              {subject.academic_session}
+                            </Link>
+                          </td>
                           <td>
                             <div className="fw-semibold">
                               {subject.eligible_student_count} /{" "}
