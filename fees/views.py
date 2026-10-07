@@ -661,6 +661,8 @@ def serialize_student_fee(student_fee, include_details=False):
             {
                 "id": enrollment.id,
                 "roll_number": enrollment.roll_number,
+                "class_room_id": enrollment.section.classroom_id,
+                "section_id": enrollment.section_id,
                 "class_room": enrollment.section.classroom.name,
                 "section": enrollment.section.name,
             }
