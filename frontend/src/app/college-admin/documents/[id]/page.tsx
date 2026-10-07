@@ -23,10 +23,15 @@ interface DocumentItem {
   description: string;
   document_type: string;
   filename: string;
+  teacher_id: number;
   teacher_name: string;
+  subject_id: number;
   subject_name: string;
+  class_id: number;
   classroom_name: string;
+  section_id: number;
   section_name: string;
+  academic_session_id: number;
   academic_session_name: string;
   status: string;
   created_at: string;
@@ -246,13 +251,39 @@ export default function CollegeAdminDocumentDetailPage() {
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body">
                       <h5 className="fw-bold">Academic Information</h5>
-                      <div>Subject: {document.subject_name}</div>
                       <div>
-                        Class / Section: {document.classroom_name} /{" "}
-                        {document.section_name}
+                        Subject:{" "}
+                        <Link
+                          className="lms-entity-link"
+                          href={`/college-admin/subjects/${document.subject_id}/edit`}
+                        >
+                          {document.subject_name}
+                        </Link>
                       </div>
                       <div>
-                        Session: {document.academic_session_name || "-"}
+                        Class / Section:{" "}
+                        <Link
+                          className="lms-entity-link"
+                          href={`/college-admin/classes/${document.class_id}/edit`}
+                        >
+                          {document.classroom_name}
+                        </Link>{" "}
+                        /{" "}
+                        <Link
+                          className="lms-entity-link lms-entity-link-muted"
+                          href={`/college-admin/classes/${document.class_id}/edit`}
+                        >
+                          {document.section_name}
+                        </Link>
+                      </div>
+                      <div>
+                        Session:{" "}
+                        <Link
+                          className="lms-entity-link"
+                          href={`/college-admin/academic-sessions/${document.academic_session_id}/edit`}
+                        >
+                          {document.academic_session_name || "-"}
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -262,7 +293,14 @@ export default function CollegeAdminDocumentDetailPage() {
                   <div className="card border-0 shadow-sm h-100">
                     <div className="card-body">
                       <h5 className="fw-bold">Teacher Information</h5>
-                      <div>{document.teacher_name}</div>
+                      <div>
+                        <Link
+                          className="lms-entity-link"
+                          href={`/college-admin/teachers/${document.teacher_id}`}
+                        >
+                          {document.teacher_name}
+                        </Link>
+                      </div>
 
                       <button
                         type="button"
