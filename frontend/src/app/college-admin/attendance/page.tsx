@@ -46,10 +46,15 @@ interface AttendanceSession {
   id: number;
   date: string;
   start_time: string | null;
+  teacher_id: number;
   teacher_name: string;
+  subject_id: number;
   subject_name: string;
+  class_id: number;
   class_name: string;
+  section_id: number;
   section_name: string;
+  academic_session_id: number;
   topic: string;
   present: number;
   absent: number;
@@ -399,10 +404,36 @@ export default function CollegeAdminAttendancePage() {
                                 {formatTime(session.start_time)}
                               </div>
                             </td>
-                            <td>{session.teacher_name}</td>
-                            <td>{session.subject_name}</td>
                             <td>
-                              {session.class_name} / {session.section_name}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/teachers/${session.teacher_id}`}
+                              >
+                                {session.teacher_name}
+                              </Link>
+                            </td>
+                            <td>
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/subjects/${session.subject_id}/edit`}
+                              >
+                                {session.subject_name}
+                              </Link>
+                            </td>
+                            <td>
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/classes/${session.class_id}/edit`}
+                              >
+                                {session.class_name}
+                              </Link>{" "}
+                              /{" "}
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/college-admin/classes/${session.class_id}/edit`}
+                              >
+                                {session.section_name}
+                              </Link>
                             </td>
                             <td>{session.topic || "-"}</td>
                             <td>{session.present}</td>
