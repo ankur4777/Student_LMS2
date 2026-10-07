@@ -5,6 +5,7 @@ from .views import (
     CollegeAdminRecordedCourseLessonsAPIView,
     CollegeAdminRecordedCoursesAPIView,
     CollegeAdminRecordedLessonDetailAPIView,
+    CollegeAdminRecordedClassPurchaseSettingsAPIView,
     CollegeAdminRecordedClassPurchasesAPIView,
     CollegeAdminRecordedCoursePurchasesAPIView,
     CollegeAdminVerifyRecordedClassPurchaseAPIView,
@@ -29,6 +30,11 @@ urlpatterns = [
         "college-admin/recorded-class-purchases/",
         CollegeAdminRecordedClassPurchasesAPIView.as_view(),
         name="college-admin-recorded-class-purchases",
+    ),
+    path(
+        "college-admin/recorded-classes/<uuid:public_id>/purchase-settings/",
+        CollegeAdminRecordedClassPurchaseSettingsAPIView.as_view(),
+        name="college-admin-recorded-class-purchase-settings",
     ),
     path(
         "college-admin/recorded-class-purchases/<int:purchase_id>/verify/",
