@@ -328,27 +328,63 @@ export default function CollegeAdminParentStudentLinksPage() {
                         <tr key={link.link_id}>
                           <td>
                             <div className="fw-semibold">
-                              {link.parent.name}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/parents/${link.parent.id}`}
+                                title="Open parent details"
+                              >
+                                {link.parent.name}
+                              </Link>
                             </div>
                           </td>
                           <td>
-                            <div>{link.parent.username}</div>
+                            <div>
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/college-admin/parents/${link.parent.id}`}
+                              >
+                                @{link.parent.username}
+                              </Link>
+                            </div>
                             <div className="text-muted small">
                               {link.parent.email || "-"}
                             </div>
                           </td>
                           <td>
                             <div className="fw-semibold">
-                              {link.student.name}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/students/${link.student.student_id}`}
+                                title="Open student details"
+                              >
+                                {link.student.name}
+                              </Link>
                             </div>
                             <div className="text-muted small">
-                              {link.student.admission_number || "-"}
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/college-admin/students/${link.student.student_id}`}
+                              >
+                                {link.student.admission_number || "-"}
+                              </Link>
                             </div>
                           </td>
                           <td>
-                            <div>{link.student.username}</div>
+                            <div>
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/college-admin/students/${link.student.student_id}`}
+                              >
+                                @{link.student.username}
+                              </Link>
+                            </div>
                             <div className="text-muted small">
-                              {link.student.roll_number || "-"}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/students/${link.student.student_id}`}
+                              >
+                                {link.student.roll_number || "-"}
+                              </Link>
                             </div>
                           </td>
                           <td style={{ minWidth: "160px" }}>
