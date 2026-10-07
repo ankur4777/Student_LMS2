@@ -1425,6 +1425,7 @@ def serialize_payment_proof(proof):
         "student_fee_id": proof.student_fee_id,
         "student": {
             "id": proof.student_fee.student_id,
+            "user_id": proof.student_fee.student.user_id,
             "name": proof.student_fee.student.user.get_full_name()
             or proof.student_fee.student.user.username,
         },
