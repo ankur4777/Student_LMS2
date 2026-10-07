@@ -156,3 +156,45 @@ h6 {
   color: var(--brand-primary);
   font-weight: 700;
 }
+
+
+/* Linked entity navigation */
+.lms-entity-link {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(239, 68, 68, .35);
+  transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+
+.lms-entity-link:hover,
+.lms-entity-link:focus-visible {
+  color: var(--brand-primary);
+  border-bottom-color: var(--brand-primary);
+}
+
+.lms-entity-link-muted {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.lms-entity-link-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 7px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-secondary);
+  font-size: .78rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.lms-entity-link-pill:hover,
+.lms-entity-link-pill:focus-visible {
+  border-color: rgba(239, 68, 68, .45);
+  background: var(--brand-primary-soft);
+  color: var(--brand-primary);
+}
