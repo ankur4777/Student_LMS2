@@ -32,6 +32,15 @@ interface StudentProfile {
   profile_picture: string;
 }
 
+interface ParentDetails {
+  name: string;
+  relationship: string;
+  relationship_label: string;
+  email: string;
+  phone: string;
+  occupation: string;
+}
+
 interface Enrollment {
   roll_number: string;
   classroom_name: string;
@@ -72,6 +81,7 @@ export default function StudentProfilePage() {
   const [student] = useState<StudentUser>(getSavedStudent);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
+  const [parents, setParents] = useState<ParentDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [pictureFile, setPictureFile] = useState<File | null>(null);
@@ -134,6 +144,7 @@ export default function StudentProfilePage() {
           const loadedProfile = result.profile || null;
           setProfile(loadedProfile);
           setEnrollment(result.enrollment || null);
+          setParents(result.parents || []);
 
           if (loadedProfile) {
             try {
@@ -524,6 +535,62 @@ export default function StudentProfilePage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <div className="card border-0 shadow-sm mb-4">
+                  <div className="card-body p-4">
+                    <h5 className="fw-bold mb-4">
+                      Parent / Guardian Information
+                    </h5>
+
+                    {parents.length > 0 ? (
+                      <div className="row g-3">
+                        {parents.map((parent, index) => (
+                          <div
+                            key={index}
+                            className="col-12 col-xl-6"
+                          >
+                            <div className="border rounded-3 p-3 h-100">
+                              <h6 className="fw-bold mb-3">
+                                {formatValue(parent.relationship_label || parent.relationship)}
+                              </h6>
+
+                              <div className="row g-3">
+                                <div className="col-sm-6">
+                                  <div className="text-muted small">Name</div>
+                                  <div className="fw-semibold">
+                                    {formatValue(parent.name)}
+                                  </div>
+                                </div>
+                                <div className="col-sm-6">
+                                  <div className="text-muted small">Phone</div>
+                                  <div className="fw-semibold">
+                                    {formatValue(parent.phone)}
+                                  </div>
+                                </div>
+                                <div className="col-sm-6">
+                                  <div className="text-muted small">Email</div>
+                                  <div className="fw-semibold text-break">
+                                    {formatValue(parent.email)}
+                                  </div>
+                                </div>
+                                <div className="col-sm-6">
+                                  <div className="text-muted small">Occupation</div>
+                                  <div className="fw-semibold">
+                                    {formatValue(parent.occupation)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted mb-0">
+                        No parent or guardian details are linked to your profile.
+                      </p>
+                    )}
                   </div>
                 </div>
 
