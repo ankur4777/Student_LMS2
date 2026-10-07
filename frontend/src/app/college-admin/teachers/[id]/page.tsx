@@ -21,6 +21,9 @@ interface AdminUser {
 
 interface Assignment {
   id: number;
+  subject_id: number;
+  class_id: number;
+  section_id: number;
   subject_name: string;
   classroom_name: string;
   section_name: string;
@@ -292,9 +295,35 @@ export default function CollegeAdminTeacherDetailPage() {
                               <tbody>
                                 {teacher.assignments.map((assignment) => (
                                   <tr key={assignment.id}>
-                                    <td><strong>{assignment.subject_name}</strong></td>
-                                    <td>{assignment.classroom_name}</td>
-                                    <td>{assignment.section_name}</td>
+                                    <td>
+                                      <strong>
+                                        <Link
+                                          className="lms-entity-link"
+                                          href={`/college-admin/subjects/${assignment.subject_id}/edit`}
+                                          title="Open subject"
+                                        >
+                                          {assignment.subject_name}
+                                        </Link>
+                                      </strong>
+                                    </td>
+                                    <td>
+                                      <Link
+                                        className="lms-entity-link"
+                                        href={`/college-admin/classes/${assignment.class_id}/edit`}
+                                        title="Open class"
+                                      >
+                                        {assignment.classroom_name}
+                                      </Link>
+                                    </td>
+                                    <td>
+                                      <Link
+                                        className="lms-entity-link lms-entity-link-muted"
+                                        href={`/college-admin/classes/${assignment.class_id}/edit`}
+                                        title="Open class and section"
+                                      >
+                                        {assignment.section_name}
+                                      </Link>
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
