@@ -7,6 +7,7 @@ import RoleSessionKeeper from "@/components/auth/RoleSessionKeeper";
 
 import NotificationPopup from "@/components/notifications/NotificationPopup";
 import StudentIcon from "@/components/student/StudentIcon";
+import StudentLiveClassPopup from "@/components/student/StudentLiveClassPopup";
 
 interface StudentTopbarProps {
   name: string;
@@ -86,6 +87,8 @@ export default function StudentTopbar({
         userStorageKey="student_user"
         loginPath="/student/login"
       />
+
+      <StudentLiveClassPopup />
 
       <header className="student-topbar student-portal-topbar">
         <div className="student-portal-topbar-title">
