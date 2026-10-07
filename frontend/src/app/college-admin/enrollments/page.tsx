@@ -19,6 +19,11 @@ interface AdminUser {
 
 interface Enrollment {
   enrollment_id: number;
+  student_id: number;
+  student_user_id: number;
+  academic_session_id: number;
+  class_id: number;
+  section_id: number;
   student_name: string;
   username: string;
   roll_number: string;
@@ -284,16 +289,62 @@ export default function CollegeAdminEnrollmentsPage() {
                         <tr key={enrollment.enrollment_id}>
                           <td>
                             <div className="fw-semibold">
-                              {enrollment.student_name}
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/students/${enrollment.student_user_id}`}
+                                title="Open student details"
+                              >
+                                {enrollment.student_name}
+                              </Link>
                             </div>
                             <div className="text-muted small">
-                              {enrollment.username}
+                              <Link
+                                className="lms-entity-link lms-entity-link-muted"
+                                href={`/college-admin/students/${enrollment.student_user_id}`}
+                                title="Open student details"
+                              >
+                                @{enrollment.username}
+                              </Link>
                             </div>
                           </td>
-                          <td>{enrollment.roll_number || "-"}</td>
-                          <td>{enrollment.academic_session}</td>
-                          <td>{enrollment.classroom_name}</td>
-                          <td>{enrollment.section_name}</td>
+                          <td>
+                            {enrollment.roll_number ? (
+                              <Link
+                                className="lms-entity-link"
+                                href={`/college-admin/enrollments/${enrollment.enrollment_id}/edit`}
+                                title="Open enrollment"
+                              >
+                                {enrollment.roll_number}
+                              </Link>
+                            ) : "-"}
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/academic-sessions/${enrollment.academic_session_id}/edit`}
+                              title="Open academic session"
+                            >
+                              {enrollment.academic_session}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link"
+                              href={`/college-admin/classes/${enrollment.class_id}/edit`}
+                              title="Open class"
+                            >
+                              {enrollment.classroom_name}
+                            </Link>
+                          </td>
+                          <td>
+                            <Link
+                              className="lms-entity-link lms-entity-link-muted"
+                              href={`/college-admin/classes/${enrollment.class_id}/edit`}
+                              title="Open class and sections"
+                            >
+                              {enrollment.section_name}
+                            </Link>
+                          </td>
                           <td>
                             <span
                               className={
