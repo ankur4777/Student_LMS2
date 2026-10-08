@@ -15,7 +15,71 @@ from .views import (
 )
 
 
+from .online_exams import (
+    TeacherOnlineExamListCreateAPIView,
+    TeacherOnlineExamDetailAPIView,
+    TeacherOnlineExamOpenAPIView,
+    TeacherOnlineExamAttemptsAPIView,
+    TeacherOnlineExamGradeAPIView,
+    StudentOnlineExamListAPIView,
+    StudentOnlineExamDetailAPIView,
+    StudentOnlineExamStartAPIView,
+    StudentOnlineExamAnswerAPIView,
+    StudentOnlineExamSubmitAPIView,
+)
+
 urlpatterns = [
+    path(
+        "teacher/online-exams/",
+        TeacherOnlineExamListCreateAPIView.as_view(),
+        name="teacher-online-exams",
+    ),
+    path(
+        "teacher/online-exams/<int:exam_id>/",
+        TeacherOnlineExamDetailAPIView.as_view(),
+        name="teacher-online-exam-detail",
+    ),
+    path(
+        "teacher/online-exams/<int:exam_id>/open/",
+        TeacherOnlineExamOpenAPIView.as_view(),
+        name="teacher-online-exam-open",
+    ),
+    path(
+        "teacher/online-exams/<int:exam_id>/attempts/",
+        TeacherOnlineExamAttemptsAPIView.as_view(),
+        name="teacher-online-exam-attempts",
+    ),
+    path(
+        "teacher/online-exams/<int:exam_id>/attempts/<int:attempt_id>/questions/<int:question_id>/grade/",
+        TeacherOnlineExamGradeAPIView.as_view(),
+        name="teacher-online-exam-grade",
+    ),
+    path(
+        "student/online-exams/",
+        StudentOnlineExamListAPIView.as_view(),
+        name="student-online-exams",
+    ),
+    path(
+        "student/online-exams/<int:exam_id>/",
+        StudentOnlineExamDetailAPIView.as_view(),
+        name="student-online-exam-detail",
+    ),
+    path(
+        "student/online-exams/<int:exam_id>/start/",
+        StudentOnlineExamStartAPIView.as_view(),
+        name="student-online-exam-start",
+    ),
+    path(
+        "student/online-exams/<int:exam_id>/questions/<int:question_id>/answer/",
+        StudentOnlineExamAnswerAPIView.as_view(),
+        name="student-online-exam-answer",
+    ),
+    path(
+        "student/online-exams/<int:exam_id>/submit/",
+        StudentOnlineExamSubmitAPIView.as_view(),
+        name="student-online-exam-submit",
+    ),
+
     path(
         "teacher/setup/",
         TeacherResultsSetupAPIView.as_view(),
