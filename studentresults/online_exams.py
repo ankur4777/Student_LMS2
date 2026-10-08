@@ -160,6 +160,9 @@ def _question_config(items):
             if len({value.lower() for value, _ in choices}) != len(choices):
                 return None, "Duplicate choices are not allowed."
         validated.append((kind, prompt, marks, choices))
+    total_marks = sum((entry[2] for entry in validated), Decimal("0.00"))
+    if total_marks > Decimal("9999.99"):
+        return None, "Total exam marks cannot exceed 9,999.99."
     return validated, None
 
 
