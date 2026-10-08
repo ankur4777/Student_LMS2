@@ -254,10 +254,12 @@ class MixedOnlineExamsTests(APITestCase):
             "kind": "short", "prompt": "Explain gravity.", "marks": "5",
         }])
         self.authenticate(self.other_student_user)
-        self.assertEqual(
-            self.client.get(f"/api/results/student/online-exams/{exam_id}/").status_code,
-            404,
+        # An unenrolled student may be rejected by the class-feature permission
+        # (403) before the exam lookup (404); both block cross-college access.
+        cross_college = self.client.get(
+            f"/api/results/student/online-exams/{exam_id}/"
         )
+        self.assertIn(cross_college.status_code, (403, 404))
         self.authenticate(self.other_teacher_user)
         self.assertEqual(
             self.client.get(f"/api/results/teacher/online-exams/{exam_id}/").status_code,
