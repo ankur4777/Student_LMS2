@@ -779,6 +779,12 @@ class TeacherSaveExamMarksAPIView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        if exam.online_teacher_assignment_id:
+            return Response(
+                {"detail": "Online exam marks are calculated from submitted answers. Use online exam grading instead."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         saved_count = 0
 
         for item in marks_data:
@@ -978,6 +984,31 @@ class TeacherPublishExamAPIView(APIView):
                 {"detail": "You do not have access to this exam."},
                 status=status.HTTP_403_FORBIDDEN,
             )
+
+        # Legacy manual exams retain their original workflow.
+        # Online exams require their own teacher and complete evaluation.
+        if exam.online_teacher_assignment_id:
+            if (
+                exam.online_teacher_assignment.teacher_id != teacher_profile.id
+                or not exam.online_teacher_assignment.is_active
+            ):
+                return Response(
+                    {"detail": "Only the exam creator can publish its results."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if request.data.get("is_published") is True:
+                if not exam.attempts.filter(
+                    state__in=["submitted", "graded"]
+                ).exists():
+                    return Response(
+                        {"detail": "At least one submitted attempt is required."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                if exam.attempts.exclude(state="graded").exists():
+                    return Response(
+                        {"detail": "Finish grading every exam attempt first."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
         is_published = request.data.get("is_published")
 
