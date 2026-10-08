@@ -51,6 +51,7 @@ const navSections: StudentNavSection[] = [
     items: [
       { label: "Attendance", href: "/student/attendance", icon: "attendance", featureKey: "attendance" },
       { label: "Assignments", href: "/student/assignments", icon: "assignments", featureKey: "assignments" },
+      { label: "Online Exams", href: "/student/online-exams", icon: "results", featureKey: "results" },
       { label: "Results", href: "/student/results", icon: "results", featureKey: "results" },
       { label: "Documents", href: "/student/documents", icon: "documents", featureKey: "documents" },
     ],
