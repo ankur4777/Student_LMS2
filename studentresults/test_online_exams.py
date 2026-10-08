@@ -320,6 +320,39 @@ class MixedOnlineExamsTests(APITestCase):
         self.assertEqual(response.data["attempt"]["state"], "graded")
         self.assertEqual(response.data["attempt"]["objective_marks"], "0.00")
 
+    def test_malformed_schedule_fails_validation_instead_of_crashing(self):
+        self.authenticate(self.teacher_user)
+        response = self.client.post(
+            "/api/results/teacher/online-exams/",
+            {
+                "teacher_assignment_id": self.assignment.id,
+                "title": "Malformed Schedule",
+                "starts_at": {"invalid": "object"},
+                "ends_at": self.end_at.isoformat(),
+                "duration_minutes": 60,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_invalid_choice_identifier_is_rejected(self):
+        exam_id = self.create_exam([{
+            "kind": "true_false", "prompt": "This is an objective question.",
+            "marks": "5", "choices": [
+                {"text": "True", "is_correct": True},
+                {"text": "False", "is_correct": False},
+            ],
+        }])
+        self.authenticate(self.student_user)
+        question = self.client.post(
+            f"/api/results/student/online-exams/{exam_id}/start/"
+        ).data["questions"][0]
+        response = self.client.put(
+            f"/api/results/student/online-exams/{exam_id}/questions/{question['id']}/answer/",
+            {"choice_id": ["invalid-id"]}, format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
     def test_invalid_questions_and_malicious_marks_are_rejected(self):
         self.authenticate(self.teacher_user)
         created = self.client.post(
