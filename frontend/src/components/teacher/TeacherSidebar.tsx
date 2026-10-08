@@ -39,6 +39,7 @@ const navSections: TeacherNavSection[] = [
     label: "Academics",
     items: [
       { label: "Students", href: "/teacher/students", icon: "students" },
+      { label: "Online Exams", href: "/teacher/online-exams", icon: "results" },
       { label: "Results", href: "/teacher/results", icon: "results" },
     ],
   },
