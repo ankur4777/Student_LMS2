@@ -112,6 +112,29 @@ const features: {
   },
 ];
 
+// Bootstrap Icons v1.13.1 — shared, consistent icons across the public homepage.
+const bootstrapIconNames: Record<HomeIcon, string> = {
+  cap: "mortarboard-fill",
+  admin: "buildings-fill",
+  teacher: "person-workspace",
+  student: "backpack2-fill",
+  parent: "people-fill",
+  calendar: "calendar2-check",
+  video: "camera-video",
+  play: "play-circle",
+  file: "file-earmark-text",
+  notice: "megaphone",
+  chart: "graph-up-arrow",
+  wallet: "credit-card-2-front",
+  shield: "shield-check",
+  link: "link-45deg",
+  check: "check2",
+  arrow: "arrow-right",
+  lock: "lock",
+  book: "book-half",
+  sparkle: "stars",
+};
+
 function Icon({
   name,
   size = 24,
@@ -119,140 +142,13 @@ function Icon({
   name: HomeIcon;
   size?: number;
 }) {
-  const common = {
-    width: size,
-    height: size,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    "aria-hidden": true as const,
-  };
-
-  switch (name) {
-    case "cap":
-    case "student":
-      return (
-        <svg {...common}>
-          <path d="m2 9 10-5 10 5-10 5L2 9Z" />
-          <path d="M6 11v5c3.6 2.7 8.4 2.7 12 0v-5M22 9v6" />
-        </svg>
-      );
-    case "admin":
-      return (
-        <svg {...common}>
-          <path d="M3 21h18M5 21V9h14v12M3 9l9-6 9 6M9 13v3m6-3v3M10 21v-4h4v4" />
-        </svg>
-      );
-    case "teacher":
-      return (
-        <svg {...common}>
-          <rect x="9" y="3" width="13" height="11" rx="2" />
-          <path d="m13 9 3 2 3-4M2 21v-2a5 5 0 0 1 10 0v2M7 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-        </svg>
-      );
-    case "parent":
-      return (
-        <svg {...common}>
-          <circle cx="8" cy="8" r="3" />
-          <circle cx="17.5" cy="9.5" r="2.5" />
-          <path d="M2 21v-2a6 6 0 0 1 12 0v2m1-6a5 5 0 0 1 7 4.5V21" />
-        </svg>
-      );
-    case "calendar":
-      return (
-        <svg {...common}>
-          <rect x="3" y="5" width="18" height="16" rx="2" />
-          <path d="M7 3v4m10-4v4M3 10h18m-13 5 3 3 5-5" />
-        </svg>
-      );
-    case "video":
-      return (
-        <svg {...common}>
-          <rect x="2.5" y="5" width="14" height="14" rx="3" />
-          <path d="m16.5 10 5-3v10l-5-3" />
-        </svg>
-      );
-    case "play":
-      return (
-        <svg {...common}>
-          <circle cx="12" cy="12" r="9" />
-          <path d="m10 8 6 4-6 4V8Z" />
-        </svg>
-      );
-    case "file":
-      return (
-        <svg {...common}>
-          <path d="M6 3h8l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
-          <path d="M14 3v5h5M8 12h8M8 16h7" />
-        </svg>
-      );
-    case "wallet":
-      return (
-        <svg {...common}>
-          <rect x="3" y="6" width="18" height="15" rx="3" />
-          <path d="M3 10h18M6 6V4h13m-1 12h-4" />
-        </svg>
-      );
-    case "notice":
-      return (
-        <svg {...common}>
-          <path d="m3 11 12-6v14L3 13v-2Zm12-3h2a4 4 0 0 1 0 8h-2M6 15l2 6h3l-2-5m10-9 2-2M20 12h3" />
-        </svg>
-      );
-    case "chart":
-      return (
-        <svg {...common}>
-          <path d="M3 21h18M6 18v-6m6 6V7m6 11V3" />
-        </svg>
-      );
-    case "shield":
-      return (
-        <svg {...common}>
-          <path d="M12 2 4 5v7c0 5 3 8 8 10 5-2 8-5 8-10V5l-8-3Z" />
-          <path d="m9 12 2 2 4-4" />
-        </svg>
-      );
-    case "link":
-      return (
-        <svg {...common}>
-          <path d="M10 13a5 5 0 0 0 7 .4l3-3a5 5 0 0 0-7-7l-2 2m3 5a5 5 0 0 0-7-.4l-3 3a5 5 0 0 0 7 7l2-2" />
-        </svg>
-      );
-    case "lock":
-      return (
-        <svg {...common}>
-          <rect x="5" y="11" width="14" height="11" rx="2" />
-          <path d="M8 11V7a4 4 0 0 1 8 0v4m-4 5v2" />
-        </svg>
-      );
-    case "book":
-      return (
-        <svg {...common}>
-          <path d="M12 6c-3-2-7-2-10-1v15c3-1 7-1 10 1 3-2 7-2 10-1V5c-3-1-7-1-10 1Zm0 0v15" />
-        </svg>
-      );
-    case "sparkle":
-      return (
-        <svg {...common}>
-          <path d="m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z" />
-        </svg>
-      );
-    case "check":
-      return (
-        <svg {...common}>
-          <path d="m5 12 4 4L19 6" />
-        </svg>
-      );
-    case "arrow":
-      return (
-        <svg {...common}>
-          <path d="M4 12h16m-6-6 6 6-6 6" />
-        </svg>
-      );
-  }
+  return (
+    <i
+      className={`bi bi-${bootstrapIconNames[name]} lms-landing-bi`}
+      style={{ fontSize: `${size}px` }}
+      aria-hidden="true"
+    />
+  );
 }
 
 function SectionTitle({
