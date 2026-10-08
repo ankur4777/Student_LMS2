@@ -47,6 +47,11 @@ export default function StudentOnlineExamPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const submitRef = useRef(false);
+  const autosaveTimers = useRef<Record<number, number>>({});
+
+  useEffect(() => () => {
+    Object.values(autosaveTimers.current).forEach(window.clearTimeout);
+  }, []);
 
   const request = useCallback(async (path: string, init: RequestInit = {}) => {
     const token = localStorage.getItem("student_access_token");
@@ -126,6 +131,8 @@ export default function StudentOnlineExamPage() {
     submitRef.current = true;
     setBusy(true); setError("");
     try {
+      Object.values(autosaveTimers.current).forEach(window.clearTimeout);
+      autosaveTimers.current = {};
       if (!expired) {
         // Flush unsaved typing before submission, including the focused text area.
         for (const question of questions) {
@@ -225,8 +232,19 @@ export default function StudentOnlineExamPage() {
                                 <textarea className="form-control" rows={q.kind === "long" ? 7 : 3}
                                   placeholder="Type your answer here"
                                   value={answers[q.id] || ""}
-                                  onChange={e => { setAnswers(current => ({ ...current, [q.id]: e.target.value })); setNotice(""); }}
-                                  onBlur={e => void persist(q, e.target.value).catch(() => {})}
+                                  onChange={e => {
+                                    const value = e.target.value;
+                                    setAnswers(current => ({ ...current, [q.id]: value }));
+                                    setNotice("");
+                                    window.clearTimeout(autosaveTimers.current[q.id]);
+                                    autosaveTimers.current[q.id] = window.setTimeout(() => {
+                                      void persist(q, value).catch(() => {});
+                                    }, 900);
+                                  }}
+                                  onBlur={e => {
+                                    window.clearTimeout(autosaveTimers.current[q.id]);
+                                    void persist(q, e.target.value).catch(() => {});
+                                  }}
                                 />
                               )}
                               {saving === q.id && <div className="text-muted small mt-2">Saving answer...</div>}
