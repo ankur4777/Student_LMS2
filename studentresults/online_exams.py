@@ -6,6 +6,7 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
+from django.db.models import F
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -42,9 +43,7 @@ def _teacher_assignment(user, assignment_id):
         subject__organization=user.organization,
         section__organization=user.organization,
         section__classroom__organization=user.organization,
-        subject__classroom_id=__import__("django.db.models", fromlist=["F"]).F(
-            "section__classroom_id"
-        ),
+        subject__classroom_id=F("section__classroom_id"),
     ).first()
 
 
