@@ -193,6 +193,10 @@ class MixedOnlineExamsTests(APITestCase):
             self.client.get("/api/results/student/").data["exams"], []
         )
 
+        exam = Exam.objects.get(id=exam_id)
+        exam.online_ends_at = timezone.now() - timedelta(seconds=1)
+        exam.save(update_fields=["online_ends_at"])
+
         self.authenticate(self.teacher_user)
         response = self.client.patch(
             f"/api/results/teacher/exams/{exam_id}/publish/",
@@ -235,6 +239,9 @@ class MixedOnlineExamsTests(APITestCase):
         self.assertEqual(response.data["attempt"]["objective_marks"], "0.00")
         self.assertIsNone(response.data["attempt"]["overall_percentage"])
 
+        exam = Exam.objects.get(id=exam_id)
+        exam.online_ends_at = timezone.now() - timedelta(seconds=1)
+        exam.save(update_fields=["online_ends_at"])
         self.authenticate(self.teacher_user)
         published = self.client.patch(
             f"/api/results/teacher/exams/{exam_id}/publish/",
