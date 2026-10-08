@@ -2,7 +2,7 @@
 
 Legacy manually-entered exams continue using studentresults.views unchanged.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.db import IntegrityError, transaction
@@ -32,6 +32,10 @@ def _bad(message, code=400):
 
 def _teacher_assignment(user, assignment_id):
     if user.role != "teacher" or not user.organization_id:
+        return None
+    try:
+        assignment_id = int(assignment_id)
+    except (ValueError, TypeError):
         return None
     return TeacherAssignment.objects.select_related(
         "teacher", "subject", "section", "section__classroom"
@@ -98,7 +102,7 @@ def _parse_schedule(data, *, existing=None):
             start = parse_datetime(start)
         if isinstance(end, str):
             end = parse_datetime(end)
-        if start is None or end is None:
+        if not isinstance(start, datetime) or not isinstance(end, datetime):
             return None, "Start and end date/time are required."
         if timezone.is_naive(start) or timezone.is_naive(end):
             return None, "Start and end times must include a timezone offset."
@@ -144,6 +148,8 @@ def _question_config(items):
                         {"text": "True", "is_correct": item.get("correct_answer") == "true"},
                         {"text": "False", "is_correct": item.get("correct_answer") == "false"},
                     ]
+                if not all(isinstance(x, dict) for x in raw_choices):
+                    return None, "Each true/false choice must be an object."
                 if {str(x.get("text", "")).strip().lower() for x in raw_choices} != {"true", "false"}:
                     return None, "True/false questions must have True and False choices."
             if not (2 <= len(raw_choices) <= 8):
@@ -568,8 +574,12 @@ class StudentOnlineExamAnswerAPIView(APIView):
                 attempt=attempt, question=question
             )
             if question.is_objective:
+                try:
+                    choice_id = int(request.data.get("choice_id"))
+                except (TypeError, ValueError):
+                    return _bad("Select a valid answer.")
                 choice = ExamChoice.objects.filter(
-                    pk=request.data.get("choice_id"), question=question
+                    pk=choice_id, question=question
                 ).first()
                 if not choice:
                     return _bad("Select a valid answer.")
