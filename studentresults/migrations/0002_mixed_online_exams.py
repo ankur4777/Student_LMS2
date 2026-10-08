@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ExamQuestion",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("kind", models.CharField(max_length=16, choices=[
                     ("mcq", "Multiple choice"), ("true_false", "True or false"),
                     ("short", "Short answer"), ("long", "Long answer"),
@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ExamChoice",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("text", models.CharField(max_length=500)),
                 ("is_correct", models.BooleanField(default=False)),
                 ("sort_order", models.PositiveIntegerField(default=0)),
@@ -74,7 +74,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ExamAttempt",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("state", models.CharField(
                     max_length=16, default="in_progress",
                     choices=[("in_progress", "In progress"),
@@ -108,7 +108,7 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="ExamAnswer",
             fields=[
-                ("id", models.BigAutoField(primary_key=True, serialize=False)),
+                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
                 ("text_answer", models.TextField(blank=True)),
                 ("awarded_marks", models.DecimalField(
                     max_digits=7, decimal_places=2, null=True, blank=True,
