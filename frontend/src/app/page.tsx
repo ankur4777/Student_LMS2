@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import "./home.css";
@@ -274,22 +273,11 @@ export default function Home() {
             </div>
           </div>
           <div className="lms-landing-hero-visual">
-            <Image
-              src="/student-lms-hero.svg"
-              width={780}
-              height={640}
-              alt="Illustration of a student learning with a laptop, books and academic dashboard cards"
+            <div
               className="lms-landing-hero-image"
-              priority
+              role="img"
+              aria-label="Student studying on a laptop at a sunlit campus with education graphics and books"
             />
-            <div className="lms-landing-floating-card lms-landing-floating-top">
-              <span className="lms-landing-floating-icon"><Icon name="book" size={20} /></span>
-              <span><strong>Learning together</strong><small>One workspace for every role</small></span>
-            </div>
-            <div className="lms-landing-floating-card lms-landing-floating-bottom">
-              <span className="lms-landing-floating-icon is-green"><Icon name="shield" size={20} /></span>
-              <span><strong>Dedicated access</strong><small>Separate, secure login portals</small></span>
-            </div>
           </div>
         </div>
       </section>
