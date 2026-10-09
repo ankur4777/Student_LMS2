@@ -1273,3 +1273,417 @@
     animation-duration: .01ms !important;
   }
 }
+
+/* Editorial typography system for the public-facing homepage.
+   Scoped here so portal dashboards and forms are unaffected. */
+.lms-landing {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.lms-landing-nav-links a,
+.lms-landing-footer nav a {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.lms-landing-button {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.lms-landing-tag {
+  font-size: 12px;
+  letter-spacing: .012em;
+  font-weight: 700;
+}
+
+.lms-landing-hero-layout {
+  gap: clamp(34px, 4.7vw, 72px);
+}
+
+.lms-landing-hero h1 {
+  max-width: 670px;
+  margin-bottom: 25px;
+  font-size: clamp(42px, 4.45vw, 66px);
+  font-weight: 790;
+  line-height: 1.105;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+
+.lms-landing-hero h1 span {
+  margin-top: 6px;
+}
+
+.lms-landing .lms-landing-hero-lead {
+  margin: 0;
+  max-width: 565px;
+  color: #4f5e78;
+  font-size: clamp(16px, 1.3vw, 18px);
+  line-height: 1.78;
+  font-weight: 440;
+}
+
+.lms-landing .lms-landing-hero-lead strong {
+  color: #25344e;
+  font-weight: 720;
+}
+
+.lms-landing .lms-landing-hero-support {
+  max-width: 540px;
+  margin-top: 13px;
+  color: #63718a;
+  font-size: 14px;
+  line-height: 1.8;
+  font-weight: 450;
+}
+
+.lms-landing-trust-notes span {
+  font-size: 12.5px;
+  font-weight: 630;
+}
+
+.lms-landing-section-heading {
+  max-width: 710px;
+  margin-bottom: 46px;
+}
+
+.lms-landing-eyebrow {
+  font-size: 12px;
+  font-weight: 780;
+  letter-spacing: .105em;
+}
+
+.lms-landing-section-heading h2,
+.lms-landing-why-copy h2,
+.lms-landing-faq-intro h2 {
+  font-size: clamp(32px, 3.35vw, 46px);
+  line-height: 1.16;
+  font-weight: 770;
+  letter-spacing: -.042em;
+}
+
+.lms-landing-section-heading p,
+.lms-landing-why-copy > p,
+.lms-landing-faq-intro p {
+  font-size: 16px;
+  line-height: 1.82;
+  color: #62708a;
+}
+
+.lms-landing-section-heading p {
+  max-width: 670px;
+}
+
+.lms-landing-section-heading.is-centered p {
+  margin-inline: auto;
+}
+
+.lms-landing-portal {
+  min-height: 360px;
+  padding: 38px 24px 25px;
+}
+
+.lms-landing-portal h3 {
+  margin-bottom: 13px;
+  font-size: 20px;
+  line-height: 1.32;
+  letter-spacing: -.025em;
+  font-weight: 760;
+}
+
+.lms-landing-portal p {
+  max-width: 250px;
+  min-height: 102px;
+  margin-bottom: 21px;
+  font-size: 14px;
+  line-height: 1.72;
+}
+
+.lms-landing-portal-action {
+  font-size: 13px;
+  font-weight: 730;
+  min-height: 45px;
+}
+
+.lms-landing-portals-note {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  max-width: 700px;
+  margin: 29px auto 0;
+  padding: 0 16px;
+  color: #66748a;
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.lms-landing-portals-note .lms-landing-bi {
+  margin-top: 2px;
+  color: #459b78;
+}
+
+.lms-landing-feature {
+  gap: 20px;
+  padding: 31px 26px;
+}
+
+.lms-landing-feature h3 {
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  font-weight: 745;
+}
+
+.lms-landing-feature p {
+  font-size: 14.5px;
+  line-height: 1.76;
+}
+
+.lms-landing-why-copy h2 span {
+  color: var(--home-red-deep);
+}
+
+.lms-landing-why-copy > p + p {
+  margin-top: 15px;
+}
+
+.lms-landing-why-items > div {
+  gap: 20px;
+  padding: 25px 23px;
+}
+
+.lms-landing-why-items h3 {
+  font-size: 17px;
+  font-weight: 740;
+  letter-spacing: -.018em;
+}
+
+.lms-landing-why-items p {
+  font-size: 14px;
+  line-height: 1.76;
+}
+
+.lms-landing-inline-link {
+  font-size: 14px;
+}
+
+.lms-landing-step h3 {
+  font-size: 19px;
+  letter-spacing: -.018em;
+  font-weight: 750;
+}
+
+.lms-landing-step p {
+  max-width: 295px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.lms-landing-journey-section {
+  background: #fff;
+}
+
+.lms-landing-journey-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.lms-landing-journey-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 30px 25px 32px;
+  border: 1px solid var(--home-border);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 15px 38px rgba(30, 43, 65, .045);
+}
+
+.lms-landing-journey-count {
+  margin-bottom: 27px;
+  color: #8792a5;
+  font-size: 11px;
+  letter-spacing: .1em;
+  font-weight: 780;
+}
+
+.lms-landing-journey-card .lms-landing-icon {
+  width: 63px;
+  height: 63px;
+  margin-bottom: 24px;
+  border-radius: 18px;
+}
+
+.lms-landing-journey-card h3 {
+  margin: 0 0 12px;
+  color: var(--home-dark);
+  font-size: 19px;
+  font-weight: 760;
+  line-height: 1.3;
+  letter-spacing: -.025em;
+}
+
+.lms-landing-journey-card p {
+  margin: 0;
+  color: #65748c;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.lms-landing-preview-caption h3 {
+  font-size: 17px;
+  letter-spacing: -.02em;
+}
+
+.lms-landing-preview-caption p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.lms-landing-preview-link {
+  font-size: 13px;
+}
+
+.lms-landing-faq-list summary {
+  font-size: 15px;
+  font-weight: 710;
+  line-height: 1.5;
+}
+
+.lms-landing-faq-list details p {
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.lms-landing-cta h2 {
+  font-size: clamp(25px, 2.45vw, 33px);
+  font-weight: 770;
+}
+
+.lms-landing-cta p {
+  max-width: 640px;
+  font-size: 14px;
+  line-height: 1.78;
+}
+
+.lms-landing-footer-inner p {
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 1100px) {
+  .lms-landing-journey-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lms-landing-portal {
+    min-height: 330px;
+  }
+
+  .lms-landing-portal p {
+    min-height: 80px;
+  }
+
+  .lms-landing-hero h1 {
+    font-size: clamp(39px, 4.5vw, 57px);
+  }
+}
+
+@media (max-width: 850px) {
+  .lms-landing-hero h1 {
+    font-size: clamp(42px, 7.4vw, 60px);
+  }
+
+  .lms-landing-hero-layout {
+    gap: 33px;
+  }
+}
+
+@media (max-width: 640px) {
+  .lms-landing-hero h1 {
+    font-size: clamp(36px, 9vw, 46px);
+    line-height: 1.12;
+  }
+
+  .lms-landing .lms-landing-hero-lead {
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  .lms-landing .lms-landing-hero-support {
+    font-size: 13px;
+  }
+
+  .lms-landing-section-heading h2,
+  .lms-landing-why-copy h2,
+  .lms-landing-faq-intro h2 {
+    font-size: clamp(30px, 8vw, 36px);
+  }
+
+  .lms-landing-section-heading p,
+  .lms-landing-why-copy > p,
+  .lms-landing-faq-intro p {
+    font-size: 14.5px;
+    line-height: 1.8;
+  }
+
+  .lms-landing-portal {
+    min-height: 0;
+    padding: 30px 25px 25px;
+  }
+
+  .lms-landing-portal p {
+    max-width: 320px;
+    min-height: 0;
+  }
+
+  .lms-landing-portals-note {
+    padding-inline: 0;
+    text-align: left;
+    font-size: 12.5px;
+  }
+
+  .lms-landing-feature h3 {
+    font-size: 17px;
+  }
+
+  .lms-landing-feature p,
+  .lms-landing-why-items p {
+    font-size: 14px;
+  }
+
+  .lms-landing-journey-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .lms-landing-journey-card {
+    padding: 26px 23px;
+  }
+
+  .lms-landing-journey-count {
+    margin-bottom: 18px;
+  }
+
+  .lms-landing-journey-card .lms-landing-icon {
+    margin-bottom: 17px;
+  }
+
+  .lms-landing-nav-links a {
+    font-size: 13px;
+  }
+
+  .lms-landing-faq-list summary {
+    font-size: 14px;
+  }
+}
