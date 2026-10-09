@@ -30,6 +30,8 @@ type Portal = {
   icon: HomeIcon;
   accent: string;
   number: string;
+  previewImage: string;
+  previewAlt: string;
 };
 
 const portals: Portal[] = [
@@ -37,6 +39,8 @@ const portals: Portal[] = [
     name: "College Admin",
     description: "Bring classes, student records, teacher assignments and fee administration together in one organized workspace.",
     href: "/college-admin/login",
+    previewImage: "/college-admin-dashboard.webp",
+    previewAlt: "Real College Admin dashboard showing attendance, fee collection, student totals and quick actions",
     icon: "admin",
     accent: "blue",
     number: "01",
@@ -45,6 +49,8 @@ const portals: Portal[] = [
     name: "Teacher Portal",
     description: "Plan learning activities, share class materials, create online exams and support student progress.",
     href: "/teacher/login",
+    previewImage: "/teacher-dashboard.webp",
+    previewAlt: "Real Teacher dashboard showing teaching assignments, today's classes and quick access",
     icon: "teacher",
     accent: "green",
     number: "02",
@@ -53,6 +59,8 @@ const portals: Portal[] = [
     name: "Student Portal",
     description: "Join live lessons, explore recorded classes, complete assignments and follow your academic results.",
     href: "/student/login",
+    previewImage: "/student-dashboard.webp",
+    previewAlt: "Real Student dashboard showing live classes, attendance and recorded learning",
     icon: "student",
     accent: "purple",
     number: "03",
@@ -61,6 +69,8 @@ const portals: Portal[] = [
     name: "Parent Portal",
     description: "Follow your child’s academic journey, review fee information and stay informed about college updates.",
     href: "/parent/login",
+    previewImage: "/parent-dashboard.webp",
+    previewAlt: "Real Parent dashboard showing linked children, attendance, results and quick access",
     icon: "parent",
     accent: "orange",
     number: "04",
@@ -179,29 +189,34 @@ function DashboardPreview({ portal }: { portal: Portal }) {
         <span />
         <div className="lms-landing-preview-address" />
       </div>
-      <div className="lms-landing-preview-screen" aria-hidden="true">
-        <div className="lms-landing-preview-sidebar">
-          <span className="lms-landing-preview-square" />
-          <span />
-          <span />
-          <span />
-          <span />
+      <div className="lms-landing-preview-screen">
+        <div className="lms-landing-preview-placeholder" aria-hidden="true">
+          <div className="lms-landing-preview-sidebar">
+            <span className="lms-landing-preview-square" />
+            <span />
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="lms-landing-preview-body">
+            <div className="lms-landing-preview-line lms-landing-preview-line-wide" />
+            <div className="lms-landing-preview-tiles">
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="lms-landing-preview-lower">
+              <span />
+              <span />
+            </div>
+          </div>
         </div>
-        <div className="lms-landing-preview-body">
-          <div className="lms-landing-preview-line lms-landing-preview-line-wide" />
-          <div className="lms-landing-preview-tiles">
-            <span />
-            <span />
-            <span />
-          </div>
-          <div className="lms-landing-preview-lower">
-            <span />
-            <span />
-          </div>
-          <div className="lms-landing-preview-screen-note">
-            Illustrative workspace preview
-          </div>
-        </div>
+        <div
+          className="lms-landing-preview-real-image"
+          role="img"
+          aria-label={portal.previewAlt}
+          style={{ backgroundImage: `url("${portal.previewImage}")` }}
+        />
       </div>
       <div className="lms-landing-preview-caption">
         <div className={`lms-landing-icon is-${portal.accent}`}>
@@ -209,7 +224,7 @@ function DashboardPreview({ portal }: { portal: Portal }) {
         </div>
         <div>
           <h3>{portal.name} Dashboard</h3>
-          <p>Explore the tools and information available in this dedicated workspace.</p>
+          <p>A look inside the real dashboard for this role.</p>
         </div>
       </div>
       <Link href={portal.href} className="lms-landing-preview-link">
@@ -444,8 +459,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="DASHBOARD PREVIEWS"
-            title="A familiar place to get things done."
-            description="Each portal focuses on a different set of everyday needs, so you can quickly find the academic information, actions and updates that matter to you."
+            title="Explore the real Student LMS dashboards."
+            description="See how College Admins, Teachers, Students and Parents stay organized with their own dedicated workspaces. These previews show actual screens from Student LMS."
           />
           <div className="lms-landing-dashboard-grid">
             {portals.map((portal) => (
