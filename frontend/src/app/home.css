@@ -1708,3 +1708,243 @@
     font-size: 14px;
   }
 }
+
+/* Compact landing page spacing — scoped to the public homepage only.
+   Tighten section rhythm while retaining clear grouping and readable cards. */
+.lms-landing .lms-landing-section {
+  padding-block: clamp(52px, 5.2vw, 76px);
+}
+
+.lms-landing .lms-landing-hero-layout {
+  min-height: 0;
+  padding-block: clamp(42px, 4.5vw, 58px);
+  gap: clamp(25px, 3.2vw, 46px);
+}
+
+.lms-landing .lms-landing-hero h1 {
+  margin-top: 17px;
+  margin-bottom: 19px;
+}
+
+.lms-landing .lms-landing-hero-actions {
+  margin-top: 23px;
+}
+
+.lms-landing .lms-landing-trust-notes {
+  margin-top: 23px;
+}
+
+.lms-landing .lms-landing-section-heading {
+  margin-bottom: 28px;
+}
+
+.lms-landing .lms-landing-eyebrow {
+  margin-bottom: 9px;
+}
+
+.lms-landing .lms-landing-section-heading h2,
+.lms-landing .lms-landing-why-copy h2,
+.lms-landing .lms-landing-faq-intro h2 {
+  margin-bottom: 12px;
+}
+
+.lms-landing .lms-landing-portals {
+  gap: 16px;
+}
+
+.lms-landing .lms-landing-portal {
+  min-height: 305px;
+  padding: 28px 21px 21px;
+}
+
+.lms-landing .lms-landing-portal-icon {
+  margin-bottom: 16px;
+}
+
+.lms-landing .lms-landing-portal h3 {
+  margin-bottom: 9px;
+}
+
+.lms-landing .lms-landing-portal p {
+  min-height: 75px;
+  margin-bottom: 15px;
+}
+
+.lms-landing .lms-landing-portals-note {
+  margin-top: 19px;
+}
+
+.lms-landing .lms-landing-feature-grid {
+  gap: 16px;
+}
+
+.lms-landing .lms-landing-feature {
+  gap: 16px;
+  padding: 24px 21px;
+}
+
+.lms-landing .lms-landing-why-layout {
+  gap: clamp(28px, 4.6vw, 65px);
+}
+
+.lms-landing .lms-landing-why-copy > p + p {
+  margin-top: 11px;
+}
+
+.lms-landing .lms-landing-why-items {
+  gap: 12px;
+}
+
+.lms-landing .lms-landing-why-items > div {
+  gap: 16px;
+  padding: 19px 18px;
+}
+
+.lms-landing .lms-landing-inline-link {
+  margin-top: 19px;
+}
+
+.lms-landing .lms-landing-steps {
+  gap: 18px;
+  margin-top: 0;
+}
+
+.lms-landing .lms-landing-step {
+  padding: 23px 18px;
+}
+
+.lms-landing .lms-landing-step .lms-landing-icon {
+  margin-bottom: 17px;
+}
+
+.lms-landing .lms-landing-journey-grid {
+  gap: 16px;
+}
+
+.lms-landing .lms-landing-journey-card {
+  padding: 24px 21px 25px;
+}
+
+.lms-landing .lms-landing-journey-count {
+  margin-bottom: 18px;
+}
+
+.lms-landing .lms-landing-journey-card .lms-landing-icon {
+  margin-bottom: 17px;
+}
+
+.lms-landing .lms-landing-dashboard-grid {
+  gap: 18px;
+}
+
+.lms-landing .lms-landing-preview {
+  padding: 13px 13px 18px;
+}
+
+.lms-landing .lms-landing-preview-caption {
+  margin-top: 17px;
+}
+
+.lms-landing .lms-landing-preview-link {
+  margin-top: 13px;
+}
+
+.lms-landing .lms-landing-faq-layout {
+  gap: clamp(28px, 4.5vw, 60px);
+}
+
+.lms-landing .lms-landing-faq-list {
+  gap: 10px;
+}
+
+.lms-landing .lms-landing-faq-list summary {
+  padding-block: 17px;
+}
+
+.lms-landing .lms-landing-cta {
+  margin-block: 49px;
+  padding: 28px 31px;
+}
+
+.lms-landing .lms-landing-footer-inner {
+  padding-block: 29px 23px;
+}
+
+.lms-landing .lms-landing-footer-bottom {
+  padding-block: 16px 20px;
+}
+
+@media (max-width: 1100px) {
+  .lms-landing .lms-landing-portal {
+    min-height: 295px;
+  }
+}
+
+@media (max-width: 850px) {
+  .lms-landing .lms-landing-hero-layout {
+    gap: 26px;
+    padding-block: 42px 45px;
+  }
+
+  .lms-landing .lms-landing-why-layout,
+  .lms-landing .lms-landing-faq-layout {
+    gap: 26px;
+  }
+}
+
+@media (max-width: 640px) {
+  .lms-landing .lms-landing-section {
+    padding-block: 38px;
+  }
+
+  .lms-landing .lms-landing-hero-layout {
+    gap: 22px;
+    padding-block: 34px 39px;
+  }
+
+  .lms-landing .lms-landing-section-heading {
+    margin-bottom: 23px;
+  }
+
+  .lms-landing .lms-landing-portals,
+  .lms-landing .lms-landing-feature-grid,
+  .lms-landing .lms-landing-dashboard-grid {
+    gap: 14px;
+  }
+
+  .lms-landing .lms-landing-portal {
+    min-height: 0;
+    padding: 24px 20px 20px;
+  }
+
+  .lms-landing .lms-landing-portal p {
+    min-height: 0;
+    margin-bottom: 17px;
+  }
+
+  .lms-landing .lms-landing-feature {
+    padding: 21px 18px;
+  }
+
+  .lms-landing .lms-landing-steps {
+    gap: 3px;
+    margin-top: 0;
+  }
+
+  .lms-landing .lms-landing-step {
+    padding-block: 20px;
+  }
+
+  .lms-landing .lms-landing-journey-grid {
+    gap: 13px;
+  }
+
+  .lms-landing .lms-landing-journey-card {
+    padding: 21px 19px;
+  }
+
+  .lms-landing .lms-landing-cta {
+    margin-block: 34px;
+    padding: 22px;
+  }
+}
