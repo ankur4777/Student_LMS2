@@ -35,7 +35,7 @@ type Portal = {
 const portals: Portal[] = [
   {
     name: "College Admin",
-    description: "Manage your institution, academics, teachers, students and fees.",
+    description: "Bring classes, student records, teacher assignments and fee administration together in one organized workspace.",
     href: "/college-admin/login",
     icon: "admin",
     accent: "blue",
@@ -43,7 +43,7 @@ const portals: Portal[] = [
   },
   {
     name: "Teacher Portal",
-    description: "Organize classes, share learning material and track progress.",
+    description: "Plan learning activities, share class materials, create online exams and support student progress.",
     href: "/teacher/login",
     icon: "teacher",
     accent: "green",
@@ -51,7 +51,7 @@ const portals: Portal[] = [
   },
   {
     name: "Student Portal",
-    description: "Join classes, complete assignments and explore recorded learning.",
+    description: "Join live lessons, explore recorded classes, complete assignments and follow your academic results.",
     href: "/student/login",
     icon: "student",
     accent: "purple",
@@ -59,7 +59,7 @@ const portals: Portal[] = [
   },
   {
     name: "Parent Portal",
-    description: "Stay connected with your child’s studies, fees and updates.",
+    description: "Follow your child’s academic journey, review fee information and stay informed about college updates.",
     href: "/parent/login",
     icon: "parent",
     accent: "orange",
@@ -76,37 +76,37 @@ const features: {
   {
     icon: "calendar",
     title: "Attendance",
-    description: "Keep classroom attendance organized and easy to review.",
+    description: "Record, organize and review attendance so everyday classroom tracking stays clear and consistent.",
     accent: "coral",
   },
   {
     icon: "video",
     title: "Live Classes",
-    description: "Schedule live sessions and help students join on time.",
+    description: "Bring learning online with scheduled live sessions, convenient class access and timely updates.",
     accent: "blue",
   },
   {
     icon: "play",
     title: "Recorded Learning",
-    description: "Explore lessons and class recordings with controlled access.",
+    description: "Make recorded lessons and courses available for flexible, self-paced learning with managed access.",
     accent: "orange",
   },
   {
     icon: "file",
     title: "Assignments & Exams",
-    description: "Connect teachers and students through academic work.",
+    description: "Create academic work and online assessments, from objective questions to teacher-evaluated answers.",
     accent: "purple",
   },
   {
     icon: "wallet",
     title: "Fee Management",
-    description: "Manage fee structures, balances and payment verification.",
+    description: "Keep fee structures, student balances, payment proofs and verification records in one place.",
     accent: "green",
   },
   {
     icon: "notice",
     title: "Notices & Documents",
-    description: "Share learning resources and important college updates.",
+    description: "Share useful documents and notices so the right people can find important information quickly.",
     accent: "pink",
   },
 ];
@@ -199,7 +199,7 @@ function DashboardPreview({ portal }: { portal: Portal }) {
             <span />
           </div>
           <div className="lms-landing-preview-screen-note">
-            Dashboard screenshot coming soon
+            Illustrative workspace preview
           </div>
         </div>
       </div>
@@ -209,7 +209,7 @@ function DashboardPreview({ portal }: { portal: Portal }) {
         </div>
         <div>
           <h3>{portal.name} Dashboard</h3>
-          <p>Preview will be updated with your actual portal screenshot.</p>
+          <p>Explore the tools and information available in this dedicated workspace.</p>
         </div>
       </div>
       <Link href={portal.href} className="lms-landing-preview-link">
@@ -235,7 +235,7 @@ export default function Home() {
             <a href="#features">Features</a>
             <a href="#portals">Portals</a>
             <a href="#dashboards">Dashboards</a>
-            <a href="#contact">Contact</a>
+            <a href="#contact">Get Started</a>
           </nav>
           <a className="lms-landing-button lms-landing-button-small" href="#portals">
             Login <Icon name="arrow" size={16} />
@@ -248,28 +248,32 @@ export default function Home() {
           <div className="lms-landing-hero-copy">
             <span className="lms-landing-tag">
               <Icon name="sparkle" size={16} />
-              Learning, connected
+              A connected learning experience
             </span>
             <h1>
-              One platform.
-              <span> Four dedicated portals.</span>
+              One connected campus.
+              <span> A brighter way to learn.</span>
             </h1>
-            <p>
-              Bring students, teachers, parents and college administrators together
-              in a simpler, more connected learning experience.
+            <p className="lms-landing-hero-lead">
+              Give every part of your institution a place to thrive.
+              Student LMS brings <strong>college administration, teaching, learning and parent communication</strong> into one thoughtfully connected platform.
+            </p>
+            <p className="lms-landing-hero-support">
+              From classroom activities and online examinations to attendance, fee updates and recorded learning,
+              stay organized without losing sight of what matters: student progress.
             </p>
             <div className="lms-landing-hero-actions">
               <a href="#portals" className="lms-landing-button">
-                Explore portals <Icon name="arrow" size={18} />
+                Find your portal <Icon name="arrow" size={18} />
               </a>
               <a href="#features" className="lms-landing-button lms-landing-button-outline">
-                Discover features
+                See what’s possible
               </a>
             </div>
             <div className="lms-landing-trust-notes">
-              <span><Icon name="check" size={16} /> Role-based portals</span>
-              <span><Icon name="check" size={16} /> One connected campus</span>
-              <span><Icon name="check" size={16} /> Easy access</span>
+              <span><Icon name="check" size={16} /> Dedicated role-based portals</span>
+              <span><Icon name="check" size={16} /> Connected academic workflows</span>
+              <span><Icon name="check" size={16} /> Desktop &amp; mobile friendly</span>
             </div>
           </div>
           <div className="lms-landing-hero-visual">
@@ -286,8 +290,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="ACCESS YOUR PORTAL"
-            title="Four portals. One connected campus."
-            description="Choose the workspace designed for your role. Every button takes you to the existing secure login page."
+            title="Your workspace, built around your role."
+            description="Whether you lead a college, teach a class, work toward your goals or support a learner at home, start in the portal designed for you. Every role has a dedicated login and relevant tools."
             centered
           />
           <div className="lms-landing-portals">
@@ -305,6 +309,10 @@ export default function Home() {
               </article>
             ))}
           </div>
+          <p className="lms-landing-portals-note">
+            <Icon name="shield" size={18} />
+            New to Student LMS? Your institution provides account access and can help you choose the right portal.
+          </p>
         </div>
       </section>
 
@@ -312,8 +320,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="POWERFUL FEATURES"
-            title="Everything you need for modern education."
-            description="Keep academic activities in one place, with dedicated tools for everyday college life."
+            title="Everyday campus essentials, working together."
+            description="The details of college life matter. Organize routine tasks, deliver engaging lessons and make academic information easier to find, follow and manage across your institution."
           />
           <div className="lms-landing-feature-grid">
             {features.map((feature) => (
@@ -335,10 +343,13 @@ export default function Home() {
         <div className="lms-landing-container lms-landing-why-layout">
           <div className="lms-landing-why-copy">
             <span className="lms-landing-eyebrow">BUILT FOR EVERY CAMPUS</span>
-            <h2>Less switching between tools. More time for learning.</h2>
+            <h2>Spend less time switching tools. <span>More time moving forward.</span></h2>
             <p>
-              Student LMS connects the people and academic information that
-              make daily college operations work.
+              A connected campus needs more than separate pages for separate tasks.
+              Student LMS helps academic teams bring the everyday details of college life into a clearer, more manageable workflow.
+            </p>
+            <p>
+              Follow the relationships between classes, subjects, learners and teachers—while giving each person access to the information relevant to them.
             </p>
             <a className="lms-landing-inline-link" href="#how-it-works">
               See how it works <Icon name="arrow" size={17} />
@@ -347,15 +358,15 @@ export default function Home() {
           <div className="lms-landing-why-items">
             <div>
               <span className="lms-landing-icon is-blue"><Icon name="link" size={23} /></span>
-              <div><h3>Connected academic records</h3><p>Move between students, classes, teachers and related information more easily.</p></div>
+              <div><h3>Connected academic records</h3><p>Keep students, class enrollments, subjects and teacher information connected instead of repeating the same lookup across different pages.</p></div>
             </div>
             <div>
               <span className="lms-landing-icon is-purple"><Icon name="lock" size={23} /></span>
-              <div><h3>Access for every role</h3><p>Dedicated portals and class-level access controls keep workspaces relevant.</p></div>
+              <div><h3>Access for every role</h3><p>Role-specific dashboards and configurable class feature access help users focus on what they are authorized to use.</p></div>
             </div>
             <div>
               <span className="lms-landing-icon is-green"><Icon name="chart" size={23} /></span>
-              <div><h3>Clearer oversight</h3><p>Review learning activity, attendance, fees and academic progress from one system.</p></div>
+              <div><h3>Clearer oversight</h3><p>Bring attendance, learning activities, fee information and results into a more complete academic picture.</p></div>
             </div>
           </div>
         </div>
@@ -365,8 +376,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="HOW IT WORKS"
-            title="Get started in three simple steps."
-            description="From the homepage to your workspace in just a few clicks."
+            title="The right tools are just a few steps away."
+            description="Student LMS is designed to make getting started straightforward, whether you are managing an institution or checking your next class."
             centered
           />
           <div className="lms-landing-steps">
@@ -374,20 +385,57 @@ export default function Home() {
               <span className="lms-landing-step-number">01</span>
               <span className="lms-landing-icon is-coral"><Icon name="parent" size={27} /></span>
               <h3>Choose your portal</h3>
-              <p>Select College Admin, Teacher, Student or Parent.</p>
+              <p>Choose College Admin, Teacher, Student or Parent to open the workspace that matches your role.</p>
             </div>
             <div className="lms-landing-step">
               <span className="lms-landing-step-number">02</span>
               <span className="lms-landing-icon is-blue"><Icon name="lock" size={27} /></span>
               <h3>Sign in securely</h3>
-              <p>Use the login credentials provided by your institution.</p>
+              <p>Enter your institution-provided credentials to access the features available to your account.</p>
             </div>
             <div className="lms-landing-step">
               <span className="lms-landing-step-number">03</span>
               <span className="lms-landing-icon is-green"><Icon name="chart" size={27} /></span>
               <h3>Get things done</h3>
-              <p>Access the tools and information available to your role.</p>
+              <p>Manage your responsibilities, take part in learning and keep important academic information within reach.</p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="lms-landing-section lms-landing-journey-section" id="learning-journey">
+        <div className="lms-landing-container">
+          <SectionTitle
+            eyebrow="FROM PLANNING TO PROGRESS"
+            title="A connected experience throughout the academic journey."
+            description="Great learning experiences are built on hundreds of smaller moments. Keep planning, teaching, assessment and communication moving in the same direction."
+            centered
+          />
+          <div className="lms-landing-journey-grid">
+            <article className="lms-landing-journey-card">
+              <span className="lms-landing-journey-count">01 / ORGANIZE</span>
+              <span className="lms-landing-icon is-blue"><Icon name="admin" size={26} /></span>
+              <h3>Set the foundation</h3>
+              <p>Bring classes, sections, subjects and student enrollment details together so academic work starts with the right information.</p>
+            </article>
+            <article className="lms-landing-journey-card">
+              <span className="lms-landing-journey-count">02 / ENGAGE</span>
+              <span className="lms-landing-icon is-green"><Icon name="video" size={26} /></span>
+              <h3>Keep learning active</h3>
+              <p>Help teachers and students stay engaged through live sessions, recorded content, shared resources and coursework.</p>
+            </article>
+            <article className="lms-landing-journey-card">
+              <span className="lms-landing-journey-count">03 / ASSESS</span>
+              <span className="lms-landing-icon is-purple"><Icon name="file" size={26} /></span>
+              <h3>Understand achievement</h3>
+              <p>Use assignments, examinations and results to see how learning is progressing and where additional support may help.</p>
+            </article>
+            <article className="lms-landing-journey-card">
+              <span className="lms-landing-journey-count">04 / CONNECT</span>
+              <span className="lms-landing-icon is-orange"><Icon name="parent" size={26} /></span>
+              <h3>Keep people informed</h3>
+              <p>Make notices, relevant academic updates and fee information easier to access for the people who need them.</p>
+            </article>
           </div>
         </div>
       </section>
@@ -396,8 +444,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="DASHBOARD PREVIEWS"
-            title="A workspace for every member."
-            description="A dedicated dashboard for each role. The preview areas below are reserved for the real dashboard screenshots you'll add next."
+            title="A familiar place to get things done."
+            description="Each portal focuses on a different set of everyday needs, so you can quickly find the academic information, actions and updates that matter to you."
           />
           <div className="lms-landing-dashboard-grid">
             {portals.map((portal) => (
@@ -411,13 +459,13 @@ export default function Home() {
         <div className="lms-landing-container lms-landing-faq-layout">
           <div className="lms-landing-faq-intro">
             <span className="lms-landing-eyebrow">GOOD TO KNOW</span>
-            <h2>Frequently asked questions.</h2>
-            <p>Quick answers to help you get started with your portal.</p>
+            <h2>Questions? We’ve got the essentials covered.</h2>
+            <p>Understand how the platform works, choose the right portal and make the most of the tools available to your institution.</p>
           </div>
           <div className="lms-landing-faq-list">
             <details>
               <summary>What is Student LMS?</summary>
-              <p>It is a learning management platform that connects college administration, teachers, students and parents through dedicated portals.</p>
+              <p>Student LMS brings key academic and administrative tools into one platform, with separate workspaces for college administrators, teachers, students and parents.</p>
             </details>
             <details>
               <summary>Which login portal should I choose?</summary>
@@ -425,7 +473,15 @@ export default function Home() {
             </details>
             <details>
               <summary>Can I access Student LMS from my phone?</summary>
-              <p>Yes. The interface is designed for desktop, tablet and mobile screens. Available features depend on your account and role.</p>
+              <p>Yes. The landing page and portals are designed to adapt to desktop, tablet and mobile screens. The tools you see depend on your role and your institution’s settings.</p>
+            </details>
+            <details>
+              <summary>Can teachers conduct online exams?</summary>
+              <p>Teachers can create objective, subjective or mixed-question online exams. Objective marks are calculated after submission; the teacher evaluates descriptive answers and controls when final results are published.</p>
+            </details>
+            <details>
+              <summary>Can parents see academic and fee information?</summary>
+              <p>The Parent Portal helps linked parents review available information about their child’s learning and fees, subject to the access permitted by their institution.</p>
             </details>
             <details>
               <summary>What if I forget my password?</summary>
@@ -439,8 +495,8 @@ export default function Home() {
         <div className="lms-landing-cta-icon"><Icon name="cap" size={38} /></div>
         <div>
           <span className="lms-landing-eyebrow">LET’S GET STARTED</span>
-          <h2>Ready to enter your learning workspace?</h2>
-          <p>Choose your portal to begin. Need an account? Contact your college administration.</p>
+          <h2>Your next step starts here.</h2>
+          <p>Whether you are preparing a class, following student progress or managing a college, find your dedicated workspace and continue with confidence. Need login details? Contact your college administration.</p>
         </div>
         <a href="#portals" className="lms-landing-button">
           Choose your portal <Icon name="arrow" size={18} />
@@ -454,7 +510,7 @@ export default function Home() {
               <span className="lms-landing-brand-symbol"><Icon name="cap" size={23} /></span>
               <span>Student <strong>LMS</strong></span>
             </Link>
-            <p>Connected learning, clearer management.</p>
+            <p>Making everyday education more connected, organized and accessible.</p>
           </div>
           <nav aria-label="Footer navigation">
             <a href="#top">Home</a>
