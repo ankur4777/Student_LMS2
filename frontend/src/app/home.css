@@ -2094,10 +2094,8 @@
 }
 
 .lms-landing-tutor-fields label {
-  display: flex;
-  flex-direction: column;
+  display: block;
   min-width: 0;
-  gap: 7px;
   color: #35445e;
   font-size: 12px;
   font-weight: 730;
@@ -2120,6 +2118,8 @@
 .lms-landing-tutor-fields input,
 .lms-landing-tutor-fields select,
 .lms-landing-tutor-fields textarea {
+  display: block;
+  margin-top: 7px;
   width: 100%;
   min-height: 44px;
   padding: 11px 12px;
