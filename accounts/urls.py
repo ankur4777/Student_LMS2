@@ -1,4 +1,5 @@
 from django.urls import path
+from .tutor_applications import TutorApplicationAPIView
 
 from .views import (
     StudentDashboardAPIView,
@@ -42,6 +43,7 @@ from .views import (
 )
 
 urlpatterns = [
+    path('tutor-applications/', TutorApplicationAPIView.as_view(), name='tutor-applications'),
     path(
         'change-password/',
         ChangePasswordAPIView.as_view(),
