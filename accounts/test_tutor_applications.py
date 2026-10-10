@@ -29,7 +29,6 @@ class TutorApplicationAPITests(TestCase):
             "qualification": "M.Sc. Mathematics",
             "teaching_level": "secondary",
             "experience_years": "2-3",
-            "teaching_mode": "online",
             "introduction": "I enjoy making mathematics approachable and explaining concepts clearly.",
             "portfolio_url": "https://example.com/resume",
             "consent": True,
@@ -48,6 +47,7 @@ class TutorApplicationAPITests(TestCase):
         self.assertIn("Ayesha Sharma", message.body)
         self.assertIn("Mathematics and Science", message.body)
         self.assertIn("Secondary school", message.body)
+        self.assertNotIn("Preferred teaching mode:", message.body)
         self.assertIn("https://example.com/resume", message.body)
 
     def test_required_fields_must_be_present(self):
