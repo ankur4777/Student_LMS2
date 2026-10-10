@@ -238,6 +238,12 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL',
     EMAIL_HOST_USER or 'noreply@student-lms.local',
 )
+# Recipient for public tutor applications (required to enable email delivery).
+TUTOR_APPLICATION_NOTIFICATION_EMAIL = os.environ.get(
+    'TUTOR_APPLICATION_NOTIFICATION_EMAIL',
+    '',
+)
+
 PASSWORD_RESET_FRONTEND_URL = os.environ.get(
     'PASSWORD_RESET_FRONTEND_URL',
     'http://localhost:3000',
@@ -258,6 +264,9 @@ MEDIA_ROOT = Path(os.environ.get('MEDIA_ROOT', BASE_DIR / 'media'))
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_RATES': {
+        'tutor_application': '5/hour',
+    },
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
