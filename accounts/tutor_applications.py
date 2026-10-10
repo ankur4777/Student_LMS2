@@ -43,13 +43,6 @@ class TutorApplicationSerializer(serializers.Serializer):
             ("7-plus", "7+ years"),
         ]
     )
-    teaching_mode = serializers.ChoiceField(
-        choices=[
-            ("online", "Online"),
-            ("in_person", "In person"),
-            ("both", "Online and in person"),
-        ]
-    )
     introduction = serializers.CharField(min_length=20, max_length=1200)
     portfolio_url = serializers.URLField(required=False, allow_blank=True, max_length=300)
     consent = serializers.BooleanField(required=True)
@@ -100,9 +93,6 @@ class TutorApplicationAPIView(APIView):
         experience = dict(TutorApplicationSerializer().fields["experience_years"].choices).get(
             data["experience_years"], data["experience_years"]
         )
-        mode = dict(TutorApplicationSerializer().fields["teaching_mode"].choices).get(
-            data["teaching_mode"], data["teaching_mode"]
-        )
         body = "\n".join(
             [
                 "New tutor application received from the Student LMS public homepage.",
@@ -115,7 +105,6 @@ class TutorApplicationAPIView(APIView):
                 f"Highest qualification: {data['qualification']}",
                 f"Teaching level: {level}",
                 f"Teaching experience: {experience}",
-                f"Preferred teaching mode: {mode}",
                 f"Portfolio / resume link: {data.get('portfolio_url') or 'Not provided'}",
                 "",
                 "About the applicant:",
