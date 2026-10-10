@@ -23,7 +23,6 @@ export default function TutorApplicationForm() {
       qualification: String(values.get("qualification") || "").trim(),
       teaching_level: String(values.get("teaching_level") || ""),
       experience_years: String(values.get("experience_years") || ""),
-      teaching_mode: String(values.get("teaching_mode") || ""),
       portfolio_url: String(values.get("portfolio_url") || "").trim(),
       introduction: String(values.get("introduction") || "").trim(),
       consent: values.get("consent") === "on",
@@ -118,15 +117,6 @@ export default function TutorApplicationForm() {
             <option value="2-3">2–3 years</option>
             <option value="4-6">4–6 years</option>
             <option value="7-plus">7+ years</option>
-          </select>
-        </label>
-        <label className="lms-landing-tutor-wide">
-          Teaching preference <span aria-hidden="true">*</span>
-          <select name="teaching_mode" defaultValue="" required>
-            <option value="" disabled>Select a preference</option>
-            <option value="online">Online</option>
-            <option value="in_person">In person</option>
-            <option value="both">Online and in person</option>
           </select>
         </label>
         <label className="lms-landing-tutor-wide">
