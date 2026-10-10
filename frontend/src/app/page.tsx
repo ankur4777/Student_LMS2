@@ -1,4 +1,5 @@
 import Link from "next/link";
+import TutorApplicationForm from "@/components/TutorApplicationForm";
 
 import "./home.css";
 
@@ -250,6 +251,7 @@ export default function Home() {
             <a href="#features">Features</a>
             <a href="#portals">Portals</a>
             <a href="#dashboards">Dashboards</a>
+            <a href="#become-a-tutor">Teach With Us</a>
             <a href="#contact">Get Started</a>
           </nav>
           <a className="lms-landing-button lms-landing-button-small" href="#portals">
@@ -470,6 +472,50 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="lms-landing-section lms-landing-tutor-section" id="become-a-tutor" aria-labelledby="lms-tutor-heading">
+        <div className="lms-landing-container lms-landing-tutor-layout">
+          <div className="lms-landing-tutor-intro">
+            <span className="lms-landing-eyebrow">TEACH WITH US</span>
+            <h2 id="lms-tutor-heading">Great learning starts with <span>great educators.</span></h2>
+            <p className="lms-landing-tutor-lead">
+              Are you passionate about helping students grow? We would love to hear from educators
+              who bring subject knowledge, patience and enthusiasm to their teaching.
+            </p>
+            <p>
+              Share your experience and teaching preferences through the application form.
+              Our team can review your details and reach out if there is a suitable opportunity.
+            </p>
+            <div className="lms-landing-tutor-benefits">
+              <div>
+                <span className="lms-landing-tutor-benefit-icon"><Icon name="book" size={22} /></span>
+                <div>
+                  <h3>Teach what you know best</h3>
+                  <p>Tell us the subjects and student levels where you can make a difference.</p>
+                </div>
+              </div>
+              <div>
+                <span className="lms-landing-tutor-benefit-icon"><Icon name="video" size={22} /></span>
+                <div>
+                  <h3>Share your teaching preference</h3>
+                  <p>Let us know whether you prefer online, in-person, or both kinds of teaching.</p>
+                </div>
+              </div>
+              <div>
+                <span className="lms-landing-tutor-benefit-icon"><Icon name="shield" size={22} /></span>
+                <div>
+                  <h3>Simple application process</h3>
+                  <p>Send your details directly to our recruitment team for consideration.</p>
+                </div>
+              </div>
+            </div>
+            <div className="lms-landing-tutor-disclaimer">
+              Submitting an application does not guarantee employment. Our team will contact you if your profile matches an available opportunity.
+            </div>
+          </div>
+          <TutorApplicationForm />
+        </div>
+      </section>
+
       <section className="lms-landing-section lms-landing-faq-section" id="faq">
         <div className="lms-landing-container lms-landing-faq-layout">
           <div className="lms-landing-faq-intro">
@@ -531,6 +577,7 @@ export default function Home() {
             <a href="#top">Home</a>
             <a href="#features">Features</a>
             <a href="#portals">Portals</a>
+            <a href="#become-a-tutor">Teach With Us</a>
             <a href="#faq">FAQs</a>
           </nav>
         </div>
