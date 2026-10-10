@@ -482,7 +482,7 @@ export default function Home() {
               who bring subject knowledge, patience and enthusiasm to their teaching.
             </p>
             <p>
-              Share your experience and teaching preferences through the application form.
+              Share your qualifications, subjects and teaching experience through the application form.
               Our team can review your details and reach out if there is a suitable opportunity.
             </p>
             <div className="lms-landing-tutor-benefits">
@@ -496,8 +496,8 @@ export default function Home() {
               <div>
                 <span className="lms-landing-tutor-benefit-icon"><Icon name="video" size={22} /></span>
                 <div>
-                  <h3>Share your teaching preference</h3>
-                  <p>Let us know whether you prefer online, in-person, or both kinds of teaching.</p>
+                  <h3>Highlight your experience</h3>
+                  <p>Share your background and teaching approach so we can understand your strengths.</p>
                 </div>
               </div>
               <div>
