@@ -1555,7 +1555,7 @@ def serialize_class_feature_access(classroom, organization):
         student_enabled = (
             access.is_enabled
             if access
-            else True
+            else definition["key"] != "ai_assistant"
         )
         parent_enabled = (
             access.parent_enabled
