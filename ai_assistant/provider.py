@@ -77,6 +77,10 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
         "max_completion_tokens": 700,
         "store": False,
     }
+    # Luna can answer routine tutoring questions quickly without hidden reasoning
+    # tokens. Other models retain their own supported reasoning defaults.
+    if settings.AI_ASSISTANT_MODEL == "gpt-6-luna":
+        payload["reasoning_effort"] = "none"
     request = Request(
         OPENAI_CHAT_COMPLETIONS_URL,
         data=json.dumps(payload).encode("utf-8"),

@@ -294,3 +294,44 @@ class AIProviderSafetyTests(TestCase):
         )
         self.assertIn("Meta Ads", reply)
         self.assertNotIn("Out of scope", reply)
+
+    @override_settings(OPENAI_API_KEY="test-api-key", AI_ASSISTANT_MODEL="gpt-6-luna")
+    @patch("ai_assistant.provider.urlopen")
+    def test_gpt_6_luna_request_uses_no_reasoning_effort(self, urlopen_mock):
+        import json
+
+        class FakeHTTPResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return json.dumps({
+                    "choices": [{
+                        "message": {
+                            "content": json.dumps({
+                                "allowed": True,
+                                "answer": "Welcome to your Meta Ads lesson.",
+                            }),
+                        },
+                    }],
+                }).encode("utf-8")
+
+        urlopen_mock.return_value = FakeHTTPResponse()
+        reply = generate_reply(
+            message="Explain campaign objectives",
+            history=[],
+            mode="tutor",
+            student_context={"student": {"name": "Student"}},
+            data={"study_materials": []},
+            subject={"id": 1, "name": "Meta Ads"},
+        )
+        self.assertEqual(reply, "Welcome to your Meta Ads lesson.")
+        urlopen_mock.assert_called_once()
+        request = urlopen_mock.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(payload["model"], "gpt-6-luna")
+        self.assertEqual(payload["reasoning_effort"], "none")
+        self.assertEqual(payload["response_format"], {"type": "json_object"})

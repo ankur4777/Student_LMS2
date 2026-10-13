@@ -312,5 +312,5 @@ CACHES = {
 
 # AI Student Assistant: server-side secrets, never NEXT_PUBLIC_ variables.
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-AI_ASSISTANT_MODEL = os.environ.get("AI_ASSISTANT_MODEL", "gpt-4.1-mini")
+AI_ASSISTANT_MODEL = os.environ.get("AI_ASSISTANT_MODEL", "gpt-6-luna")
 AI_ASSISTANT_TIMEOUT = float(os.environ.get("AI_ASSISTANT_TIMEOUT", "25"))
