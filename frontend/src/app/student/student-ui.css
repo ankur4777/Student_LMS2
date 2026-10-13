@@ -1157,3 +1157,268 @@
     transition: none;
   }
 }
+
+/* Popup AI Tutor: fixed panel attached to the existing robot launcher. */
+.student-ui-scope .student-floating-tutor {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.student-ui-scope .student-tutor-chat-panel {
+  position: fixed;
+  right: calc(22px + env(safe-area-inset-right, 0px));
+  bottom: calc(103px + env(safe-area-inset-bottom, 0px));
+  z-index: 1120;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 30px));
+  height: min(590px, calc(100dvh - 125px));
+  min-height: 310px;
+  overflow: hidden;
+  border: 1px solid #f4cbd0;
+  border-radius: 19px;
+  background: #fff;
+  box-shadow: 0 17px 55px rgba(30, 41, 59, .22);
+  color: #253247;
+}
+
+.student-ui-scope .student-tutor-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: linear-gradient(110deg, #e73748, #ba233b);
+  color: #fff;
+}
+
+.student-ui-scope .student-tutor-chat-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border-radius: 14px;
+  background: rgba(255,255,255,.18);
+}
+
+.student-ui-scope .student-tutor-chat-avatar svg { width: 38px; height: 38px; }
+
+.student-ui-scope .student-tutor-chat-heading {
+  display: grid;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.student-ui-scope .student-tutor-chat-heading strong {
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.student-ui-scope .student-tutor-chat-heading span {
+  font-size: 10px;
+  opacity: .9;
+}
+
+.student-ui-scope .student-tutor-chat-close {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255,255,255,.18);
+  color: #fff;
+  font-size: 23px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.student-ui-scope .student-tutor-chat-close:hover { background: rgba(255,255,255,.28); }
+
+.student-ui-scope .student-tutor-chat-controls {
+  display: grid;
+  gap: 8px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #edf0f3;
+  background: #fff;
+}
+
+.student-ui-scope .student-tutor-chat-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.student-ui-scope .student-tutor-chat-tabs button {
+  flex: 1;
+  padding: 8px 5px;
+  border: 1px solid #e7e9ee;
+  border-radius: 9px;
+  background: #f7f8fb;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.student-ui-scope .student-tutor-chat-tabs button.active {
+  background: #fff1f2;
+  border-color: #f2bdc4;
+  color: #bd2236;
+}
+
+.student-ui-scope .student-tutor-chat-tabs button:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.student-ui-scope .student-tutor-subject-label {
+  display: grid;
+  gap: 4px;
+  color: #566376;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.student-ui-scope .student-tutor-subject-label select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #dfe4eb;
+  border-radius: 8px;
+  background: #fff;
+  color: #253247;
+  font-size: 12px;
+}
+
+.student-ui-scope .student-tutor-chat-messages {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  padding: 16px 13px;
+  overflow-y: auto;
+  background: #fafbfc;
+}
+
+.student-ui-scope .student-tutor-chat-welcome {
+  padding: 16px;
+  border: 1px solid #f3d5d9;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.student-ui-scope .student-tutor-chat-welcome strong { font-size: 15px; }
+.student-ui-scope .student-tutor-chat-welcome p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.student-ui-scope .student-tutor-chat-message {
+  max-width: 88%;
+  padding: 10px 12px;
+  border-radius: 13px;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.student-ui-scope .student-tutor-chat-message.from-student {
+  align-self: flex-end;
+  border-bottom-right-radius: 3px;
+  background: #e73748;
+  color: #fff;
+}
+
+.student-ui-scope .student-tutor-chat-message.from-tutor {
+  align-self: flex-start;
+  border: 1px solid #eceff3;
+  border-bottom-left-radius: 3px;
+  background: #fff;
+  color: #253247;
+}
+
+.student-ui-scope .student-tutor-chat-typing,
+.student-ui-scope .student-tutor-chat-empty {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.student-ui-scope .student-tutor-chat-error {
+  margin: 0;
+  padding: 8px 12px;
+  border-top: 1px solid #ffe1e4;
+  background: #fff4f5;
+  color: #b42336;
+  font-size: 11px;
+}
+
+.student-ui-scope .student-tutor-chat-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 11px 4px;
+  background: #fff;
+  border-top: 1px solid #edf0f3;
+}
+
+.student-ui-scope .student-tutor-chat-form textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  max-height: 104px;
+  resize: vertical;
+  padding: 10px;
+  border: 1px solid #dfe4eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #253247;
+  font: inherit;
+  font-size: 12px;
+}
+
+.student-ui-scope .student-tutor-chat-form textarea:focus {
+  border-color: #e73748;
+  outline: 2px solid #ffe5e8;
+}
+
+.student-ui-scope .student-tutor-chat-form button {
+  width: 40px;
+  height: 43px;
+  border: none;
+  border-radius: 10px;
+  background: #e73748;
+  color: #fff;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.student-ui-scope .student-tutor-chat-form button:disabled {
+  background: #e3e6ea;
+  cursor: not-allowed;
+}
+
+.student-ui-scope .student-tutor-chat-disclaimer {
+  margin: 0;
+  padding: 3px 8px 9px;
+  background: #fff;
+  color: #98a2b3;
+  text-align: center;
+  font-size: 9px;
+}
+
+@media (max-width: 576px) {
+  .student-ui-scope .student-tutor-chat-panel {
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    width: calc(100vw - 20px);
+    height: min(580px, calc(100dvh - 110px));
+    border-radius: 15px;
+  }
+}
