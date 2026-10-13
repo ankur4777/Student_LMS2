@@ -1044,3 +1044,116 @@
     padding: 16px;
   }
 }
+
+/* Floating student AI tutor launcher */
+.student-ui-scope .student-floating-tutor {
+  position: fixed;
+  right: calc(22px + env(safe-area-inset-right, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+
+.student-ui-scope .student-floating-tutor-orb {
+  position: relative;
+  display: grid;
+  width: 68px;
+  height: 68px;
+  flex-shrink: 0;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fb5b69, #d4233a);
+  box-shadow: 0 9px 28px rgba(185, 28, 44, .28);
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.student-ui-scope .student-floating-tutor-badge {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  display: grid;
+  min-width: 25px;
+  height: 22px;
+  place-items: center;
+  padding: 0 5px;
+  border: 2px solid #fff;
+  border-radius: 12px;
+  background: #ffebaf;
+  color: #9c341c;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.student-ui-scope .student-floating-tutor-tooltip {
+  padding: 10px 13px;
+  border-radius: 10px;
+  background: #273244;
+  color: #fff;
+  box-shadow: 0 7px 22px rgba(15, 23, 42, .15);
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(8px);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.student-ui-scope .student-floating-tutor:hover .student-floating-tutor-orb,
+.student-ui-scope .student-floating-tutor:focus-visible .student-floating-tutor-orb {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 34px rgba(185, 28, 44, .35);
+}
+
+.student-ui-scope .student-floating-tutor:hover .student-floating-tutor-tooltip,
+.student-ui-scope .student-floating-tutor:focus-visible .student-floating-tutor-tooltip {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.student-ui-scope .student-floating-tutor:focus-visible {
+  outline: 3px solid #9c341c;
+  outline-offset: 4px;
+  border-radius: 50%;
+}
+
+/* Keep the live-class join notification unobstructed. */
+@media (min-width: 900px) {
+  .student-ui-scope:has(.student-live-class-popup) .student-floating-tutor {
+    right: calc(436px + env(safe-area-inset-right, 0px));
+  }
+}
+
+@media (max-width: 899px) {
+  .student-ui-scope:has(.student-live-class-popup) .student-floating-tutor {
+    display: none;
+  }
+}
+
+@media (max-width: 576px) {
+  .student-ui-scope .student-floating-tutor {
+    right: calc(14px + env(safe-area-inset-right, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .student-ui-scope .student-floating-tutor-orb {
+    width: 60px;
+    height: 60px;
+  }
+
+  .student-ui-scope .student-floating-tutor-tooltip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-ui-scope .student-floating-tutor-orb,
+  .student-ui-scope .student-floating-tutor-tooltip {
+    transition: none;
+  }
+}
