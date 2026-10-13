@@ -314,3 +314,13 @@ CACHES = {
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 AI_ASSISTANT_MODEL = os.environ.get("AI_ASSISTANT_MODEL", "gpt-4.1-mini")
 AI_ASSISTANT_TIMEOUT = float(os.environ.get("AI_ASSISTANT_TIMEOUT", "25"))
+
+# AI assistant provider selection. Existing hosted deployments continue using
+# OpenAI unless explicitly configured otherwise.
+AI_ASSISTANT_PROVIDER = os.environ.get("AI_ASSISTANT_PROVIDER", "openai").strip().lower()
+
+# Local Ollama only; keep its HTTP port private and do not expose to the public.
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:1.5b")
+OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "120"))
+OLLAMA_NUM_CTX = int(os.environ.get("OLLAMA_NUM_CTX", "8192"))

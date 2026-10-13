@@ -1,8 +1,13 @@
-"""Server-side AI generation. Never send credentials or full LMS records to a client."""
+"""Server-side AI generation with explicitly selected local Ollama or OpenAI.
+
+Student authentication, feature and subject authorization happen in the Django
+chat view before any provider sees student information.
+"""
 
 import json
 import logging
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -13,16 +18,72 @@ OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 
 
 class AIProviderUnavailable(Exception):
-    """Safe public error: do not expose external API bodies or credentials."""
+    """Safe public error: never expose remote request bodies or credentials."""
+
+
+def _local_ollama_endpoint():
+    """Only allow a local Ollama daemon: no student data sent to arbitrary hosts."""
+    base_url = getattr(settings, "OLLAMA_BASE_URL", "http://127.0.0.1:11434").strip()
+    parsed = urlparse(base_url)
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in ("127.0.0.1", "localhost", "::1")
+        or parsed.username
+        or parsed.password
+        or parsed.path not in ("", "/")
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise AIProviderUnavailable(
+            "Ollama must use a local address such as http://127.0.0.1:11434."
+        )
+    return base_url.rstrip("/") + "/api/chat"
+
+
+def _fetch_json(*, url, payload, timeout, headers=None, provider_name):
+    request = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", **(headers or {})},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=timeout) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError) as exc:
+        logger.warning("%s student AI request failed: %s", provider_name, type(exc).__name__)
+        if provider_name == "Ollama":
+            raise AIProviderUnavailable(
+                "Cannot connect to local Ollama. Start Ollama and confirm "
+                "the configured model is installed using 'ollama list'."
+            ) from exc
+        raise AIProviderUnavailable(
+            "The AI service is temporarily unavailable. Please try again shortly."
+        ) from exc
+
+
+def _parse_reply(content, *, mode, subject):
+    try:
+        parsed = json.loads(content)
+        answer = parsed["answer"]
+        if not isinstance(answer, str) or not answer.strip():
+            raise ValueError("empty AI reply")
+        if parsed.get("allowed") is not True:
+            return (
+                f"I can only help with {subject['name']} in Subject Tutor."
+                if mode == "tutor" else
+                "Please choose Subject Tutor for teaching questions."
+            )
+        return answer.strip()[:5000]
+    except (KeyError, TypeError, ValueError) as exc:
+        logger.warning("Student AI model returned invalid JSON")
+        raise AIProviderUnavailable(
+            "The AI model returned an invalid response. Please try again."
+        ) from exc
 
 
 def generate_reply(*, message, history, mode, student_context, data, subject=None):
-    api_key = getattr(settings, "OPENAI_API_KEY", "").strip()
-    if not api_key:
-        raise AIProviderUnavailable(
-            "AI chat is not configured yet. Ask your administrator to set OPENAI_API_KEY on the Django server."
-        )
-
+    """Generate a reply. Never trust the provider for data-access permissions."""
     base_rules = (
         "You are Student LMS AI Tutor, a helpful, patient, age-appropriate "
         "learning assistant for the authenticated student. "
@@ -65,11 +126,58 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
         json.dumps({"student": student_context["student"], "data": data},
                    ensure_ascii=False, default=str)[:17000],
     ])
-    messages = [{"role": "developer", "content": instructions}]
-    for item in history:
-        messages.append({"role": item["role"], "content": item["content"]})
-    messages.append({"role": "user", "content": message})
 
+    # Ollama supports the system/user/assistant roles, while Chat Completions
+    # supports the developer instruction role.
+    provider = getattr(settings, "AI_ASSISTANT_PROVIDER", "openai").strip().lower()
+
+    if provider == "ollama":
+        model = getattr(settings, "OLLAMA_MODEL", "qwen2.5:1.5b").strip()
+        if not model:
+            raise AIProviderUnavailable("OLLAMA_MODEL must be configured.")
+        messages = [{"role": "system", "content": instructions}]
+        messages.extend({"role": item["role"], "content": item["content"]} for item in history)
+        messages.append({"role": "user", "content": message})
+        payload = {
+            "model": model,
+            "messages": messages,
+            "stream": False,
+            "format": "json",
+            "options": {
+                "temperature": 0.2,
+                "num_predict": 700,
+                "num_ctx": int(getattr(settings, "OLLAMA_NUM_CTX", 8192)),
+            },
+        }
+        result = _fetch_json(
+            url=_local_ollama_endpoint(),
+            payload=payload,
+            timeout=float(getattr(settings, "OLLAMA_TIMEOUT", 120)),
+            provider_name="Ollama",
+        )
+        try:
+            content = result["message"]["content"]
+        except (KeyError, TypeError) as exc:
+            raise AIProviderUnavailable(
+                "Ollama returned an invalid response. Please try again."
+            ) from exc
+        return _parse_reply(content, mode=mode, subject=subject)
+
+    if provider != "openai":
+        raise AIProviderUnavailable(
+            "Invalid AI_ASSISTANT_PROVIDER. Choose 'ollama' or 'openai'."
+        )
+
+    api_key = getattr(settings, "OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise AIProviderUnavailable(
+            "AI chat is not configured yet. Set OPENAI_API_KEY on the Django server, "
+            "or use AI_ASSISTANT_PROVIDER=ollama for local AI."
+        )
+
+    messages = [{"role": "developer", "content": instructions}]
+    messages.extend({"role": item["role"], "content": item["content"]} for item in history)
+    messages.append({"role": "user", "content": message})
     payload = {
         "model": settings.AI_ASSISTANT_MODEL,
         "messages": messages,
@@ -77,40 +185,17 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
         "max_completion_tokens": 700,
         "store": False,
     }
-    request = Request(
-        OPENAI_CHAT_COMPLETIONS_URL,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
+    result = _fetch_json(
+        url=OPENAI_CHAT_COMPLETIONS_URL,
+        payload=payload,
+        timeout=settings.AI_ASSISTANT_TIMEOUT,
+        headers={"Authorization": f"Bearer {api_key}"},
+        provider_name="OpenAI",
     )
-
     try:
-        with urlopen(request, timeout=settings.AI_ASSISTANT_TIMEOUT) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except (HTTPError, URLError, TimeoutError, ValueError) as exc:
-        logger.warning("AI Assistant provider request failed: %s", type(exc).__name__)
-        raise AIProviderUnavailable(
-            "The AI service is temporarily unavailable. Please try again shortly."
-        ) from exc
-
-    try:
-        raw = body["choices"][0]["message"]["content"]
-        parsed = json.loads(raw)
-        answer = parsed["answer"]
-        if not isinstance(answer, str) or not answer.strip():
-            raise ValueError("empty answer")
-        if parsed.get("allowed") is not True:
-            return (
-                f"I can only help with {subject['name']} in Subject Tutor."
-                if mode == "tutor" else
-                "Please choose Subject Tutor for teaching questions."
-            )
-        return answer.strip()[:5000]
-    except (KeyError, IndexError, TypeError, ValueError) as exc:
-        logger.warning("AI Assistant returned an invalid response")
+        content = result["choices"][0]["message"]["content"]
+    except (KeyError, IndexError, TypeError) as exc:
         raise AIProviderUnavailable(
             "The AI service returned an invalid response. Please try again."
         ) from exc
+    return _parse_reply(content, mode=mode, subject=subject)

@@ -294,3 +294,126 @@ class AIProviderSafetyTests(TestCase):
         )
         self.assertIn("Meta Ads", reply)
         self.assertNotIn("Out of scope", reply)
+
+
+class OllamaProviderTests(TestCase):
+    @override_settings(
+        AI_ASSISTANT_PROVIDER="ollama",
+        OPENAI_API_KEY="",
+        OLLAMA_MODEL="qwen2.5:1.5b",
+        OLLAMA_BASE_URL="http://127.0.0.1:11434",
+        OLLAMA_TIMEOUT=30,
+        OLLAMA_NUM_CTX=4096,
+    )
+    @patch("ai_assistant.provider.urlopen")
+    def test_ollama_generates_reply_without_openai_key(self, mocked_urlopen):
+        import json
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return json.dumps({
+                    "message": {
+                        "role": "assistant",
+                        "content": json.dumps({
+                            "allowed": True,
+                            "answer": "Meta Ads can help reach a specific audience.",
+                        }),
+                    }
+                }).encode("utf-8")
+
+        mocked_urlopen.return_value = FakeResponse()
+        reply = generate_reply(
+            message="Explain Meta Ads",
+            history=[],
+            mode="tutor",
+            student_context={"student": {"name": "Test Student"}},
+            data={"study_materials": []},
+            subject={"name": "Meta Ads", "id": 5},
+        )
+        self.assertEqual(reply, "Meta Ads can help reach a specific audience.")
+        request = mocked_urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "http://127.0.0.1:11434/api/chat")
+        self.assertNotIn("Authorization", request.headers)
+        sent = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(sent["model"], "qwen2.5:1.5b")
+        self.assertFalse(sent["stream"])
+        self.assertEqual(sent["format"], "json")
+        self.assertEqual(sent["messages"][0]["role"], "system")
+        self.assertEqual(sent["options"]["num_ctx"], 4096)
+
+    @override_settings(
+        AI_ASSISTANT_PROVIDER="ollama",
+        OLLAMA_BASE_URL="http://127.0.0.1:11434",
+        OLLAMA_MODEL="qwen2.5:1.5b",
+    )
+    @patch("ai_assistant.provider.urlopen")
+    def test_ollama_refuses_off_topic_response(self, mocked_urlopen):
+        import json
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                return False
+
+            def read(self):
+                return json.dumps({
+                    "message": {"content": json.dumps({
+                        "allowed": False, "answer": "Forbidden external subject."
+                    })},
+                }).encode("utf-8")
+
+        mocked_urlopen.return_value = FakeResponse()
+        reply = generate_reply(
+            message="Teach me an unrelated subject",
+            history=[],
+            mode="tutor",
+            student_context={"student": {"name": "Test Student"}},
+            data={"study_materials": []},
+            subject={"name": "Meta Ads", "id": 5},
+        )
+        self.assertIn("Meta Ads", reply)
+        self.assertNotIn("Forbidden external subject", reply)
+
+    @override_settings(
+        AI_ASSISTANT_PROVIDER="ollama",
+        OLLAMA_BASE_URL="http://example.com:11434",
+        OLLAMA_MODEL="qwen2.5:1.5b",
+    )
+    @patch("ai_assistant.provider.urlopen")
+    def test_ollama_cannot_send_student_data_to_remote_http_host(self, mocked_urlopen):
+        with self.assertRaises(AIProviderUnavailable):
+            generate_reply(
+                message="What is my attendance?",
+                history=[],
+                mode="dashboard",
+                student_context={"student": {"name": "Student"}},
+                data={"attendance": {"percentage": 95}},
+            )
+        mocked_urlopen.assert_not_called()
+
+    @override_settings(
+        AI_ASSISTANT_PROVIDER="ollama",
+        OLLAMA_BASE_URL="http://127.0.0.1:11434",
+        OLLAMA_MODEL="qwen2.5:1.5b",
+    )
+    @patch("ai_assistant.provider.urlopen")
+    def test_ollama_unavailable_returns_safe_configuration_message(self, mocked_urlopen):
+        from urllib.error import URLError
+        mocked_urlopen.side_effect = URLError("connection refused")
+        with self.assertRaisesRegex(AIProviderUnavailable, "local Ollama"):
+            generate_reply(
+                message="Explain Meta Ads",
+                history=[],
+                mode="tutor",
+                student_context={"student": {"name": "Student"}},
+                data={"study_materials": []},
+                subject={"name": "Meta Ads", "id": 5},
+            )
