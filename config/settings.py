@@ -267,6 +267,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'tutor_application': '5/hour',
+        'student_ai_chat': '20/hour',
     },
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -307,3 +308,9 @@ CACHES = {
         'LOCATION': 'student-lms-currency-cache',
     },
 }
+
+
+# AI Student Assistant: server-side secrets, never NEXT_PUBLIC_ variables.
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+AI_ASSISTANT_MODEL = os.environ.get("AI_ASSISTANT_MODEL", "gpt-4.1-mini")
+AI_ASSISTANT_TIMEOUT = float(os.environ.get("AI_ASSISTANT_TIMEOUT", "25"))
