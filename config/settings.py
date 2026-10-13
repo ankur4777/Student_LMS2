@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'reports',
     'notices',
     'currency',
+    'ai_assistant',
 ]
 
 MIDDLEWARE = [

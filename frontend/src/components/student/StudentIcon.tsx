@@ -16,7 +16,8 @@ export type StudentIconName =
   | "calendar"
   | "clock"
   | "arrow"
-  | "video";
+  | "video"
+  | "ai_assistant";
 
 interface StudentIconProps {
   name: StudentIconName;
@@ -44,6 +45,8 @@ export default function StudentIcon({
   switch (name) {
     case "dashboard":
       return <svg {...common} className={className}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg>;
+    case "ai_assistant":
+      return <svg {...common} className={className}><rect x="4" y="7" width="16" height="13" rx="3" /><path d="M12 3v4M9 3h6M8 15h.01M16 15h.01M8 18h8" /><circle cx="8.5" cy="12" r="1" /><circle cx="15.5" cy="12" r="1" /></svg>;
     case "classes":
       return <svg {...common} className={className}><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M7 8h10M7 12h6M7 16h8" /></svg>;
     case "recordings":

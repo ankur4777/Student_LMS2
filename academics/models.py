@@ -322,6 +322,7 @@ class ClassFeatureAccess(models.Model):
         DOCUMENTS = "documents", "Documents"
         FEES = "fees", "Fees"
         NOTIFICATIONS = "notifications", "Notifications"
+        AI_ASSISTANT = "ai_assistant", "AI Assistant"
 
     organization = models.ForeignKey(
         "institutions.Organization",

@@ -77,7 +77,7 @@ def get_student_feature_map(user):
     classroom = enrollment.section.classroom
 
     feature_map = {
-        definition["key"]: True
+        definition["key"]: definition["key"] != "ai_assistant"
         for definition in FEATURE_DEFINITIONS
     }
 

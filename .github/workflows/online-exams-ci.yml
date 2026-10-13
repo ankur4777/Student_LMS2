@@ -45,8 +45,8 @@ jobs:
         run: python manage.py check
       - name: Check migration definitions
         run: python manage.py makemigrations --check --dry-run
-      - name: Run existing and new exam regression tests
-        run: python manage.py test studentresults.test_online_exams studentresults.tests --noinput
+      - name: Run exam and AI assistant authorization regression tests
+        run: python manage.py test studentresults.test_online_exams studentresults.tests academics.tests.ClassFeatureAccessTests ai_assistant.tests --noinput
 
   frontend:
     runs-on: ubuntu-latest
