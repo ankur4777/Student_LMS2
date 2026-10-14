@@ -162,6 +162,32 @@ def student_dashboard_facts(user, enrollment, allowed_subject_ids, features):
             for item in classes
         ]
 
+        # "Previous class" is separate from upcoming classes. Only describe
+        # classes that the teacher marked completed, never assume that an
+        # overdue scheduled class actually took place.
+        completed_classes = LiveClass.objects.filter(
+            organization_id=organization_id,
+            teacher_assignment__section=section,
+            teacher_assignment__section__organization_id=organization_id,
+            teacher_assignment__subject_id__in=ids,
+            teacher_assignment__subject__organization_id=organization_id,
+            class_date__lte=timezone.localdate(),
+            status=LiveClass.Status.COMPLETED,
+        ).select_related(
+            "teacher_assignment__subject"
+        ).order_by("-class_date", "-start_time", "-pk")[:10]
+        facts["previous_classes"] = [
+            {
+                "title": item.title,
+                "subject": item.teacher_assignment.subject.name,
+                "date": item.class_date.isoformat(),
+                "starts_at": item.start_time.isoformat(timespec="minutes"),
+                "ends_at": item.end_time.isoformat(timespec="minutes"),
+                "status": item.status,
+            }
+            for item in completed_classes
+        ]
+
     if features.get("fees"):
         assigned_fees = StudentFee.objects.filter(
             organization_id=organization_id,
