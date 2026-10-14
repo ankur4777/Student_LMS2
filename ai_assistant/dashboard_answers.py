@@ -51,6 +51,10 @@ def _topic(text):
     # it describes a previous session rather than a live class.
     if "recorded_classes" in hits and "previous_classes" in hits:
         hits.remove("previous_classes")
+    # "last live class" and "my class yesterday" also match generic upcoming
+    # phrases. An explicit past-time reference must win over "live/my class".
+    if "previous_classes" in hits and "upcoming_classes" in hits:
+        hits.remove("upcoming_classes")
     if len(hits) != 1:
         return None
     return hits[0]
