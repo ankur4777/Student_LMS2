@@ -220,7 +220,13 @@ class StudentAIChatSecurityTests(TestCase):
             "mode": "dashboard", "message": "Show me my marks",
         }, format="json")
         self.assertEqual(response.status_code, 200)
-        data = generation.call_args.kwargs["data"]
+        self.assertIn("restricted", response.data["reply"])
+        generation.assert_not_called()
+        enrollment = self.profile.enrollments.get(is_active=True)
+        data = student_dashboard_facts(
+            self.user, enrollment,
+            {self.science.id}, {"results": False, "assignments": False},
+        )
         self.assertNotIn("published_results", data)
         self.assertNotIn("assignments", data)
 
@@ -317,11 +323,146 @@ class StudentAIChatSecurityTests(TestCase):
         self.login()
         result = self.client.post(CHAT_URL, {
             "mode": "dashboard",
-            "message": "What is my attendance?",
+            "message": "Can you summarize my portal?",
         }, format="json")
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.data["reply"], "Records unavailable")
         generation.assert_called_once()
+
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_recorded_classes_answer_uses_current_student_and_purchase_access(self, generation):
+        from liveclasses.models import LiveClass, LiveClassRecording
+        from recordedcourses.models import RecordedClassAccess
+
+        completed = LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Meta Ads Recording",
+            class_date=date(2026, 10, 10),
+            start_time="10:00:00",
+            end_time="11:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        recording = LiveClassRecording.objects.create(
+            live_class=completed, uploaded_by=self.teacher,
+            video="private/test.mp4",
+            title="Meta Ads Lecture 1", is_available=True,
+            price=Decimal("99.00"),
+        )
+        self.login()
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "tell me about my recorded classes",
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Meta Ads Lecture 1", response.data["reply"])
+        self.assertIn("requires a purchase", response.data["reply"])
+        self.assertIn("/student/recorded-classes", str(response.data["links"]))
+
+        RecordedClassAccess.objects.create(
+            organization=self.college, student=self.profile, recording=recording,
+        )
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "tell me about my recorded classes",
+        }, format="json")
+        self.assertIn("currently have access", response.data["reply"])
+        generation.assert_not_called()
+
+        ClassFeatureAccess.objects.create(
+            organization=self.college, classroom=self.classroom,
+            feature_key="recorded_classes", is_enabled=False,
+        )
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "tell me about my recorded classes",
+        }, format="json")
+        self.assertIn("restricted", response.data["reply"])
+        self.assertNotIn("Meta Ads Lecture 1", response.data["reply"])
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_online_exams_publish_only_final_results(self, generation):
+        from datetime import timedelta
+        from django.utils import timezone
+        from studentresults.models import ExamAttempt
+
+        exam = Exam.objects.create(
+            organization=self.college, section=self.section,
+            name="Meta Ads Online Quiz", exam_date=date(2026, 10, 14),
+            online_teacher_assignment=self.assignment, online_is_open=True,
+            online_starts_at=timezone.now(),
+            online_ends_at=timezone.now() + timedelta(hours=2),
+            is_published=False,
+        )
+        ExamAttempt.objects.create(
+            exam=exam, student=self.profile,
+            state=ExamAttempt.State.GRADED,
+            objective_marks=Decimal("22"), subjective_marks=Decimal("17"),
+        )
+        self.login()
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "tell me about my online exam",
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Meta Ads Online Quiz", response.data["reply"])
+        self.assertIn("Final result not published", response.data["reply"])
+        self.assertNotIn("39.00", response.data["reply"])
+
+        exam.is_published = True
+        exam.save(update_fields=["is_published"])
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "tell me about my online exam",
+        }, format="json")
+        self.assertIn("Published final marks: 39.00", response.data["reply"])
+        generation.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_recorded_courses_and_notices_from_authorized_portal(self, generation):
+        from recordedcourses.models import RecordedCourse, RecordedCourseAccess
+        from notices.models import Notice
+        from notifications.models import Notification
+
+        course = RecordedCourse.objects.create(
+            organization=self.college, title="Meta Ads Advanced",
+            description="Advanced campaigns", price=Decimal("999.00"),
+        )
+        Notice.objects.create(
+            organization=self.college, title="College Event",
+            message="The college will host an event.",
+            audience=Notice.Audience.STUDENTS, created_by=self.teacher_user,
+        )
+        Notification.objects.create(
+            organization=self.college, user=self.user,
+            title="New Message", message="Welcome student",
+        )
+        Notification.objects.create(
+            organization=self.foreign_college, user=self.teacher_user,
+            title="Foreign Notification", message="Should be private",
+        )
+        self.login()
+
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "show my recorded courses",
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Meta Ads Advanced", response.data["reply"])
+        self.assertIn("Access not active", response.data["reply"])
+        RecordedCourseAccess.objects.create(
+            organization=self.college, course=course, student=self.profile,
+        )
+        response = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "show my recorded courses",
+        }, format="json")
+        self.assertIn("Purchased/access active", response.data["reply"])
+
+        notice = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "show notices",
+        }, format="json")
+        self.assertIn("College Event", notice.data["reply"])
+        notifications = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "show notifications",
+        }, format="json")
+        self.assertIn("New Message", notifications.data["reply"])
+        self.assertNotIn("Foreign Notification", notifications.data["reply"])
+        generation.assert_not_called()
 
 
 class AIProviderSafetyTests(TestCase):
@@ -470,3 +611,23 @@ class OllamaProviderTests(TestCase):
                 data={"study_materials": []},
                 subject={"name": "Meta Ads", "id": 5},
             )
+
+
+class DashboardTopicRoutingTests(TestCase):
+    def test_recorded_classes_and_online_exams_match_student_questions(self):
+        from .dashboard_answers import _topic
+
+        self.assertEqual(
+            _topic("tell me about my recorded classes"), "recorded_classes"
+        )
+        self.assertEqual(
+            _topic("I want details of my recorded class"), "recorded_classes"
+        )
+        self.assertEqual(
+            _topic("tell me about my online exam"), "online_exams"
+        )
+        self.assertEqual(
+            _topic("show my online exams"), "online_exams"
+        )
+
+

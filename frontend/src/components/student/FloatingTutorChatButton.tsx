@@ -15,8 +15,24 @@ type TutorContext = {
 };
 type StudentHelpLink = {
   label: string;
-  href: "/student/profile" | "/student/forgot-password";
+  href: string;
 };
+
+const SAFE_STUDENT_CHAT_LINKS = new Set([
+  "/student/profile",
+  "/student/forgot-password",
+  "/student/recorded-classes",
+  "/student/recorded-courses",
+  "/student/online-exams",
+  "/student/results",
+  "/student/attendance",
+  "/student/assignments",
+  "/student/classes",
+  "/student/documents",
+  "/student/fees",
+  "/student/notifications",
+  "/student/dashboard",
+]);
 
 type ChatMessage = {
   id: number;
@@ -270,8 +286,8 @@ export default function FloatingTutorChatButton() {
             ? result.links.filter(
                 (link: { label?: unknown; href?: unknown }): link is StudentHelpLink =>
                   typeof link.label === "string" &&
-                  (link.href === "/student/profile" ||
-                    link.href === "/student/forgot-password")
+                  typeof link.href === "string" &&
+                  SAFE_STUDENT_CHAT_LINKS.has(link.href)
               )
             : undefined,
           mode,
@@ -358,7 +374,7 @@ export default function FloatingTutorChatButton() {
                   selectedSubject
                     ? `Ask me anything about ${selectedSubject.name}. I can explain lessons and help you practice.`
                     : "Choose an enrolled subject to start learning."
-                ) : "Ask about attendance, classes, assignments, results, fees, or account help such as resetting your password."}</p>
+                ) : "Ask about recorded classes, online exams, assignments, attendance, fees, study materials, notices, or account help."}</p>
               </div>
             ) : null}
             {visibleMessages.map((item) => (
