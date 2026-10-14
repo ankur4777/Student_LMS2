@@ -5,6 +5,38 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+/**
+ * The Django API should return JSON. During a server error, Django or the
+ * reverse proxy may instead return a text/html error page. Never parse that
+ * as JSON or show its raw HTML to the student.
+ */
+async function readStudentApiJson(response: Response) {
+  const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
+  if (!contentType.includes("json")) {
+    if (response.status >= 500) {
+      throw new Error(
+        `The Student LMS server returned HTTP ${response.status}. Check the Django terminal. If chat history was just added, run 'python manage.py migrate' against your local database.`
+      );
+    }
+    if (response.status === 404) {
+      throw new Error(
+        "The Student LMS API endpoint was not found (HTTP 404). Verify NEXT_PUBLIC_API_BASE_URL and that the Django server is running."
+      );
+    }
+    throw new Error(
+      `The Student LMS returned an unexpected response (HTTP ${response.status}). Check the API URL and Django terminal.`
+    );
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(
+      `The Student LMS API returned invalid JSON (HTTP ${response.status}). Check the Django server log.`
+    );
+  }
+}
+
 const HIDDEN_ROUTES = /^\/student\/(?:login|forgot-password|reset-password|ai-assistant)(?:\/|$)/;
 
 type ChatMode = "dashboard" | "tutor";
@@ -131,7 +163,7 @@ export default function FloatingTutorChatButton() {
             signal: controller.signal,
           }
         );
-        const data = response.ok ? await response.json() : null;
+        const data = response.ok ? await readStudentApiJson(response) : null;
         if (!active) return;
         const allowed = response.ok && data?.features?.ai_assistant === true;
         setEnabled(allowed);
@@ -184,7 +216,7 @@ export default function FloatingTutorChatButton() {
       headers: { Authorization: `Bearer ${token}` },
       cache: "no-store",
     });
-    const data = await response.json();
+    const data = await readStudentApiJson(response);
     if (!response.ok) throw new Error(data.detail || "Unable to load chat history.");
     const rows = (data.conversations ?? []) as ChatConversation[];
     setConversations(rows);
@@ -196,7 +228,7 @@ export default function FloatingTutorChatButton() {
       `${API_BASE}/api/ai-assistant/conversations/${id}/`,
       { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
     );
-    const data = await response.json();
+    const data = await readStudentApiJson(response);
     if (!response.ok) throw new Error(data.detail || "Chat is no longer available.");
     const chat = data.conversation as ChatConversation;
     setActiveConversationId(chat.id);
@@ -264,7 +296,7 @@ export default function FloatingTutorChatButton() {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       });
-      const data = await response.json();
+      const data = await readStudentApiJson(response);
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           setEnabled(false);
@@ -343,7 +375,7 @@ export default function FloatingTutorChatButton() {
         }),
       });
 
-      const result = await response.json();
+      const result = await readStudentApiJson(response);
       if (!response.ok) {
         if (response.status === 401 || response.status === 403) {
           setEnabled(false);
