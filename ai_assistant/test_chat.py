@@ -271,6 +271,59 @@ class StudentAIChatSecurityTests(TestCase):
         self.assertIn("OPENAI_API_KEY", response.data["detail"])
 
 
+    @override_settings(OPENAI_API_KEY="", AI_ASSISTANT_PROVIDER="openai")
+    @patch("ai_assistant.views.generate_reply")
+    @patch("ai_assistant.views.student_dashboard_facts")
+    def test_password_reset_is_dashboard_help_not_academic_tutor(
+        self, facts, generation
+    ):
+        self.login()
+        for question in (
+            "tell me how can I reset my password",
+            "I forgot my password",
+            "How do I change my password?",
+        ):
+            result = self.client.post(CHAT_URL, {
+                "mode": "dashboard",
+                "message": question,
+            }, format="json")
+            self.assertEqual(result.status_code, 200)
+            self.assertEqual(result.data["mode"], "dashboard")
+            self.assertIn("Forgot Password", result.data["reply"])
+            self.assertIn("Profile", result.data["reply"])
+            self.assertEqual(
+                {link["href"] for link in result.data["links"]},
+                {"/student/profile", "/student/forgot-password"},
+            )
+        generation.assert_not_called()
+        facts.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_account_help_does_not_bypass_ai_feature_toggle(self, generation):
+        self.login()
+        ClassFeatureAccess.objects.filter(
+            organization=self.college, classroom=self.classroom,
+            feature_key="ai_assistant",
+        ).update(is_enabled=False)
+        result = self.client.post(CHAT_URL, {
+            "mode": "dashboard",
+            "message": "How can I reset my password?",
+        }, format="json")
+        self.assertEqual(result.status_code, 403)
+        generation.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply", return_value="Records unavailable")
+    def test_regular_dashboard_questions_continue_to_use_ai(self, generation):
+        self.login()
+        result = self.client.post(CHAT_URL, {
+            "mode": "dashboard",
+            "message": "What is my attendance?",
+        }, format="json")
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.data["reply"], "Records unavailable")
+        generation.assert_called_once()
+
+
 class AIProviderSafetyTests(TestCase):
     @override_settings(OPENAI_API_KEY="local-test-key", AI_ASSISTANT_MODEL="test-model")
     @patch("ai_assistant.provider.urlopen")

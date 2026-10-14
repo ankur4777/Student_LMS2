@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
@@ -12,12 +13,18 @@ type TutorContext = {
   student: { name: string; classroom: string; section: string };
   subjects: Subject[];
 };
+type StudentHelpLink = {
+  label: string;
+  href: "/student/profile" | "/student/forgot-password";
+};
+
 type ChatMessage = {
   id: number;
   role: "user" | "assistant";
   content: string;
   mode: ChatMode;
   subjectId: number | null;
+  links?: StudentHelpLink[];
 };
 
 function RobotTutorIcon() {
@@ -259,6 +266,14 @@ export default function FloatingTutorChatButton() {
           id: nextMessageId.current++,
           role: "assistant",
           content: result.reply,
+          links: Array.isArray(result.links)
+            ? result.links.filter(
+                (link: { label?: unknown; href?: unknown }): link is StudentHelpLink =>
+                  typeof link.label === "string" &&
+                  (link.href === "/student/profile" ||
+                    link.href === "/student/forgot-password")
+              )
+            : undefined,
           mode,
           subjectId: mode === "tutor" ? subjectId : null,
         },
@@ -343,7 +358,7 @@ export default function FloatingTutorChatButton() {
                   selectedSubject
                     ? `Ask me anything about ${selectedSubject.name}. I can explain lessons and help you practice.`
                     : "Choose an enrolled subject to start learning."
-                ) : "Ask about your attendance, classes, assignments, published results, or fees."}</p>
+                ) : "Ask about attendance, classes, assignments, results, fees, or account help such as resetting your password."}</p>
               </div>
             ) : null}
             {visibleMessages.map((item) => (
@@ -351,7 +366,20 @@ export default function FloatingTutorChatButton() {
                 key={item.id}
                 className={`student-tutor-chat-message ${item.role === "user" ? "from-student" : "from-tutor"}`}
               >
-                {item.content}
+                <span>{item.content}</span>
+                {item.role === "assistant" && item.links?.length ? (
+                  <nav className="student-tutor-chat-help-links" aria-label="LMS help links">
+                    {item.links.map((link) => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setOpen(false)}
+                      >
+                        {link.label} →
+                      </Link>
+                    ))}
+                  </nav>
+                ) : null}
               </div>
             ))}
             {busy && <div className="student-tutor-chat-typing" role="status">Tutor is thinking...</div>}

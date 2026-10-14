@@ -1422,3 +1422,27 @@
     border-radius: 15px;
   }
 }
+
+/* Trusted in-app account-help links inside a chat response. */
+.student-ui-scope .student-tutor-chat-help-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 11px;
+}
+.student-ui-scope .student-tutor-chat-help-links a {
+  display: inline-block;
+  padding: 7px 10px;
+  border: 1px solid #f0bbc2;
+  border-radius: 8px;
+  background: #fff3f4;
+  color: #b42336;
+  font-weight: 650;
+  text-decoration: none;
+}
+.student-ui-scope .student-tutor-chat-help-links a:hover,
+.student-ui-scope .student-tutor-chat-help-links a:focus-visible {
+  background: #ffe9ec;
+  text-decoration: underline;
+}
