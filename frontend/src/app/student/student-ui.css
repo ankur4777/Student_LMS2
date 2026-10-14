@@ -1446,3 +1446,95 @@
   background: #ffe9ec;
   text-decoration: underline;
 }
+
+/* Saved student AI conversations, new-chat and history controls. */
+.student-ui-scope .student-tutor-chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.student-ui-scope .student-tutor-chat-header-button {
+  padding: 7px 8px;
+  border: 1px solid rgba(255,255,255,.24);
+  border-radius: 8px;
+  background: rgba(255,255,255,.14);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.student-ui-scope .student-tutor-chat-header-button:hover,
+.student-ui-scope .student-tutor-chat-header-button:focus-visible {
+  background: rgba(255,255,255,.25);
+}
+.student-ui-scope .student-tutor-chat-header-button:disabled {
+  opacity: .6;
+  cursor: wait;
+}
+.student-ui-scope .student-tutor-chat-heading span { font-size: 9px; }
+.student-ui-scope .student-tutor-chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 200px;
+  padding: 12px;
+  border-bottom: 1px solid #eee3e6;
+  background: #fff8f9;
+}
+.student-ui-scope .student-tutor-chat-history strong {
+  font-size: 12px;
+  color: #793441;
+}
+.student-ui-scope .student-tutor-chat-history p {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+.student-ui-scope .student-tutor-chat-history-list {
+  display: grid;
+  gap: 6px;
+  overflow-y: auto;
+}
+.student-ui-scope .student-tutor-chat-history-list button {
+  display: grid;
+  width: 100%;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid #f2d4da;
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+.student-ui-scope .student-tutor-chat-history-list button:hover,
+.student-ui-scope .student-tutor-chat-history-list button.active {
+  border-color: #de4257;
+  background: #fff2f4;
+}
+.student-ui-scope .student-tutor-chat-history-list button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+.student-ui-scope .student-tutor-chat-history-list span {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.student-ui-scope .student-tutor-chat-history-list small {
+  font-size: 10px;
+  color: #738094;
+}
+@media (max-width: 440px) {
+  .student-ui-scope .student-tutor-chat-header { padding: 10px; gap: 6px; }
+  .student-ui-scope .student-tutor-chat-avatar { width: 34px; height: 34px; }
+  .student-ui-scope .student-tutor-chat-avatar svg { width: 32px; height: 32px; }
+  .student-ui-scope .student-tutor-chat-heading strong { font-size: 12px; }
+  .student-ui-scope .student-tutor-chat-heading span { font-size: 8px; }
+  .student-ui-scope .student-tutor-chat-header-button { padding: 6px; font-size: 10px; }
+  .student-ui-scope .student-tutor-chat-close { width: 28px; height: 30px; }
+}
