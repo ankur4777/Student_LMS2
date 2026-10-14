@@ -126,6 +126,15 @@ export default function FloatingTutorChatButton() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const nextMessageId = useRef(-1);
 
+  // A saved Dashboard chat deliberately has no subject_id. When students
+  // switch to Subject Tutor, the browser's <select> visually shows its first
+  // option even if the controlled value is still null. Resolve the active
+  // subject from the *authorized* context for display, input and API calls.
+  const selectedSubjectId =
+    context?.subjects.find((subject) => subject.id === subjectId)?.id ??
+    context?.subjects[0]?.id ??
+    null;
+
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
@@ -327,12 +336,15 @@ export default function FloatingTutorChatButton() {
 
   const changeMode = (nextMode: ChatMode) => {
     if (busy || loadingContext || nextMode === mode) return;
+    if (nextMode === "tutor") {
+      setSubjectId(selectedSubjectId);
+    }
     setMode(nextMode);
     startNewChat();
   };
 
   const changeSubject = (nextId: number) => {
-    if (busy || loadingContext || nextId === subjectId) return;
+    if (busy || loadingContext || nextId === selectedSubjectId) return;
     setSubjectId(nextId);
     startNewChat();
   };
@@ -341,7 +353,7 @@ export default function FloatingTutorChatButton() {
     event?.preventDefault();
     const message = draft.trim();
     if (!context || !message || busy || loadingContext) return;
-    if (mode === "tutor" && subjectId === null) {
+    if (mode === "tutor" && selectedSubjectId === null) {
       setError("Please select one of your enrolled subjects.");
       return;
     }
@@ -351,7 +363,7 @@ export default function FloatingTutorChatButton() {
       role: "user",
       content: message,
       mode,
-      subjectId: mode === "tutor" ? subjectId : null,
+      subjectId: mode === "tutor" ? selectedSubjectId : null,
     };
     setMessages((items) => [...items, studentMessage]);
     setDraft("");
@@ -371,7 +383,7 @@ export default function FloatingTutorChatButton() {
           message,
           mode,
           ...(activeConversationId ? { conversation_id: activeConversationId } : {}),
-          ...(mode === "tutor" ? { subject_id: subjectId } : {}),
+          ...(mode === "tutor" ? { subject_id: selectedSubjectId } : {}),
         }),
       });
 
@@ -403,7 +415,7 @@ export default function FloatingTutorChatButton() {
               )
             : undefined,
           mode,
-          subjectId: mode === "tutor" ? subjectId : null,
+          subjectId: mode === "tutor" ? selectedSubjectId : null,
         },
       ]);
       try {
@@ -429,10 +441,10 @@ export default function FloatingTutorChatButton() {
 
   const visibleMessages = messages.filter(
     (item) => item.mode === mode && (
-      mode === "dashboard" || item.subjectId === subjectId
+      mode === "dashboard" || item.subjectId === selectedSubjectId
     )
   );
-  const selectedSubject = context?.subjects.find((item) => item.id === subjectId);
+  const selectedSubject = context?.subjects.find((item) => item.id === selectedSubjectId);
 
   if (hiddenRoute || !enabled) return null;
 
@@ -505,7 +517,7 @@ export default function FloatingTutorChatButton() {
               <label className="student-tutor-subject-label">
                 Subject
                 <select
-                  value={subjectId ?? ""}
+                  value={selectedSubjectId ?? ""}
                   onChange={(event) => changeSubject(Number(event.target.value))}
                   disabled={busy || !context?.subjects.length}
                 >
