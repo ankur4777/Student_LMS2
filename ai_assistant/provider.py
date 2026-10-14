@@ -72,7 +72,8 @@ def _parse_reply(content, *, mode, subject):
             return (
                 f"I can only help with {subject['name']} in Subject Tutor."
                 if mode == "tutor" else
-                "Please choose Subject Tutor for teaching questions."
+                "I can help with your Student LMS dashboard, account, and "
+                "portal navigation. For academic lessons, choose Subject Tutor."
             )
         return answer.strip()[:5000]
     except (KeyError, TypeError, ValueError) as exc:
@@ -114,11 +115,20 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
         )
     else:
         mode_rules = (
-            "MODE: MY DASHBOARD. Only discuss the logged-in student's records "
-            "available in the supplied snapshot. For requests to teach a topic, "
-            "set allowed=false and tell the student to select Subject Tutor. "
-            "Treat missing modules as inaccessible; do not infer hidden results, "
-            "unpublished marks or restricted records."
+            "MODE: MY DASHBOARD AND LMS SUPPORT. Help with the logged-in "
+            "student's authorized dashboard records AND ordinary Student LMS "
+            "account support or portal navigation. Password reset, sign-in "
+            "help and changing a known password are account-support questions, "
+            "not subject lessons; answer them in this mode. Verified routes: "
+            "/student/profile has Change Password for signed-in students; "
+            "/student/login has Forgot password? linking to "
+            "/student/forgot-password, where the student requests a reset "
+            "email for their registered address. Do not claim to reset a "
+            "password yourself, request credentials, or invent site features. "
+            "For actual academic explanations or lessons, set allowed=false "
+            "and direct the student to Subject Tutor. Only discuss LMS records "
+            "available in the supplied snapshot; missing modules are "
+            "inaccessible, and unpublished marks must never be inferred."
         )
 
     instructions = "\n".join([

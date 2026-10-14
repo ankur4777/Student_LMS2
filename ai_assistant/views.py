@@ -7,6 +7,7 @@ from academics.feature_access import get_active_student_enrollment
 
 from .dashboard_data import student_dashboard_facts, teacher_materials
 from .provider import AIProviderUnavailable, generate_reply
+from .account_help import get_student_account_help
 from .student_context import get_authorized_student_context
 
 
@@ -100,6 +101,17 @@ class StudentAIChatAPIView(APIView):
                 ),
             }
         else:
+            # Account navigation and recovery steps are official LMS help,
+            # not academic teaching. Answer from verified routes without
+            # depending on a small local model's intent classification.
+            account_help = get_student_account_help(message)
+            if account_help is not None:
+                return Response({
+                    **account_help,
+                    "mode": "dashboard",
+                    "subject_id": None,
+                })
+
             data = student_dashboard_facts(
                 request.user,
                 enrollment,
