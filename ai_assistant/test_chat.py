@@ -575,6 +575,128 @@ class StudentAIChatSecurityTests(TestCase):
         generation.assert_not_called()
 
 
+    @patch("ai_assistant.views.generate_reply")
+    def test_previous_class_uses_latest_completed_student_class(self, generation):
+        from datetime import timedelta
+        from django.utils import timezone
+        from liveclasses.models import LiveClass
+
+        yesterday = timezone.localdate() - timedelta(days=1)
+        older = yesterday - timedelta(days=2)
+
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Last Meta Ads Lesson",
+            description="Class about campaign targeting",
+            class_date=yesterday,
+            start_time="16:00:00",
+            end_time="17:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Older Meta Ads Lesson",
+            class_date=older,
+            start_time="10:00:00",
+            end_time="11:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Past Scheduled But Never Completed",
+            class_date=yesterday,
+            start_time="12:00:00",
+            end_time="13:00:00",
+            status=LiveClass.Status.SCHEDULED,
+        )
+        hidden_assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher, subject=self.excluded, section=self.section
+        )
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=hidden_assignment,
+            title="Private Maths Previous Lesson",
+            class_date=yesterday,
+            start_time="14:00:00",
+            end_time="15:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        self.login()
+
+        last = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "tell me about my previous class",
+        }, format="json")
+        self.assertEqual(last.status_code, 200, last.data)
+        self.assertIn("Last Meta Ads Lesson", last.data["reply"])
+        self.assertIn("16:00", last.data["reply"])
+        self.assertIn("completed", last.data["reply"])
+        self.assertNotIn("Older Meta Ads Lesson", last.data["reply"])
+        self.assertNotIn("Private Maths", last.data["reply"])
+        self.assertNotIn("Past Scheduled But Never Completed", last.data["reply"])
+        self.assertEqual(last.data["links"][0]["href"], "/student/classes")
+        self.assertTrue(last.data.get("conversation_id"))
+
+        all_previous = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "show me my completed classes",
+        }, format="json")
+        self.assertEqual(all_previous.status_code, 200)
+        self.assertIn("Last Meta Ads Lesson", all_previous.data["reply"])
+        self.assertIn("Older Meta Ads Lesson", all_previous.data["reply"])
+        self.assertNotIn("Private Maths", all_previous.data["reply"])
+
+        yesterday_only = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "show my class yesterday",
+        }, format="json")
+        self.assertEqual(yesterday_only.status_code, 200)
+        self.assertIn("Last Meta Ads Lesson", yesterday_only.data["reply"])
+        self.assertNotIn("Older Meta Ads Lesson", yesterday_only.data["reply"])
+        generation.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_previous_class_does_not_disclose_restricted_class(self, generation):
+        from datetime import timedelta
+        from django.utils import timezone
+        from liveclasses.models import LiveClass
+
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Restricted Previous Class",
+            class_date=timezone.localdate() - timedelta(days=1),
+            start_time="14:00:00",
+            end_time="15:00:00",
+            status=LiveClass.Status.COMPLETED,
+        )
+        ClassFeatureAccess.objects.create(
+            organization=self.college,
+            classroom=self.classroom,
+            feature_key="classes",
+            is_enabled=False,
+        )
+        self.login()
+        reply = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "What was my last class?",
+        }, format="json")
+        self.assertEqual(reply.status_code, 200)
+        self.assertIn("restricted", reply.data["reply"])
+        self.assertNotIn("Restricted Previous Class", reply.data["reply"])
+        self.assertEqual(reply.data["links"], [])
+        generation.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_no_previous_class_has_clear_answer(self, generation):
+        self.login()
+        reply = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "Tell me about my last class",
+        }, format="json")
+        self.assertEqual(reply.status_code, 200)
+        self.assertIn("No completed classes", reply.data["reply"])
+        generation.assert_not_called()
+
+
 class AIProviderSafetyTests(TestCase):
     @override_settings(OPENAI_API_KEY="local-test-key", AI_ASSISTANT_MODEL="test-model")
     @patch("ai_assistant.provider.urlopen")
@@ -760,5 +882,23 @@ class DashboardTopicRoutingTests(TestCase):
 
         self.assertEqual(_topic("show my recorded classes"), "recorded_classes")
         self.assertEqual(_topic("show my online exam schedule"), "online_exams")
+
+    def test_previous_class_questions_route_to_completed_records(self):
+        from .dashboard_answers import _topic
+
+        for question in (
+            "tell me about my previous class",
+            "What was my last class?",
+            "My last live class",
+            "Show my completed classes",
+            "Tell me about my previous lectures",
+            "Show my past classes",
+            "Show my class yesterday",
+        ):
+            with self.subTest(question=question):
+                self.assertEqual(_topic(question), "previous_classes")
+        self.assertEqual(_topic("Show my previous recorded classes"), "recorded_classes")
+        self.assertEqual(_topic("When is my next class?"), "upcoming_classes")
+
 
 
