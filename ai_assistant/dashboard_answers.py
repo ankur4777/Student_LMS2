@@ -6,6 +6,7 @@ asking a language model to classify records it may not understand.
 """
 
 import re
+from datetime import date, timedelta
 
 
 LINKS = {
@@ -184,11 +185,32 @@ def answer_portal_question(message, data):
             "links": [],
         }
 
+    description = "today or upcoming dates"
+    if topic == "upcoming_classes":
+        upcoming = data["upcoming_classes"]
+        asked = message.casefold()
+        today = date.fromisoformat(data["as_of"])
+
+        if re.search(r"\\btomorrow\\b", asked):
+            tomorrow = (today + timedelta(days=1)).isoformat()
+            upcoming = [item for item in upcoming if item["date"] == tomorrow]
+            description = "tomorrow"
+        elif re.search(r"\\btoday\\b", asked):
+            upcoming = [
+                item for item in upcoming if item["date"] == today.isoformat()
+            ]
+            description = "today"
+        elif re.search(r"\\bnext\\s+(?:class|classes|lecture|session)\\b", asked):
+            upcoming = upcoming[:1]
+            description = "next"
+
+        data = {**data, "upcoming_classes": upcoming}
+
     lines = _lines_for(topic, data)
     if topic == "upcoming_classes" and not lines:
         text = (
-            "You have no scheduled or live classes listed for today or "
-            "upcoming dates in your enrolled subjects."
+            "You have no scheduled or live classes listed for "
+            f"{description} in your enrolled subjects."
         )
     else:
         text = (
