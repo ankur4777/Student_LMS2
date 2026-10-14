@@ -481,6 +481,15 @@ class StudentAIChatSecurityTests(TestCase):
             end_time="16:30:00",
             status=LiveClass.Status.SCHEDULED,
         )
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Later Meta Ads Lesson",
+            class_date=tomorrow + timedelta(days=1),
+            start_time="16:00:00",
+            end_time="17:00:00",
+            status=LiveClass.Status.SCHEDULED,
+        )
         excluded_assignment = TeacherAssignment.objects.create(
             teacher=self.teacher, subject=self.excluded, section=self.section
         )
@@ -510,6 +519,20 @@ class StudentAIChatSecurityTests(TestCase):
             self.assertEqual(
                 reply.data["links"][0]["href"], "/student/classes"
             )
+        for question in (
+            "Are there classes scheduled tomorrow?",
+            "When is my next class?",
+        ):
+            filtered = self.client.post(CHAT_URL, {
+                "mode": "dashboard", "message": question,
+            }, format="json")
+            self.assertNotIn("Later Meta Ads Lesson", filtered.data["reply"])
+
+        today_reply = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "Do I have classes today?",
+        }, format="json")
+        self.assertIn("no scheduled or live classes listed for today",
+                      today_reply.data["reply"])
         generation.assert_not_called()
 
     @patch("ai_assistant.views.generate_reply")
