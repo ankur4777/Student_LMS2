@@ -9,6 +9,10 @@ from .dashboard_data import student_dashboard_facts, teacher_materials
 from .dashboard_answers import answer_portal_question
 from .provider import AIProviderUnavailable, generate_reply
 from .account_help import get_student_account_help
+from .history import (
+    conversation_queryset, get_conversation, persist_exchange, prompt_history,
+    serialize_conversation, serialize_message,
+)
 from .student_context import get_authorized_student_context
 
 
@@ -20,6 +24,37 @@ class StudentAIContextAPIView(APIView):
         if denial_reason:
             return Response({"detail": denial_reason}, status=403)
         return Response(context)
+
+
+class StudentAIConversationsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        context, denial = get_authorized_student_context(request.user)
+        if denial:
+            return Response({"detail": denial}, status=403)
+        enrollment = get_active_student_enrollment(request.user)
+        conversations = conversation_queryset(request.user, enrollment, context)[:30]
+        return Response({
+            "conversations": [serialize_conversation(row) for row in conversations],
+        })
+
+
+class StudentAIConversationDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, conversation_id):
+        context, denial = get_authorized_student_context(request.user)
+        if denial:
+            return Response({"detail": denial}, status=403)
+        enrollment = get_active_student_enrollment(request.user)
+        row = get_conversation(request.user, enrollment, context, conversation_id)
+        if row is None:
+            return Response({"detail": "Chat not found."}, status=404)
+        return Response({
+            "conversation": serialize_conversation(row),
+            "messages": [serialize_message(message) for message in row.messages.all()],
+        })
 
 
 def validate_history(raw):
@@ -101,17 +136,46 @@ class StudentAIChatAPIView(APIView):
                     "descriptions only; no document file content has been indexed."
                 ),
             }
-        else:
+        raw_conversation_id = request.data.get("conversation_id")
+        conversation = None
+        if raw_conversation_id is not None:
+            conversation = get_conversation(
+                request.user, enrollment, context, raw_conversation_id
+            )
+            if conversation is None:
+                return Response({"detail": "Chat not found."}, status=404)
+            if conversation.mode != mode or conversation.subject_id != (
+                subject["id"] if subject else None
+            ):
+                return Response(
+                    {"detail": "This chat belongs to another mode or subject. "
+                     "Choose New Chat instead."},
+                    status=400,
+                )
+
+        def saved_reply(reply, links=None):
+            row = persist_exchange(
+                existing=conversation, user=request.user, enrollment=enrollment,
+                context=context, mode=mode, subject=subject,
+                question=message, answer=reply, links=links,
+            )
+            return Response({
+                "reply": reply,
+                "links": links or [],
+                "mode": mode,
+                "subject_id": subject["id"] if subject else None,
+                "conversation_id": str(row.pk),
+            })
+
+        if mode == "dashboard":
             # Account navigation and recovery steps are official LMS help,
             # not academic teaching. Answer from verified routes without
             # depending on a small local model's intent classification.
             account_help = get_student_account_help(message)
             if account_help is not None:
-                return Response({
-                    **account_help,
-                    "mode": "dashboard",
-                    "subject_id": None,
-                })
+                return saved_reply(
+                    account_help["reply"], account_help.get("links", [])
+                )
 
             data = student_dashboard_facts(
                 request.user,
@@ -121,16 +185,14 @@ class StudentAIChatAPIView(APIView):
             )
             portal_answer = answer_portal_question(message, data)
             if portal_answer is not None:
-                return Response({
-                    **portal_answer,
-                    "mode": "dashboard",
-                    "subject_id": None,
-                })
+                return saved_reply(
+                    portal_answer["reply"], portal_answer.get("links", [])
+                )
 
         try:
             reply = generate_reply(
                 message=message,
-                history=history,
+                history=prompt_history(conversation),
                 mode=mode,
                 student_context=context,
                 data=data,
@@ -139,8 +201,4 @@ class StudentAIChatAPIView(APIView):
         except AIProviderUnavailable as exc:
             return Response({"detail": str(exc)}, status=503)
 
-        return Response({
-            "reply": reply,
-            "mode": mode,
-            "subject_id": subject["id"] if subject else None,
-        })
+        return saved_reply(reply)
