@@ -17,8 +17,7 @@ type StudentFeatureKey =
   | "results"
   | "documents"
   | "fees"
-  | "notifications"
-  | "ai_assistant";
+  | "notifications";
 
 type StudentNavItem = {
   label: string;
@@ -45,7 +44,6 @@ const navSections: StudentNavSection[] = [
       { label: "My Classes", href: "/student/classes", icon: "classes", featureKey: "classes" },
       { label: "Recorded Classes", href: "/student/recorded-classes", icon: "recordings", featureKey: "recorded_classes" },
       { label: "Buy Recorded Courses", href: "/student/recorded-courses", icon: "courses", featureKey: "recorded_courses" },
-      { label: "AI Assistant", href: "/student/ai-assistant", icon: "ai_assistant", featureKey: "ai_assistant" },
     ],
   },
   {
@@ -134,11 +132,9 @@ export default function StudentSidebar() {
           ...section,
           items: section.items.filter(
             (item) =>
-              (item.featureKey === "ai_assistant"
-                ? featureAccess?.ai_assistant === true
-                : !item.featureKey ||
+              !item.featureKey ||
               featureAccess === null ||
-              featureAccess[item.featureKey] !== false)
+              featureAccess[item.featureKey] !== false
           ),
         }))
         .filter((section) => section.items.length > 0),
