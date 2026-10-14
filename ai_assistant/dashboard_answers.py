@@ -35,7 +35,7 @@ def _topic(text):
         ("published_results", r"\b(?:results?|marks|grades?|scores?)\b"),
         ("attendance", r"\battendan(?:ce|ces)\b|\babsen(?:t|ce)\b"),
         ("assignments", r"\b(?:assignments?|homework|submission|due tasks?)\b"),
-        ("upcoming_classes", r"\b(?:live|upcoming|today.?s|scheduled|my)\s+classes\b|\bnext\s+class\b|\btimetable\b"),
+        ("upcoming_classes", r"\b(?:live|upcoming|today.?s|tomorrow.?s|scheduled|my)\s+(?:classes?|lectures?|sessions?)\b|\b(?:next|any)\s+(?:classes?|lectures?|sessions?)\b|\b(?:classes?|lectures?|sessions?)\s+(?:schedule(?:d)?|today|tomorrow|upcoming)\b|\bclasses?\s+(?:are|is|will be)\s+scheduled\b|\bclasses?\s+do\s+i\s+have\b|\btimetable\b"),
         ("documents", r"\b(?:documents?|notes|syllabus|study materials?|worksheets?)\b"),
         ("fees", r"\b(?:fees?|outstanding|dues?|payments?|paid amount|fine)\b"),
         ("notifications", r"\bnotifications?\b"),
@@ -185,12 +185,18 @@ def answer_portal_question(message, data):
         }
 
     lines = _lines_for(topic, data)
-    text = (
-        "\n".join(lines)
-        if lines else
-        f"No {LABELS[topic].lower()} records are currently available "
-        "for your account."
-    )
+    if topic == "upcoming_classes" and not lines:
+        text = (
+            "You have no scheduled or live classes listed for today or "
+            "upcoming dates in your enrolled subjects."
+        )
+    else:
+        text = (
+            "\n".join(lines)
+            if lines else
+            f"No {LABELS[topic].lower()} records are currently available "
+            "for your account."
+        )
     link = LINKS.get(topic)
     return {
         "reply": text,
