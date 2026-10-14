@@ -17,6 +17,7 @@ LINKS = {
     "attendance": ("/student/attendance", "View Attendance"),
     "assignments": ("/student/assignments", "Open Assignments"),
     "upcoming_classes": ("/student/classes", "Open My Classes"),
+    "previous_classes": ("/student/classes", "View Completed Classes"),
     "documents": ("/student/documents", "Open Documents"),
     "fees": ("/student/fees", "View Fees"),
     "notifications": ("/student/notifications", "Open Notifications"),
@@ -36,6 +37,7 @@ def _topic(text):
         ("published_results", r"\b(?:results?|marks|grades?|scores?)\b"),
         ("attendance", r"\battendan(?:ce|ces)\b|\babsen(?:t|ce)\b"),
         ("assignments", r"\b(?:assignments?|homework|submission|due tasks?)\b"),
+        ("previous_classes", r"\b(?:previous|past|last|recent|completed)\s+(?:(?:live|online)\s+)?(?:class(?:es)?|lectures?|lessons?|sessions?)\b|\b(?:class(?:es)?|lectures?|lessons?|sessions?)\s+(?:yesterday|previously)\b"),
         ("upcoming_classes", r"\b(?:live|upcoming|today.?s|tomorrow.?s|scheduled|my)\s+(?:class(?:es)?|lectures?|sessions?)\b|\b(?:next|any)\s+(?:class(?:es)?|lectures?|sessions?)\b|\b(?:class(?:es)?|lectures?|sessions?)\s+(?:schedule(?:d)?|today|tomorrow|upcoming)\b|\bclass(?:es)?\s+(?:are|is|will be)\s+scheduled\b|\bclass(?:es)?\s+do\s+i\s+have\b|\btimetable\b"),
         ("documents", r"\b(?:documents?|notes|syllabus|study materials?|worksheets?)\b"),
         ("fees", r"\b(?:fees?|outstanding|dues?|payments?|paid amount|fine)\b"),
@@ -45,6 +47,10 @@ def _topic(text):
         ("profile", r"\b(?:my\s+)?(?:profile|roll number|admission number|student id|username)\b"),
     ]
     hits = [name for name, pattern in patterns if re.search(pattern, text)]
+    # A request about a recording belongs to Recorded Classes, even when
+    # it describes a previous session rather than a live class.
+    if "recorded_classes" in hits and "previous_classes" in hits:
+        hits.remove("previous_classes")
     if len(hits) != 1:
         return None
     return hits[0]
@@ -132,6 +138,12 @@ def _lines_for(topic, data):
             f"at {c['starts_at']} — {c['status']}."
             for c in data["upcoming_classes"]
         ]
+    if topic == "previous_classes":
+        return [
+            f"• {c['title']} ({c['subject']}) on {c['date']} "
+            f"from {c['starts_at']} to {c['ends_at']} — completed."
+            for c in data["previous_classes"]
+        ]
     if topic == "fees":
         return [
             f"• {f['name']}: payable {f['payable']}, paid {f['paid']}, "
@@ -162,6 +174,7 @@ LABELS = {
     "attendance": "Attendance",
     "assignments": "Assignments",
     "upcoming_classes": "My Classes",
+    "previous_classes": "Completed Classes",
     "documents": "Documents",
     "fees": "Fees",
     "notices": "Notices",
@@ -206,8 +219,29 @@ def answer_portal_question(message, data):
 
         data = {**data, "upcoming_classes": upcoming}
 
+    if topic == "previous_classes":
+        previous = data["previous_classes"]
+        asked = message.casefold()
+        # A singular "previous/last class" normally means the most recent
+        # completed class, while "previous classes" requests the recent list.
+        if re.search(r"\byesterday\b", asked):
+            yesterday = (date.fromisoformat(data["as_of"]) - timedelta(days=1)).isoformat()
+            previous = [item for item in previous if item["date"] == yesterday]
+        elif re.search(
+            r"\b(?:my |the )?(?:last|previous|most recent) "
+            r"(?:live |online )?(?:class|lecture|lesson|session)\b",
+            asked,
+        ):
+            previous = previous[:1]
+        data = {**data, "previous_classes": previous}
+
     lines = _lines_for(topic, data)
-    if topic == "upcoming_classes" and not lines:
+    if topic == "previous_classes" and not lines:
+        text = (
+            "No completed classes are available for your currently "
+            "enrolled subjects in the recent class history."
+        )
+    elif topic == "upcoming_classes" and not lines:
         text = (
             "You have no scheduled or live classes listed for "
             f"{description} in your enrolled subjects."
