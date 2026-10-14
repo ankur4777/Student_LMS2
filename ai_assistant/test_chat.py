@@ -465,6 +465,116 @@ class StudentAIChatSecurityTests(TestCase):
         generation.assert_not_called()
 
 
+    @patch("ai_assistant.views.generate_reply")
+    def test_scheduled_class_question_returns_student_classes_without_ai(self, generation):
+        from datetime import timedelta
+        from django.utils import timezone
+        from liveclasses.models import LiveClass
+
+        tomorrow = timezone.localdate() + timedelta(days=1)
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Meta Ads Scheduled Lesson",
+            class_date=tomorrow,
+            start_time="15:30:00",
+            end_time="16:30:00",
+            status=LiveClass.Status.SCHEDULED,
+        )
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Later Meta Ads Lesson",
+            class_date=tomorrow + timedelta(days=1),
+            start_time="16:00:00",
+            end_time="17:00:00",
+            status=LiveClass.Status.SCHEDULED,
+        )
+        excluded_assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher, subject=self.excluded, section=self.section
+        )
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=excluded_assignment,
+            title="Private Mathematics Class",
+            class_date=tomorrow,
+            start_time="15:30:00",
+            end_time="16:30:00",
+            status=LiveClass.Status.SCHEDULED,
+        )
+
+        self.login()
+        for message in (
+            "is there any class scheduled?",
+            "Are there classes scheduled tomorrow?",
+            "When is my next class?",
+        ):
+            reply = self.client.post(CHAT_URL, {
+                "mode": "dashboard", "message": message,
+            }, format="json")
+            self.assertEqual(reply.status_code, 200)
+            self.assertIn("Meta Ads Scheduled Lesson", reply.data["reply"])
+            self.assertIn("15:30", reply.data["reply"])
+            self.assertNotIn("Private Mathematics Class", reply.data["reply"])
+            self.assertEqual(
+                reply.data["links"][0]["href"], "/student/classes"
+            )
+        for question in (
+            "Are there classes scheduled tomorrow?",
+            "When is my next class?",
+        ):
+            filtered = self.client.post(CHAT_URL, {
+                "mode": "dashboard", "message": question,
+            }, format="json")
+            self.assertNotIn("Later Meta Ads Lesson", filtered.data["reply"])
+
+        today_reply = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "Do I have classes today?",
+        }, format="json")
+        self.assertIn("no scheduled or live classes listed for today",
+                      today_reply.data["reply"])
+        generation.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_no_scheduled_classes_gives_clear_answer_without_ai(self, generation):
+        self.login()
+        result = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "Is any class scheduled?",
+        }, format="json")
+        self.assertEqual(result.status_code, 200)
+        self.assertIn("no scheduled or live classes", result.data["reply"])
+        generation.assert_not_called()
+
+    @patch("ai_assistant.views.generate_reply")
+    def test_restricted_classes_are_not_disclosed_via_chat(self, generation):
+        from datetime import timedelta
+        from django.utils import timezone
+        from liveclasses.models import LiveClass
+
+        LiveClass.objects.create(
+            organization=self.college,
+            teacher_assignment=self.assignment,
+            title="Restricted Student Class",
+            class_date=timezone.localdate() + timedelta(days=1),
+            start_time="10:00:00",
+            end_time="11:00:00",
+            status=LiveClass.Status.SCHEDULED,
+        )
+        ClassFeatureAccess.objects.create(
+            organization=self.college, classroom=self.classroom,
+            feature_key="classes", is_enabled=False,
+        )
+        self.login()
+        result = self.client.post(CHAT_URL, {
+            "mode": "dashboard", "message": "is there any class scheduled?",
+        }, format="json")
+        self.assertEqual(result.status_code, 200)
+        self.assertIn("restricted", result.data["reply"])
+        self.assertNotIn("Restricted Student Class", result.data["reply"])
+        self.assertEqual(result.data["links"], [])
+        generation.assert_not_called()
+
+
 class AIProviderSafetyTests(TestCase):
     @override_settings(OPENAI_API_KEY="local-test-key", AI_ASSISTANT_MODEL="test-model")
     @patch("ai_assistant.provider.urlopen")
@@ -629,5 +739,26 @@ class DashboardTopicRoutingTests(TestCase):
         self.assertEqual(
             _topic("show my online exams"), "online_exams"
         )
+
+    def test_scheduled_class_question_phrasings(self):
+        from .dashboard_answers import _topic
+
+        questions = (
+            "is there any class scheduled?",
+            "Is any class scheduled for today?",
+            "are there classes scheduled tomorrow?",
+            "What classes are scheduled?",
+            "Do I have classes today?",
+            "What is my next class?",
+            "Show my upcoming classes",
+            "Is there a live class?",
+            "Show the class schedule",
+        )
+        for question in questions:
+            with self.subTest(question=question):
+                self.assertEqual(_topic(question), "upcoming_classes")
+
+        self.assertEqual(_topic("show my recorded classes"), "recorded_classes")
+        self.assertEqual(_topic("show my online exam schedule"), "online_exams")
 
 

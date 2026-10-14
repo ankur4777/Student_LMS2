@@ -6,6 +6,7 @@ asking a language model to classify records it may not understand.
 """
 
 import re
+from datetime import date, timedelta
 
 
 LINKS = {
@@ -35,7 +36,7 @@ def _topic(text):
         ("published_results", r"\b(?:results?|marks|grades?|scores?)\b"),
         ("attendance", r"\battendan(?:ce|ces)\b|\babsen(?:t|ce)\b"),
         ("assignments", r"\b(?:assignments?|homework|submission|due tasks?)\b"),
-        ("upcoming_classes", r"\b(?:live|upcoming|today.?s|scheduled|my)\s+classes\b|\bnext\s+class\b|\btimetable\b"),
+        ("upcoming_classes", r"\b(?:live|upcoming|today.?s|tomorrow.?s|scheduled|my)\s+(?:class(?:es)?|lectures?|sessions?)\b|\b(?:next|any)\s+(?:class(?:es)?|lectures?|sessions?)\b|\b(?:class(?:es)?|lectures?|sessions?)\s+(?:schedule(?:d)?|today|tomorrow|upcoming)\b|\bclass(?:es)?\s+(?:are|is|will be)\s+scheduled\b|\bclass(?:es)?\s+do\s+i\s+have\b|\btimetable\b"),
         ("documents", r"\b(?:documents?|notes|syllabus|study materials?|worksheets?)\b"),
         ("fees", r"\b(?:fees?|outstanding|dues?|payments?|paid amount|fine)\b"),
         ("notifications", r"\bnotifications?\b"),
@@ -184,13 +185,40 @@ def answer_portal_question(message, data):
             "links": [],
         }
 
+    description = "today or upcoming dates"
+    if topic == "upcoming_classes":
+        upcoming = data["upcoming_classes"]
+        asked = message.casefold()
+        today = date.fromisoformat(data["as_of"])
+
+        if re.search(r"\btomorrow\b", asked):
+            tomorrow = (today + timedelta(days=1)).isoformat()
+            upcoming = [item for item in upcoming if item["date"] == tomorrow]
+            description = "tomorrow"
+        elif re.search(r"\btoday\b", asked):
+            upcoming = [
+                item for item in upcoming if item["date"] == today.isoformat()
+            ]
+            description = "today"
+        elif re.search(r"\bnext\s+(?:class|classes|lecture|session)\b", asked):
+            upcoming = upcoming[:1]
+            description = "next"
+
+        data = {**data, "upcoming_classes": upcoming}
+
     lines = _lines_for(topic, data)
-    text = (
-        "\n".join(lines)
-        if lines else
-        f"No {LABELS[topic].lower()} records are currently available "
-        "for your account."
-    )
+    if topic == "upcoming_classes" and not lines:
+        text = (
+            "You have no scheduled or live classes listed for "
+            f"{description} in your enrolled subjects."
+        )
+    else:
+        text = (
+            "\n".join(lines)
+            if lines else
+            f"No {LABELS[topic].lower()} records are currently available "
+            "for your account."
+        )
     link = LINKS.get(topic)
     return {
         "reply": text,
