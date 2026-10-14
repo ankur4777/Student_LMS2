@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from academics.feature_access import get_active_student_enrollment
 
 from .dashboard_data import student_dashboard_facts, teacher_materials
+from .dashboard_answers import answer_portal_question
 from .provider import AIProviderUnavailable, generate_reply
 from .account_help import get_student_account_help
 from .student_context import get_authorized_student_context
@@ -118,6 +119,13 @@ class StudentAIChatAPIView(APIView):
                 {item["id"] for item in context["subjects"]},
                 features,
             )
+            portal_answer = answer_portal_question(message, data)
+            if portal_answer is not None:
+                return Response({
+                    **portal_answer,
+                    "mode": "dashboard",
+                    "subject_id": None,
+                })
 
         try:
             reply = generate_reply(
