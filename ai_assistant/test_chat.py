@@ -611,3 +611,23 @@ class OllamaProviderTests(TestCase):
                 data={"study_materials": []},
                 subject={"name": "Meta Ads", "id": 5},
             )
+
+
+class DashboardTopicRoutingTests(TestCase):
+    def test_recorded_classes_and_online_exams_match_student_questions(self):
+        from .dashboard_answers import _topic
+
+        self.assertEqual(
+            _topic("tell me about my recorded classes"), "recorded_classes"
+        )
+        self.assertEqual(
+            _topic("I want details of my recorded class"), "recorded_classes"
+        )
+        self.assertEqual(
+            _topic("tell me about my online exam"), "online_exams"
+        )
+        self.assertEqual(
+            _topic("show my online exams"), "online_exams"
+        )
+
+
