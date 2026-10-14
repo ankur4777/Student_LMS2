@@ -34,6 +34,15 @@ const SAFE_STUDENT_CHAT_LINKS = new Set([
   "/student/dashboard",
 ]);
 
+type ChatConversation = {
+  id: string;
+  title: string;
+  mode: ChatMode;
+  subject_id: number | null;
+  subject_name: string | null;
+  updated_at: string;
+};
+
 type ChatMessage = {
   id: number;
   role: "user" | "assistant";
@@ -73,13 +82,17 @@ export default function FloatingTutorChatButton() {
   const [mode, setMode] = useState<ChatMode>("tutor");
   const [subjectId, setSubjectId] = useState<number | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const newChatSelected = useRef(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingContext, setLoadingContext] = useState(false);
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const nextMessageId = useRef(1);
+  const nextMessageId = useRef(-1);
 
   useEffect(() => {
     let active = true;
@@ -88,6 +101,9 @@ export default function FloatingTutorChatButton() {
     setOpen(false);
     setMessages([]);
     setContext(null);
+    setActiveConversationId(null);
+    setConversations([]);
+    newChatSelected.current = false;
 
     if (hiddenRoute) return () => {
       active = false;
@@ -101,6 +117,8 @@ export default function FloatingTutorChatButton() {
           setEnabled(false);
           setOpen(false);
           setMessages([]);
+          setActiveConversationId(null);
+          setConversations([]);
         }
         return;
       }
@@ -121,6 +139,8 @@ export default function FloatingTutorChatButton() {
           setOpen(false);
           setMessages([]);
           setContext(null);
+          setConversations([]);
+          setActiveConversationId(null);
         }
       } catch {
         if (active) setEnabled(false);
@@ -159,6 +179,66 @@ export default function FloatingTutorChatButton() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, [open]);
 
+  const refreshConversations = async (token: string) => {
+    const response = await fetch(`${API_BASE}/api/ai-assistant/conversations/`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Unable to load chat history.");
+    const rows = (data.conversations ?? []) as ChatConversation[];
+    setConversations(rows);
+    return rows;
+  };
+
+  const loadConversation = async (id: string, token: string) => {
+    const response = await fetch(
+      `${API_BASE}/api/ai-assistant/conversations/${id}/`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    );
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "Chat is no longer available.");
+    const chat = data.conversation as ChatConversation;
+    setActiveConversationId(chat.id);
+    setMode(chat.mode);
+    setSubjectId(chat.subject_id);
+    setMessages(
+      (data.messages as ChatMessage[]).map((message) => ({
+        ...message,
+        mode: chat.mode,
+        subjectId: chat.subject_id,
+        links: message.links?.filter((link) => SAFE_STUDENT_CHAT_LINKS.has(link.href)),
+      }))
+    );
+    setShowHistory(false);
+    newChatSelected.current = false;
+  };
+
+  const startNewChat = () => {
+    if (busy || loadingContext) return;
+    setActiveConversationId(null);
+    setMessages([]);
+    setDraft("");
+    setError("");
+    setShowHistory(false);
+    newChatSelected.current = true;
+  };
+
+  const selectPreviousChat = async (id: string) => {
+    if (busy || loadingContext) return;
+    const token = localStorage.getItem("student_access_token");
+    if (!token) return;
+    setError("");
+    setLoadingContext(true);
+    try {
+      await loadConversation(id, token);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to open this chat.");
+    } finally {
+      setLoadingContext(false);
+    }
+  };
+
   const toggleChat = async () => {
     if (open) {
       setOpen(false);
@@ -168,6 +248,8 @@ export default function FloatingTutorChatButton() {
     setOpen(true);
     setError("");
     setLoadingContext(true);
+    setShowHistory(false);
+    setMessages([]);
 
     const token = localStorage.getItem("student_access_token");
     if (!token) {
@@ -197,6 +279,13 @@ export default function FloatingTutorChatButton() {
         const valid = (data.subjects as Subject[]).some((s) => s.id === current);
         return valid ? current : (data.subjects[0]?.id ?? null);
       });
+      const recent = await refreshConversations(token);
+      if (!newChatSelected.current && recent.length) {
+        const selected = recent.some((item) => item.id === activeConversationId)
+          ? activeConversationId
+          : recent[0].id;
+        if (selected) await loadConversation(selected, token);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to connect to the LMS.");
     } finally {
@@ -205,17 +294,15 @@ export default function FloatingTutorChatButton() {
   };
 
   const changeMode = (nextMode: ChatMode) => {
-    if (busy) return;
+    if (busy || loadingContext || nextMode === mode) return;
     setMode(nextMode);
-    setDraft("");
-    setError("");
+    startNewChat();
   };
 
   const changeSubject = (nextId: number) => {
-    if (busy) return;
+    if (busy || loadingContext || nextId === subjectId) return;
     setSubjectId(nextId);
-    setMessages((current) => current.filter((item) => item.mode !== "tutor"));
-    setError("");
+    startNewChat();
   };
 
   const sendMessage = async (event?: FormEvent<HTMLFormElement>) => {
@@ -227,17 +314,8 @@ export default function FloatingTutorChatButton() {
       return;
     }
 
-    const related = messages.filter(
-      (item) => item.mode === mode && (
-        mode === "dashboard" || item.subjectId === subjectId
-      )
-    );
-    const history = related.slice(-8).map((item) => ({
-      role: item.role,
-      content: item.content,
-    }));
     const studentMessage: ChatMessage = {
-      id: nextMessageId.current++,
+      id: nextMessageId.current--,
       role: "user",
       content: message,
       mode,
@@ -259,8 +337,8 @@ export default function FloatingTutorChatButton() {
         cache: "no-store",
         body: JSON.stringify({
           message,
-          history,
           mode,
+          ...(activeConversationId ? { conversation_id: activeConversationId } : {}),
           ...(mode === "tutor" ? { subject_id: subjectId } : {}),
         }),
       });
@@ -276,10 +354,12 @@ export default function FloatingTutorChatButton() {
         }
         throw new Error(result.detail || "Could not get an AI response.");
       }
+      setActiveConversationId(result.conversation_id);
+      newChatSelected.current = false;
       setMessages((items) => [
         ...items,
         {
-          id: nextMessageId.current++,
+          id: nextMessageId.current--,
           role: "assistant",
           content: result.reply,
           links: Array.isArray(result.links)
@@ -294,7 +374,14 @@ export default function FloatingTutorChatButton() {
           subjectId: mode === "tutor" ? subjectId : null,
         },
       ]);
+      try {
+        if (token) await refreshConversations(token);
+      } catch {
+        // The answer was saved even if reloading the chat index failed.
+      }
     } catch (err) {
+      setMessages((items) => items.filter((item) => item.id !== studentMessage.id));
+      setDraft(message);
       setError(err instanceof Error ? err.message : "Network error. Please try again.");
     } finally {
       setBusy(false);
@@ -333,14 +420,48 @@ export default function FloatingTutorChatButton() {
               <strong>Your AI Tutor</strong>
               <span>Study help and personal LMS information</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="student-tutor-chat-close"
-              aria-label="Close AI Tutor"
-            >×</button>
+            <div className="student-tutor-chat-header-actions">
+              <button type="button" className="student-tutor-chat-header-button"
+                onClick={() => setShowHistory((current) => !current)}
+                disabled={busy || loadingContext} aria-expanded={showHistory}
+                aria-label="View previous chats" title="Chat history">
+                History
+              </button>
+              <button type="button" className="student-tutor-chat-header-button"
+                onClick={startNewChat} disabled={busy || loadingContext}
+                aria-label="Start new chat" title="Start new chat">
+                + New
+              </button>
+              <button type="button" onClick={() => setOpen(false)}
+                className="student-tutor-chat-close" aria-label="Close AI Tutor">
+                ×
+              </button>
+            </div>
           </header>
 
+          {showHistory && (
+            <div className="student-tutor-chat-history" aria-label="Previous AI chats">
+              <strong>Previous chats</strong>
+              {!conversations.length ? (
+                <p>No saved conversations yet. Start a new chat to save one.</p>
+              ) : (
+                <div className="student-tutor-chat-history-list">
+                  {conversations.map((chat) => (
+                    <button key={chat.id} type="button"
+                      disabled={busy || loadingContext}
+                      className={chat.id === activeConversationId ? "active" : ""}
+                      onClick={() => void selectPreviousChat(chat.id)}
+                    >
+                      <span>{chat.title}</span>
+                      <small>{chat.mode === "tutor"
+                        ? (chat.subject_name ?? "Subject Tutor")
+                        : "My Dashboard"}</small>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="student-tutor-chat-controls">
             <div className="student-tutor-chat-tabs" role="group" aria-label="Chat mode">
               <button type="button" className={mode === "tutor" ? "active" : ""}
