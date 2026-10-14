@@ -35,7 +35,7 @@ def _topic(text):
         ("published_results", r"\b(?:results?|marks|grades?|scores?)\b"),
         ("attendance", r"\battendan(?:ce|ces)\b|\babsen(?:t|ce)\b"),
         ("assignments", r"\b(?:assignments?|homework|submission|due tasks?)\b"),
-        ("upcoming_classes", r"\b(?:live|upcoming|today.?s|tomorrow.?s|scheduled|my)\s+(?:classes?|lectures?|sessions?)\b|\b(?:next|any)\s+(?:classes?|lectures?|sessions?)\b|\b(?:classes?|lectures?|sessions?)\s+(?:schedule(?:d)?|today|tomorrow|upcoming)\b|\bclasses?\s+(?:are|is|will be)\s+scheduled\b|\bclasses?\s+do\s+i\s+have\b|\btimetable\b"),
+        ("upcoming_classes", r"\b(?:live|upcoming|today.?s|tomorrow.?s|scheduled|my)\s+(?:class(?:es)?|lectures?|sessions?)\b|\b(?:next|any)\s+(?:class(?:es)?|lectures?|sessions?)\b|\b(?:class(?:es)?|lectures?|sessions?)\s+(?:schedule(?:d)?|today|tomorrow|upcoming)\b|\bclass(?:es)?\s+(?:are|is|will be)\s+scheduled\b|\bclass(?:es)?\s+do\s+i\s+have\b|\btimetable\b"),
         ("documents", r"\b(?:documents?|notes|syllabus|study materials?|worksheets?)\b"),
         ("fees", r"\b(?:fees?|outstanding|dues?|payments?|paid amount|fine)\b"),
         ("notifications", r"\bnotifications?\b"),
