@@ -29,7 +29,7 @@ def _topic(text):
     # Querying multiple different modules should go through the AI so it can
     # combine authorized facts; single-module queries get deterministic replies.
     patterns = [
-        ("recorded_classes", r"\brecord(?:ed|ing)?\s+(?:class|lecture|session|video)s?\b"),
+        ("recorded_classes", r"\brecord(?:ed|ing)?\s+(?:classes|class|lectures?|sessions?|videos?)\b"),
         ("recorded_courses", r"\b(?:recorded|purchased|buy)\s+courses?\b|\bcourse\s+purchase\b"),
         ("online_exams", r"\bonline\s+(?:exam|test|assessment)s?\b|\b(?:exam|test)\s+schedule\b"),
         ("published_results", r"\b(?:results?|marks|grades?|scores?)\b"),
