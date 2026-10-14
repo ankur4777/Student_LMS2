@@ -191,16 +191,16 @@ def answer_portal_question(message, data):
         asked = message.casefold()
         today = date.fromisoformat(data["as_of"])
 
-        if re.search(r"\\btomorrow\\b", asked):
+        if re.search(r"\btomorrow\b", asked):
             tomorrow = (today + timedelta(days=1)).isoformat()
             upcoming = [item for item in upcoming if item["date"] == tomorrow]
             description = "tomorrow"
-        elif re.search(r"\\btoday\\b", asked):
+        elif re.search(r"\btoday\b", asked):
             upcoming = [
                 item for item in upcoming if item["date"] == today.isoformat()
             ]
             description = "today"
-        elif re.search(r"\\bnext\\s+(?:class|classes|lecture|session)\\b", asked):
+        elif re.search(r"\bnext\s+(?:class|classes|lecture|session)\b", asked):
             upcoming = upcoming[:1]
             description = "next"
 
