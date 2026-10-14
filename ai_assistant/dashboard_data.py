@@ -14,6 +14,7 @@ from documents.models import Document
 from fees.models import StudentFee
 from liveclasses.models import LiveClass
 from studentresults.models import StudentResult
+from .portal_data import student_portal_module_facts
 
 
 def teacher_materials(user, enrollment, subject_id, features):
@@ -54,6 +55,8 @@ def student_dashboard_facts(user, enrollment, allowed_subject_ids, features):
             "classroom": section.classroom.name,
             "section": section.name,
             "roll_number": enrollment.roll_number,
+            "username": user.username,
+            "admission_number": student.admission_number,
         },
         "visible_modules": [
             key for key, enabled in features.items()
@@ -178,4 +181,5 @@ def student_dashboard_facts(user, enrollment, allowed_subject_ids, features):
                 "status": fee.status,
             })
 
+    facts.update(student_portal_module_facts(user, enrollment, ids, features))
     return facts
