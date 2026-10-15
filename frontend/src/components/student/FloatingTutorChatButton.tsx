@@ -124,6 +124,8 @@ export default function FloatingTutorChatButton() {
   const [error, setError] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
   const nextMessageId = useRef(-1);
 
   // A saved Dashboard chat deliberately has no subject_id. When students
@@ -213,11 +215,28 @@ export default function FloatingTutorChatButton() {
 
   useEffect(() => {
     if (!open) return;
+
+    // Close on mouse, touch, or pen interaction outside the chat. Do not add
+    // a backdrop: the student's original click should still reach the page.
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (panelRef.current?.contains(target) || launcherRef.current?.contains(target)) {
+        return;
+      }
+      setOpen(false);
+    };
+    document.addEventListener("pointerdown", handleOutsidePointerDown);
+
     const handleEscape = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handleOutsidePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
   }, [open]);
 
   const refreshConversations = async (token: string) => {
@@ -452,6 +471,7 @@ export default function FloatingTutorChatButton() {
     <>
       {open && (
         <section
+          ref={panelRef}
           id="student-ai-tutor-panel"
           className="student-tutor-chat-panel"
           role="dialog"
@@ -593,6 +613,7 @@ export default function FloatingTutorChatButton() {
         </section>
       )}
       <button
+        ref={launcherRef}
         type="button"
         className="student-floating-tutor"
         aria-label={open ? "Close AI Tutor" : "Open AI Tutor"}
