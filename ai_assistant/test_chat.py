@@ -144,6 +144,124 @@ class StudentAIChatSecurityTests(TestCase):
         )
         self.assertNotIn("Secret Teacher Notes", str(kwargs["data"]))
 
+    @patch("ai_assistant.views.generate_reply", return_value="Grounded explanation")
+    def test_uploaded_pdf_excerpts_are_available_for_authorized_subject(self, generation):
+        from io import BytesIO
+        from tempfile import TemporaryDirectory
+        from unittest.mock import patch as mock_patch
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from reportlab.pdfgen import canvas
+        from documents.models import private_document_storage
+
+        output = BytesIO()
+        pdf = canvas.Canvas(output)
+        pdf.drawString(
+            40, 740,
+            "Ad auction total value = (Bid x Estimated Action Rate) + Ad Quality.",
+        )
+        pdf.showPage()
+        pdf.drawString(
+            40, 740, "Exit learning phase = 50 conversions per ad set per week.",
+        )
+        pdf.save()
+
+        with TemporaryDirectory() as temp_dir, mock_patch.object(
+            private_document_storage, "_location", temp_dir
+        ):
+            Document.objects.create(
+                organization=self.college, uploaded_by=self.teacher_user,
+                teacher_assignment=self.assignment, title="Meta Ads Reference",
+                description="Lesson presentation",
+                file=SimpleUploadedFile(
+                    "reference.pdf", output.getvalue(), content_type="application/pdf"
+                ),
+                is_published=True,
+            )
+            self.login()
+            response = self.client.post(CHAT_URL, {
+                "mode": "tutor", "subject_id": self.science.id,
+                "message": "According to uploaded PDF, what is the ad auction total value formula?",
+            }, format="json")
+            self.assertEqual(response.status_code, 200, response.data)
+            materials = generation.call_args.kwargs["data"]["study_materials"]
+            self.assertEqual(len(materials), 1)
+            self.assertEqual(materials[0]["title"], "Meta Ads Reference")
+            self.assertTrue(materials[0]["excerpts"])
+            self.assertEqual(materials[0]["excerpts"][0]["page"], 1)
+            self.assertIn("Estimated Action Rate", materials[0]["excerpts"][0]["text"])
+
+            generation.reset_mock()
+            second = self.client.post(CHAT_URL, {
+                "mode": "tutor", "subject_id": self.science.id,
+                "message": "According to the PDF, how many conversions per week exit learning phase?",
+            }, format="json")
+            self.assertEqual(second.status_code, 200, second.data)
+            excerpts = generation.call_args.kwargs["data"]["study_materials"][0]["excerpts"]
+            self.assertTrue(any("50 conversions" in item["text"] for item in excerpts))
+
+            # Disabling Documents must immediately remove private PDF excerpts.
+            ClassFeatureAccess.objects.create(
+                organization=self.college, classroom=self.classroom,
+                feature_key="documents", is_enabled=False,
+            )
+            generation.reset_mock()
+            restricted = self.client.post(CHAT_URL, {
+                "mode": "tutor", "subject_id": self.science.id,
+                "message": "According to uploaded PDF what is the ad auction total value?",
+            }, format="json")
+            self.assertEqual(restricted.status_code, 200)
+            self.assertEqual(
+                generation.call_args.kwargs["data"]["study_materials"], []
+            )
+
+    @patch("ai_assistant.views.generate_reply", return_value="Answer")
+    @patch("ai_assistant.dashboard_data.pdf_excerpts")
+    def test_pdf_retrieval_excludes_drafts_wrong_section_and_foreign_college(
+        self, excerpts, generation
+    ):
+        other_section = Section.objects.create(
+            organization=self.college, classroom=self.classroom, name="B"
+        )
+        other_assignment = TeacherAssignment.objects.create(
+            teacher=self.teacher, subject=self.science, section=other_section
+        )
+        foreign_teacher = User.objects.create_user(
+            username="foreign-pdf-teacher", password="pass", role="teacher",
+            organization=self.foreign_college,
+        )
+        foreign_profile = TeacherProfile.objects.create(
+            user=foreign_teacher, employee_id="FOREIGN-PDF-01"
+        )
+        foreign_section = self.foreign_subject.classroom.sections.create(
+            organization=self.foreign_college, name="B"
+        )
+        foreign_assignment = TeacherAssignment.objects.create(
+            teacher=foreign_profile, subject=self.foreign_subject,
+            section=foreign_section,
+        )
+        for title, assignment, owner, org, published in (
+            ("Published", self.assignment, self.teacher_user, self.college, True),
+            ("Draft Secret", self.assignment, self.teacher_user, self.college, False),
+            ("Other Section Secret", other_assignment, self.teacher_user, self.college, True),
+            ("Foreign Secret", foreign_assignment, foreign_teacher, self.foreign_college, True),
+        ):
+            Document.objects.create(
+                organization=org, uploaded_by=owner,
+                teacher_assignment=assignment, title=title,
+                file="documents/placeholder.pdf", is_published=published,
+            )
+        excerpts.return_value = [{"page": 12, "text": "Authorized teacher notes"}]
+        self.login()
+        response = self.client.post(CHAT_URL, {
+            "mode": "tutor", "subject_id": self.science.id,
+            "message": "According to uploaded PDF what is auction value?",
+        }, format="json")
+        self.assertEqual(response.status_code, 200)
+        materials = generation.call_args.kwargs["data"]["study_materials"]
+        self.assertEqual([material["title"] for material in materials], ["Published"])
+        self.assertEqual(excerpts.call_count, 1)
+
     @patch("ai_assistant.views.generate_reply", return_value="Learning")
     def test_allowed_and_excluded_subjects(self, generation):
         self.login()
@@ -721,6 +839,33 @@ class AIProviderSafetyTests(TestCase):
         self.assertIn("Meta Ads", reply)
         self.assertNotIn("Out of scope", reply)
 
+
+    def test_pdf_grounding_fallback_and_unrelated_subject_refusal(self):
+        from .provider import _parse_reply
+        context = {
+            "study_materials": [{
+                "title": "Meta Ads Reference",
+                "excerpts": [{
+                    "page": 12,
+                    "text": "Total Value = (Bid x Estimated Action Rate) + Ad Quality",
+                }],
+            }],
+        }
+        rejected = '{"allowed": false, "answer": "Out of scope"}'
+        grounded = _parse_reply(
+            rejected, mode="tutor", subject={"name": "Meta Ads"},
+            data=context,
+            message="According to the uploaded PDF what is the ad auction total value?",
+        )
+        self.assertIn("Ad Quality", grounded)
+        self.assertIn("page 12", grounded)
+        self.assertNotIn("Out of scope", grounded)
+        unrelated = _parse_reply(
+            rejected, mode="tutor", subject={"name": "Meta Ads"},
+            data=context, message="Teach me organic chemistry",
+        )
+        self.assertIn("I can only help with Meta Ads", unrelated)
+        self.assertNotIn("Ad Quality", unrelated)
 
 class OllamaProviderTests(TestCase):
     @override_settings(

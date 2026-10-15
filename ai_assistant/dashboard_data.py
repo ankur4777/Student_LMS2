@@ -15,10 +15,11 @@ from fees.models import StudentFee
 from liveclasses.models import LiveClass
 from studentresults.models import StudentResult
 from .portal_data import student_portal_module_facts
+from .material_retrieval import pdf_excerpts
 
 
-def teacher_materials(user, enrollment, subject_id, features):
-    """Only metadata for currently published documents, never private file bytes."""
+def teacher_materials(user, enrollment, subject_id, features, question=""):
+    """Authorized published materials and bounded on-demand PDF excerpts."""
     if not features.get("documents"):
         return []
 
@@ -30,16 +31,34 @@ def teacher_materials(user, enrollment, subject_id, features):
         teacher_assignment__section__organization_id=user.organization_id,
         teacher_assignment__subject_id=subject_id,
         teacher_assignment__subject__organization_id=user.organization_id,
+        teacher_assignment__section__classroom=enrollment.section.classroom,
+        teacher_assignment__section__classroom__organization_id=user.organization_id,
+        teacher_assignment__teacher__user__organization_id=user.organization_id,
     ).order_by("-published_at", "-created_at")[:8]
 
-    return [
-        {
+    materials = []
+    remaining = 11000
+    for doc in documents:
+        entry = {
             "title": doc.title,
             "description": doc.description[:500],
             "type": doc.document_type,
         }
-        for doc in documents
-    ]
+        # Excerpts are never persisted or exposed as a standalone endpoint.
+        # Only request-relevant, bounded text enters this one response prompt.
+        if question and remaining > 0:
+            excerpts = pdf_excerpts(doc, question)
+            entry["excerpts"] = []
+            for excerpt in excerpts:
+                text = excerpt["text"][:remaining]
+                if not text:
+                    break
+                entry["excerpts"].append({
+                    "page": excerpt["page"], "text": text,
+                })
+                remaining -= len(text)
+        materials.append(entry)
+    return materials
 
 
 def student_dashboard_facts(user, enrollment, allowed_subject_ids, features):
