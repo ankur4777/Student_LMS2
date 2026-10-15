@@ -404,6 +404,7 @@ class StudentAIChatSecurityTests(TestCase):
         self.login()
         for question in (
             "tell me how can I reset my password",
+            "how to reset the password",
             "I forgot my password",
             "How do I change my password?",
         ):
