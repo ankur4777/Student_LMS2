@@ -14,6 +14,7 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 
 from .material_retrieval import excerpt_relevance
+from .source_citations import cite_document_answer
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +141,10 @@ def _parse_reply(content, *, mode, subject, data=None, message=""):
                 "I can help with your Student LMS dashboard, account, and "
                 "portal navigation. For academic lessons, choose Subject Tutor."
             )
-        return answer.strip()[:5000]
+        resolved = answer.strip()[:4800]
+        if mode == "tutor":
+            resolved = cite_document_answer(resolved, message, data)
+        return resolved[:5000]
     except (KeyError, TypeError, ValueError) as exc:
         logger.warning("Student AI model returned invalid JSON")
         raise AIProviderUnavailable(
@@ -175,8 +179,11 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
             "for the enrolled subject ARE in scope. Do not reject them merely "
             "because they mention the uploaded file. Teacher materials include "
             "metadata and, when available, selected PDF page excerpts. Only "
-            "those excerpts are actual PDF text. Cite the document title and "
-            "page for document-based answers, and never imply full-file access. "
+            "those excerpts are actual PDF text. For PDF-specific questions, "
+            "answer only using supplied excerpt evidence. Give a complete "
+            "short answer rather than a bare number; the server will append "
+            "a verified material title and page when evidence matches. "
+            "Never invent page references or imply full-file access. "
             "If the relevant PDF text is absent, explicitly say the uploaded "
             "document cannot be verified, then optionally give clearly labeled "
             "general subject knowledge. Never fabricate quotes or page numbers. "
