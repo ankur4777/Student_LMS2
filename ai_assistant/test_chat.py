@@ -1163,6 +1163,210 @@ class VerifiedDocumentCitationTests(TestCase):
         self.assertNotIn("Source:", answer)
 
 
+class ReadableTeacherPDFAnswersTests(TestCase):
+    """Student-facing PDF replies are concise, cited and permission-grounded."""
+
+    @staticmethod
+    def _presenter_materials():
+        return {"study_materials": [{
+            "title": "Meta Ads note",
+            "excerpts": [
+                {
+                    "page": 1,
+                    "text": (
+                        "Digital Culture Network Facebook Ads Manager for beginners "
+                        "Presenter: Alex Duffield, Meta Core Product Adoption Manager "
+                        "Facilitator: Haydn Corrodus, Tech Champion for Social Media"
+                    ),
+                },
+                {
+                    "page": 3,
+                    "text": (
+                        "Today's agenda: Ads Manager Fundamentals, Campaign Level "
+                        "Decisions, Ad Set Level Decisions and Test and Learn."
+                    ),
+                },
+            ],
+        }]}
+
+    def test_false_rejection_formats_presenter_and_facilitator_without_dump(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": false, "answer": "Out of scope"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._presenter_materials(),
+            message="According to the uploaded Facebook Ads Manager beginners "
+                    "PDF, who is the presenter and who is the facilitator?",
+        )
+        self.assertIn(
+            "Presenter: Alex Duffield, Meta Core Product Adoption Manager", answer
+        )
+        self.assertIn(
+            "Facilitator: Haydn Corrodus, Tech Champion for Social Media", answer
+        )
+        self.assertIn("Source: Meta Ads note (page 1).", answer)
+        self.assertNotIn("Digital Culture Network Facebook", answer)
+        self.assertNotIn("This is quoted source evidence", answer)
+        self.assertNotIn("page 3", answer)
+        self.assertLess(len(answer), 260)
+
+    def test_allowed_model_answer_gets_same_clean_role_format(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "Alex Duffield and Haydn Corrodus"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._presenter_materials(),
+            message="According to the uploaded PDF, who is the presenter "
+                    "and who is the facilitator?",
+        )
+        self.assertIn("Presenter: Alex Duffield", answer)
+        self.assertIn("Facilitator: Haydn Corrodus", answer)
+        self.assertIn("Source: Meta Ads note (page 1).", answer)
+        self.assertNotIn("Digital Culture Network Facebook", answer)
+
+    def test_numeric_fallback_picks_50_not_24_and_cites_correct_page(self):
+        from .provider import _parse_reply
+
+        materials = {"study_materials": [{
+            "title": "Meta Ads note",
+            "excerpts": [
+                {"page": 3, "text": "Agenda: Campaign and Ad Set Level Decisions."},
+                {
+                    "page": 13,
+                    "text": (
+                        "Ad review can take around 24 hours. "
+                        "Exit the Learning Phase = 50 conversions "
+                        "per ad set per week."
+                    ),
+                },
+            ],
+        }]}
+        answer = _parse_reply(
+            '{"allowed": false, "answer": "Out of scope"}',
+            mode="tutor", subject={"name": "Meta Ads"}, data=materials,
+            message="According to the uploaded PDF, how many conversions "
+                    "per ad set per week are required to exit the learning phase?",
+        )
+        self.assertIn("50 conversions per ad set per week", answer)
+        self.assertIn("Source: Meta Ads note (page 13).", answer)
+        self.assertNotIn("24 hours", answer)
+        self.assertNotIn("page 3", answer)
+        self.assertNotIn("not a verified full-document answer", answer)
+        self.assertLess(len(answer), 190)
+
+    def test_verified_bare_number_expands_without_creating_new_fact(self):
+        from .provider import _parse_reply
+
+        materials = {"study_materials": [{
+            "title": "Meta Ads note",
+            "excerpts": [{
+                "page": 13,
+                "text": "Exit the Learning Phase = 50 conversions per ad set per week.",
+            }],
+        }]}
+        question = (
+            "According to the uploaded PDF, how many conversions per "
+            "ad set per week are needed to exit the learning phase?"
+        )
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "50"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=materials, message=question,
+        )
+        self.assertEqual(
+            answer,
+            "50 conversions per ad set per week.\n\n"
+            "Source: Meta Ads note (page 13).",
+        )
+
+        wrong = _parse_reply(
+            '{"allowed": true, "answer": "24"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=materials, message=question,
+        )
+        self.assertIn("couldn't verify", wrong)
+        self.assertNotIn("Source:", wrong)
+
+    def test_false_rejection_formula_is_short_and_cited(self):
+        from .provider import _parse_reply
+
+        materials = {"study_materials": [{
+            "title": "Meta Ads note",
+            "excerpts": [
+                {"page": 3, "text": "Agenda: Ads Manager Fundamentals."},
+                {
+                    "page": 12,
+                    "text": (
+                        "Ad auction total value formula: "
+                        "Total Value = (Bid x Estimated Action Rate) + Ad Quality."
+                    ),
+                },
+            ],
+        }]}
+        answer = _parse_reply(
+            '{"allowed": false, "answer": "Out of scope"}',
+            mode="tutor", subject={"name": "Meta Ads"}, data=materials,
+            message="According to the uploaded PDF what is the ad auction "
+                    "total value formula?",
+        )
+        self.assertIn("Bid x Estimated Action Rate", answer)
+        self.assertIn("Source: Meta Ads note (page 12).", answer)
+        self.assertNotIn("Agenda:", answer)
+        self.assertLess(len(answer), 280)
+
+    def test_no_pdf_evidence_does_not_invent_names_or_citation(self):
+        from .provider import _parse_reply
+
+        question = (
+            "According to the uploaded PDF, who is the presenter "
+            "and facilitator?"
+        )
+        refused = _parse_reply(
+            '{"allowed": false, "answer": "Out of scope"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data={"study_materials": []}, message=question,
+        )
+        self.assertNotIn("Alex Duffield", refused)
+        self.assertNotIn("Source:", refused)
+
+        allowed = _parse_reply(
+            '{"allowed": true, "answer": "Alex Duffield"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data={"study_materials": []}, message=question,
+        )
+        self.assertIn("couldn't verify", allowed)
+        self.assertNotIn("Source:", allowed)
+
+    def test_subject_refusal_dashboard_and_general_tutor_are_unchanged(self):
+        from .provider import _parse_reply
+
+        data = self._presenter_materials()
+        off_topic = _parse_reply(
+            '{"allowed": false, "answer": "Out of scope"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=data,
+            message="Teach me organic chemistry reactions",
+        )
+        self.assertIn("I can only help with Meta Ads", off_topic)
+        self.assertNotIn("Source:", off_topic)
+
+        dashboard = _parse_reply(
+            '{"allowed": true, "answer": "Your attendance is 75%."}',
+            mode="dashboard", subject=None, data=data,
+            message="What is my attendance?",
+        )
+        self.assertEqual(dashboard, "Your attendance is 75%.")
+
+        general = _parse_reply(
+            '{"allowed": true, "answer": "Meta Ads Manager creates campaigns."}',
+            mode="tutor", subject={"name": "Meta Ads"}, data=data,
+            message="What is Meta Ads Manager?",
+        )
+        self.assertEqual(general, "Meta Ads Manager creates campaigns.")
+
+
 class OllamaProviderTests(TestCase):
     @override_settings(
         AI_ASSISTANT_PROVIDER="ollama",
