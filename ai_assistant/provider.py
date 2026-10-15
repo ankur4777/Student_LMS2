@@ -99,9 +99,17 @@ def _source_fallback(data, message):
             )
             if sentence_end >= 0:
                 prefix = prefix[sentence_end + 2:]
-            span = prefix + source[
-                match.start():min(len(source), match.end() + 115)
+            suffix = source[
+                match.end():min(len(source), match.end() + 115)
             ]
+            next_end = [
+                position for position in (
+                    suffix.find(". "), suffix.find("! "), suffix.find("? ")
+                ) if position >= 0
+            ]
+            if next_end:
+                suffix = suffix[:min(next_end) + 1]
+            span = prefix + match.group() + suffix
             numeric.append((excerpt_relevance(message, span), span))
         if numeric:
             numeric.sort(key=lambda row: row[0], reverse=True)
