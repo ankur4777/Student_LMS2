@@ -867,6 +867,121 @@ class AIProviderSafetyTests(TestCase):
         self.assertIn("I can only help with Meta Ads", unrelated)
         self.assertNotIn("Ad Quality", unrelated)
 
+class PDFEvidenceRankingTests(TestCase):
+    def test_later_learning_phase_page_outweighs_early_agenda(self):
+        from io import BytesIO
+        from reportlab.pdfgen import canvas
+        from .material_retrieval import pdf_excerpts
+
+        output = BytesIO()
+        pdf = canvas.Canvas(output)
+        for page in range(1, 14):
+            if page == 3:
+                pdf.drawString(35, 750, "Agenda: Ads Manager Fundamentals")
+                pdf.drawString(35, 715, "Ad Set Level Decisions and Test and Learn")
+            elif page == 12:
+                pdf.drawString(
+                    35, 750,
+                    "Total Value = (Bid x Estimated Action Rate) + Ad Quality",
+                )
+            elif page == 13:
+                for index in range(13):
+                    pdf.drawString(
+                        35, 760 - index * 35,
+                        "Ad delivery decisions, goals, audience and creative considerations.",
+                    )
+                pdf.drawString(
+                    35, 270,
+                    "Exit the Learning Phase = 50 conversions per ad set per week.",
+                )
+            else:
+                pdf.drawString(35, 750, "Overview of Meta advertising campaigns")
+            pdf.showPage()
+        pdf.save()
+
+        class FakeFile:
+            name = "teacher-lesson.pdf"
+
+            @property
+            def size(self):
+                return len(output.getvalue())
+
+            def open(self, mode):
+                return BytesIO(output.getvalue())
+
+        class FakeDocument:
+            file = FakeFile()
+
+        question = (
+            "According to the uploaded PDF, how many conversions per ad set "
+            "per week are mentioned for exiting the learning phase?"
+        )
+        excerpts = pdf_excerpts(FakeDocument(), question)
+        self.assertTrue(excerpts)
+        self.assertEqual(excerpts[0]["page"], 13)
+        self.assertIn("50 conversions per ad set per week", excerpts[0]["text"])
+        self.assertNotEqual(excerpts[0]["page"], 3)
+
+        formula = pdf_excerpts(
+            FakeDocument(),
+            "According to the uploaded PDF, what is the ad auction total value formula?",
+        )
+        self.assertEqual(formula[0]["page"], 12)
+        self.assertIn("Bid x Estimated Action Rate", formula[0]["text"])
+
+    def test_false_rejection_uses_relevant_numeric_evidence_not_agenda(self):
+        from .provider import _parse_reply
+
+        data = {
+            "study_materials": [{
+                "title": "Meta Ads note",
+                "excerpts": [
+                    {
+                        "page": 3,
+                        "text": "Agenda: Campaign, Ad Set and Test and Learn.",
+                    },
+                    {
+                        "page": 13,
+                        "text": (
+                            "Ad review can take ~24 hours. "
+                            "Exit the Learning Phase = "
+                            "50 conversions per ad set per week."
+                        ),
+                    },
+                ],
+            }],
+        }
+        question = (
+            "According to the uploaded PDF, how many conversions per ad set "
+            "per week are mentioned for exiting the learning phase?"
+        )
+        refused = '{"allowed": false, "answer": "Out of scope"}'
+        answer = _parse_reply(
+            refused, mode="tutor", subject={"name": "Meta Ads"},
+            data=data, message=question,
+        )
+        self.assertIn("50 conversions per ad set per week", answer)
+        self.assertIn("page 13", answer)
+        self.assertNotIn("page 3", answer)
+        self.assertNotIn("24 hours", answer)
+        self.assertNotIn("Out of scope", answer)
+
+    def test_no_unrelated_pdf_excerpt_fallback(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": false, "answer": "Out of scope"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data={"study_materials": [{
+                "title": "Ad Set Agenda",
+                "excerpts": [{"page": 3, "text": "Campaign and Ad Set Agenda"}],
+            }]},
+            message="According to the uploaded PDF, teach organic chemistry reactions",
+        )
+        self.assertIn("I can only help with Meta Ads", answer)
+        self.assertNotIn("Agenda", answer)
+
+
 class OllamaProviderTests(TestCase):
     @override_settings(
         AI_ASSISTANT_PROVIDER="ollama",
