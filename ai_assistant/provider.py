@@ -6,14 +6,13 @@ chat view before any provider sees student information.
 
 import json
 import logging
-import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
 
-from .material_retrieval import excerpt_relevance
+from .document_answer_format import concise_pdf_fallback, polish_verified_pdf_answer
 from .source_citations import cite_document_answer
 
 logger = logging.getLogger(__name__)
@@ -67,62 +66,10 @@ def _fetch_json(*, url, payload, timeout, headers=None, provider_name):
 
 
 def _source_fallback(data, message):
-    """Provide relevant authorized source evidence if a small model refuses."""
-    if not isinstance(data, dict) or not re.search(
-        r"\b(pdf|document|uploaded|notes|material)\b", message.lower()
-    ):
-        return None
+    """Return a brief verified excerpt, not an arbitrary raw PDF page."""
+    return concise_pdf_fallback(message, data)
 
-    candidates = []
-    for material in data.get("study_materials", []):
-        for excerpt in material.get("excerpts", []):
-            source = excerpt.get("text", "").strip()
-            score = excerpt_relevance(message, source)
-            if score >= 6:  # Require multiple matching topic words or a phrase.
-                candidates.append((score, material["title"], excerpt["page"], source))
 
-    if not candidates:
-        # Do not dump an unrelated page or claim to know an unread PDF.
-        return None
-
-    _, title, page, source = max(candidates, key=lambda row: row[0])
-    evidence = source[:650]
-    if re.search(r"\b(how many|how much|number of)\b", message.lower()):
-        # For a quantity question, prioritize a number beside the matching
-        # topic words (e.g. "50 conversions per ad set per week"), not an
-        # unrelated number elsewhere on the same page.
-        numeric = []
-        for match in re.finditer(r"\b\d+(?:[.,]\d+)?\b", source):
-            prefix = source[max(0, match.start() - 85):match.start()]
-            # Do not include an unrelated number from a preceding sentence.
-            sentence_end = max(
-                prefix.rfind(". "), prefix.rfind("! "), prefix.rfind("? ")
-            )
-            if sentence_end >= 0:
-                prefix = prefix[sentence_end + 2:]
-            suffix = source[
-                match.end():min(len(source), match.end() + 115)
-            ]
-            next_end = [
-                position for position in (
-                    suffix.find(". "), suffix.find("! "), suffix.find("? ")
-                ) if position >= 0
-            ]
-            if next_end:
-                suffix = suffix[:min(next_end) + 1]
-            span = prefix + match.group() + suffix
-            numeric.append((excerpt_relevance(message, span), span))
-        if numeric:
-            numeric.sort(key=lambda row: row[0], reverse=True)
-            if numeric[0][0] >= 6:
-                evidence = numeric[0][1].strip()
-
-    return (
-        f"According to the uploaded material '{title}' (page {page}): "
-        f"{evidence}\n\n"
-        "This is quoted source evidence; the AI did not independently "
-        "verify a full-document answer."
-    )
 
 def _parse_reply(content, *, mode, subject, data=None, message=""):
     try:
@@ -143,6 +90,7 @@ def _parse_reply(content, *, mode, subject, data=None, message=""):
             )
         resolved = answer.strip()[:4800]
         if mode == "tutor":
+            resolved = polish_verified_pdf_answer(message, resolved, data)
             resolved = cite_document_answer(resolved, message, data)
         return resolved[:5000]
     except (KeyError, TypeError, ValueError) as exc:
@@ -181,8 +129,10 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
             "metadata and, when available, selected PDF page excerpts. Only "
             "those excerpts are actual PDF text. For PDF-specific questions, "
             "answer only using supplied excerpt evidence. Give a complete "
-            "short answer rather than a bare number; the server will append "
-            "a verified material title and page when evidence matches. "
+            "short answer rather than a bare number. If a PDF excerpt "
+            "directly supports a specific fact, explain the fact briefly, "
+            "without copying an entire paragraph or technical disclaimers. "
+            "The server will append a verified material title and page. "
             "Never invent page references or imply full-file access. "
             "If the relevant PDF text is absent, explicitly say the uploaded "
             "document cannot be verified, then optionally give clearly labeled "
