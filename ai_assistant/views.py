@@ -129,11 +129,13 @@ class StudentAIChatAPIView(APIView):
 
             data = {
                 "study_materials": teacher_materials(
-                    request.user, enrollment, subject["id"], features
+                    request.user, enrollment, subject["id"], features,
+                    question=message,
                 ),
                 "source_notice": (
-                    "Study materials contain published document titles and "
-                    "descriptions only; no document file content has been indexed."
+                    "Published teacher PDF excerpts are included when available "
+                    "and question-relevant. Other file types and unreadable PDFs "
+                    "have metadata only. Never claim full-document access."
                 ),
             }
         raw_conversation_id = request.data.get("conversation_id")
