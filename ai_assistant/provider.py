@@ -92,9 +92,15 @@ def _source_fallback(data, message):
         # unrelated number elsewhere on the same page.
         numeric = []
         for match in re.finditer(r"\b\d+(?:[.,]\d+)?\b", source):
-            span = source[
-                max(0, match.start() - 85):
-                min(len(source), match.end() + 115)
+            prefix = source[max(0, match.start() - 85):match.start()]
+            # Do not include an unrelated number from a preceding sentence.
+            sentence_end = max(
+                prefix.rfind(". "), prefix.rfind("! "), prefix.rfind("? ")
+            )
+            if sentence_end >= 0:
+                prefix = prefix[sentence_end + 2:]
+            span = prefix + source[
+                match.start():min(len(source), match.end() + 115)
             ]
             numeric.append((excerpt_relevance(message, span), span))
         if numeric:
