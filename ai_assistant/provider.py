@@ -68,7 +68,7 @@ def _fetch_json(*, url, payload, timeout, headers=None, provider_name):
 def _source_fallback(data, message):
     """Provide relevant authorized source evidence if a small model refuses."""
     if not isinstance(data, dict) or not re.search(
-        r"\\b(pdf|document|uploaded|notes|material)\\b", message.lower()
+        r"\b(pdf|document|uploaded|notes|material)\b", message.lower()
     ):
         return None
 
@@ -86,12 +86,12 @@ def _source_fallback(data, message):
 
     _, title, page, source = max(candidates, key=lambda row: row[0])
     evidence = source[:650]
-    if re.search(r"\\b(how many|how much|number of)\\b", message.lower()):
+    if re.search(r"\b(how many|how much|number of)\b", message.lower()):
         # For a quantity question, prioritize a number beside the matching
         # topic words (e.g. "50 conversions per ad set per week"), not an
         # unrelated number elsewhere on the same page.
         numeric = []
-        for match in re.finditer(r"\\b\\d+(?:[.,]\\d+)?\\b", source):
+        for match in re.finditer(r"\b\d+(?:[.,]\d+)?\b", source):
             span = source[
                 max(0, match.start() - 85):
                 min(len(source), match.end() + 115)
@@ -104,7 +104,7 @@ def _source_fallback(data, message):
 
     return (
         f"According to the uploaded material '{title}' (page {page}): "
-        f"{evidence}\\n\\n"
+        f"{evidence}\n\n"
         "This is quoted source evidence; the AI did not independently "
         "verify a full-document answer."
     )
