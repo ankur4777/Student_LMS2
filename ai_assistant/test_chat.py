@@ -982,6 +982,188 @@ class PDFEvidenceRankingTests(TestCase):
         self.assertNotIn("Agenda", answer)
 
 
+class VerifiedDocumentCitationTests(TestCase):
+    """A cited page must actually support the tutor's specific answer."""
+
+    @staticmethod
+    def _materials():
+        return {
+            "study_materials": [{
+                "title": "Meta Ads note",
+                "excerpts": [
+                    {"page": 3, "text": "Today's agenda: Ad Set, Test and Learn."},
+                    {
+                        "page": 13,
+                        "text": (
+                            "Ad review can take around 24 hours. "
+                            "Exit the Learning Phase = "
+                            "50 conversions per ad set per week."
+                        ),
+                    },
+                ],
+            }],
+        }
+
+    def test_short_numeric_answer_gets_backend_verified_page(self):
+        from .provider import _parse_reply
+
+        question = (
+            "According to the uploaded PDF, how many conversions per "
+            "ad set per week are mentioned for exiting the learning phase?"
+        )
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "50"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._materials(), message=question,
+        )
+        self.assertTrue(answer.startswith("50"))
+        self.assertIn("Source: Meta Ads note (page 13).", answer)
+        self.assertNotIn("(page 3)", answer)
+
+    def test_wrong_number_on_same_page_does_not_get_false_citation(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "24"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._materials(),
+            message="According to the uploaded PDF, how many conversions "
+                    "per ad set per week are needed for the learning phase?",
+        )
+        self.assertIn("couldn't verify", answer)
+        self.assertNotIn("Source:", answer)
+        self.assertNotIn("24 hours", answer)
+
+    def test_wrong_or_missing_pdf_cannot_get_a_source_claim(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "99"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data={"study_materials": []},
+            message="According to the PDF, how many conversions are required?",
+        )
+        self.assertIn("couldn't verify", answer)
+        self.assertNotIn("Source:", answer)
+
+    def test_model_supplied_wrong_page_is_replaced(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "50 (page 3)"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._materials(),
+            message="According to the uploaded PDF, how many conversions "
+                    "per ad set per week to exit the learning phase?",
+        )
+        self.assertIn("Source: Meta Ads note (page 13).", answer)
+        self.assertNotIn("page 3", answer)
+
+    def test_formula_from_matching_page_is_cited(self):
+        from .provider import _parse_reply
+
+        question = "According to uploaded PDF what is the ad auction total value formula?"
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "Total Value = "
+            "(Bid x Estimated Action Rate) + Ad Quality"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data={"study_materials": [{
+                "title": "Meta Ads note",
+                "excerpts": [
+                    {"page": 3, "text": "The workshop agenda."},
+                    {
+                        "page": 12,
+                        "text": "Ad auction total value formula: Total Value = "
+                                "(Bid x Estimated Action Rate) + Ad Quality",
+                    },
+                ],
+            }]},
+            message=question,
+        )
+        self.assertIn("Source: Meta Ads note (page 12).", answer)
+
+    def test_presenter_and_facilitator_are_verified_from_first_pdf_page(self):
+        from io import BytesIO
+        from reportlab.pdfgen import canvas
+        from .material_retrieval import pdf_excerpts
+        from .provider import _parse_reply
+
+        output = BytesIO()
+        pdf = canvas.Canvas(output)
+        pdf.drawString(40, 750, "Facebook Ads Manager for beginners")
+        pdf.drawString(40, 720, "Presenter: Alex Duffield")
+        pdf.drawString(40, 690, "Facilitator: Haydn Corrodus")
+        pdf.save()
+
+        class File:
+            name = "teacher-reference.pdf"
+
+            @property
+            def size(self):
+                return len(output.getvalue())
+
+            def open(self, mode):
+                return BytesIO(output.getvalue())
+
+        class Document:
+            file = File()
+
+        question = (
+            "According to the uploaded PDF, who are the presenter "
+            "and facilitator named on the first slide?"
+        )
+        excerpts = pdf_excerpts(Document(), question)
+        self.assertTrue(excerpts)
+        self.assertEqual(excerpts[0]["page"], 1)
+
+        data = {"study_materials": [{
+            "title": "Facebook Ads Manager for beginners",
+            "excerpts": excerpts,
+        }]}
+        answer = _parse_reply(
+            '{"allowed": true, "answer": "Alex Duffield and Haydn Corrodus"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=data, message=question,
+        )
+        self.assertIn("Alex Duffield", answer)
+        self.assertIn("Haydn Corrodus", answer)
+        self.assertIn(
+            "Source: Facebook Ads Manager for beginners (page 1).",
+            answer,
+        )
+
+    def test_no_false_document_citation_for_general_or_dashboard_questions(self):
+        from .provider import _parse_reply
+
+        general = _parse_reply(
+            '{"allowed": true, "answer": "50"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._materials(),
+            message="How many conversions does Meta recommend?",
+        )
+        self.assertEqual(general, "50")
+
+        dashboard = _parse_reply(
+            '{"allowed": true, "answer": "50"}',
+            mode="dashboard", subject=None,
+            data=self._materials(),
+            message="According to the uploaded PDF what is the count?",
+        )
+        self.assertEqual(dashboard, "50")
+
+    def test_off_topic_refusal_does_not_get_pdf_citation(self):
+        from .provider import _parse_reply
+
+        answer = _parse_reply(
+            '{"allowed": false, "answer": "Not in scope"}',
+            mode="tutor", subject={"name": "Meta Ads"},
+            data=self._materials(),
+            message="Teach me advanced organic chemistry",
+        )
+        self.assertIn("I can only help with Meta Ads", answer)
+        self.assertNotIn("Source:", answer)
+
+
 class OllamaProviderTests(TestCase):
     @override_settings(
         AI_ASSISTANT_PROVIDER="ollama",
