@@ -1064,8 +1064,7 @@ class VerifiedDocumentCitationTests(TestCase):
 
         question = "According to uploaded PDF what is the ad auction total value formula?"
         answer = _parse_reply(
-            '{"allowed": true, "answer": "Total Value = "
-            "(Bid x Estimated Action Rate) + Ad Quality"}',
+            '{"allowed": true, "answer": "Total Value = (Bid x Estimated Action Rate) + Ad Quality"}',
             mode="tutor", subject={"name": "Meta Ads"},
             data={"study_materials": [{
                 "title": "Meta Ads note",
