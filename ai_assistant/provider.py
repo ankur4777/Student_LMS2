@@ -6,11 +6,14 @@ chat view before any provider sees student information.
 
 import json
 import logging
+import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from django.conf import settings
+
+from .material_retrieval import excerpt_relevance
 
 logger = logging.getLogger(__name__)
 
@@ -63,24 +66,48 @@ def _fetch_json(*, url, payload, timeout, headers=None, provider_name):
 
 
 def _source_fallback(data, message):
-    """Quote authorized PDF evidence when a small model rejects an in-scope query."""
-    if not isinstance(data, dict) or not any(
-        word in message.lower()
-        for word in ("pdf", "document", "uploaded", "notes", "material")
+    """Provide relevant authorized source evidence if a small model refuses."""
+    if not isinstance(data, dict) or not re.search(
+        r"\\b(pdf|document|uploaded|notes|material)\\b", message.lower()
     ):
         return None
+
+    candidates = []
     for material in data.get("study_materials", []):
         for excerpt in material.get("excerpts", []):
             source = excerpt.get("text", "").strip()
-            if source:
-                return (
-                    f"From your teacher's uploaded material "
-                    f"'{material['title']}' (page {excerpt['page']}): "
-                    f"{source[:1000]}\n\n"
-                    "This is a PDF excerpt, not a verified full-document answer."
-                )
-    return None
+            score = excerpt_relevance(message, source)
+            if score >= 6:  # Require multiple matching topic words or a phrase.
+                candidates.append((score, material["title"], excerpt["page"], source))
 
+    if not candidates:
+        # Do not dump an unrelated page or claim to know an unread PDF.
+        return None
+
+    _, title, page, source = max(candidates, key=lambda row: row[0])
+    evidence = source[:650]
+    if re.search(r"\\b(how many|how much|number of)\\b", message.lower()):
+        # For a quantity question, prioritize a number beside the matching
+        # topic words (e.g. "50 conversions per ad set per week"), not an
+        # unrelated number elsewhere on the same page.
+        numeric = []
+        for match in re.finditer(r"\\b\\d+(?:[.,]\\d+)?\\b", source):
+            span = source[
+                max(0, match.start() - 85):
+                min(len(source), match.end() + 115)
+            ]
+            numeric.append((excerpt_relevance(message, span), span))
+        if numeric:
+            numeric.sort(key=lambda row: row[0], reverse=True)
+            if numeric[0][0] >= 6:
+                evidence = numeric[0][1].strip()
+
+    return (
+        f"According to the uploaded material '{title}' (page {page}): "
+        f"{evidence}\\n\\n"
+        "This is quoted source evidence; the AI did not independently "
+        "verify a full-document answer."
+    )
 
 def _parse_reply(content, *, mode, subject, data=None, message=""):
     try:
