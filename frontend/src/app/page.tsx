@@ -202,6 +202,28 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="sl-section sl-section-white" id="become-a-tutor">
+        <div className="sl-container sl-split">
+          <div className="sl-split-copy">
+            <span className="sl-label">Teach with us</span>
+            <h2>Passionate about helping students learn?</h2>
+            <p>Share your teaching background and subjects through our existing tutor application form. We'll review your interest and contact you if there is a suitable opportunity.</p>
+            <div className="sl-actions">
+              <SiteButton href="/get-started#teach-with-us">Apply to teach</SiteButton>
+              <SiteButton href="/teacher/login" outline>Teacher Login</SiteButton>
+            </div>
+          </div>
+          <div className="sl-media-frame">
+            <Image
+              src="/teacher-dashboard.webp"
+              alt="Teacher Portal dashboard preview showing academic tools"
+              fill
+              sizes="(max-width: 760px) 100vw, 50vw"
+            />
+          </div>
+        </div>
+      </section>
+
       <section className="sl-section sl-section-soft">
         <div className="sl-container sl-faq-layout">
           <SectionHeading
