@@ -177,7 +177,8 @@
 .sl-site .lms-landing-tutor-fields textarea {min-height:115px;resize:vertical}
 .sl-site .lms-landing-tutor-consent {display:flex;align-items:flex-start;gap:12px;font-size:12px;color:var(--sl-muted);margin:22px 0;line-height:1.65}
 .sl-site .lms-landing-tutor-consent input {width:18px;height:18px;margin-top:0;accent-color:var(--sl-red);flex:none}
-.sl-site .lms-landing-tutor-submit {width:100%;cursor:pointer}
+.sl-site .lms-landing-tutor-submit {display:flex;align-items:center;justify-content:center;gap:12px;width:100%;min-height:50px;padding:12px 22px;border:1px solid var(--sl-red);border-radius:11px;background:var(--sl-red);color:#fff;font-size:14px;font-weight:800;cursor:pointer;transition:background .2s}
+.sl-site .lms-landing-tutor-submit:hover:not(:disabled) {background:var(--sl-red-dark)}
 .sl-site .lms-landing-tutor-submit:disabled {opacity:.6;cursor:wait}
 .sl-site .lms-landing-tutor-feedback {padding:12px;border:1px solid #e5e8ec;border-radius:9px;margin:0 0 15px;font-size:13px}
 .sl-site .lms-landing-tutor-feedback.is-success {color:#116a42;background:#eff9f2}
