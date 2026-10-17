@@ -83,6 +83,11 @@ const menuSections: MenuSection[] = [
         icon: "attendance",
       },
       {
+        label: "Leave Approvals",
+        href: "/college-admin/leave-requests",
+        icon: "calendar",
+      },
+      {
         label: "Assignments",
         href: "/college-admin/assignments",
         icon: "assignments",
