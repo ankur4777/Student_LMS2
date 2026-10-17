@@ -251,7 +251,7 @@ export default function Home() {
             <a href="#features">Features</a>
             <a href="#portals">Portals</a>
             <a href="#dashboards">Dashboards</a>
-            <a href="#become-a-tutor">Teach With Us</a>
+            <Link href="/tutor-hiring">Tutor Hiring</Link>
             <a href="#contact">Get Started</a>
           </nav>
           <a className="lms-landing-button lms-landing-button-small" href="#portals">
@@ -485,6 +485,9 @@ export default function Home() {
               Share your qualifications, subjects and teaching experience through the application form.
               Our team can review your details and reach out if there is a suitable opportunity.
             </p>
+            <Link href="/tutor-hiring" className="lms-landing-inline-link">
+              Learn about tutor opportunities <Icon name="arrow" size={17} />
+            </Link>
             <div className="lms-landing-tutor-benefits">
               <div>
                 <span className="lms-landing-tutor-benefit-icon"><Icon name="book" size={22} /></span>
@@ -577,7 +580,7 @@ export default function Home() {
             <a href="#top">Home</a>
             <a href="#features">Features</a>
             <a href="#portals">Portals</a>
-            <a href="#become-a-tutor">Teach With Us</a>
+            <Link href="/tutor-hiring">Tutor Hiring</Link>
             <a href="#faq">FAQs</a>
           </nav>
         </div>
