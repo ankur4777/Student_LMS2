@@ -32,6 +32,7 @@ const navSections: TeacherNavSection[] = [
       { label: "My Classes", href: "/teacher/classes", icon: "classes" },
       { label: "Recordings", href: "/teacher/recordings", icon: "recordings" },
       { label: "Attendance", href: "/teacher/attendance", icon: "attendance" },
+      { label: "Leave Requests", href: "/teacher/leave-requests", icon: "calendar" },
       { label: "Assignments", href: "/teacher/assignments", icon: "assignments" },
     ],
   },
