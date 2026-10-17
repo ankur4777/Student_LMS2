@@ -1,0 +1,234 @@
+/* Scoped public fee structure page. Does not affect authenticated LMS fees. */
+.lms-fees {
+  --fees-red: #ef3f43;
+  --fees-red-deep: #d92939;
+  --fees-navy: #17243d;
+  --fees-muted: #66748b;
+  --fees-border: #e9edf4;
+  --fees-surface: #fff;
+  background: #fff;
+  min-height: 100vh;
+  color: var(--fees-navy);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.65;
+  overflow: hidden;
+}
+.lms-fees *, .lms-fees *::before, .lms-fees *::after { box-sizing: border-box; }
+.lms-fees h1, .lms-fees h2, .lms-fees h3, .lms-fees p { margin: 0; }
+.lms-fees a { text-decoration: none; }
+.lms-fees a:focus-visible,
+.lms-fees select:focus-visible { outline: 3px solid #f4a1a7; outline-offset: 3px; }
+.lms-fees-container { width: min(1190px, calc(100% - 64px)); margin: 0 auto; }
+
+.lms-fees-header {
+  background: #fff;
+  border-bottom: 1px solid #eef0f4;
+  position: relative;
+  z-index: 2;
+}
+.lms-fees-header-inner {
+  min-height: 83px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+}
+.lms-fees-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  white-space: nowrap;
+  color: var(--fees-navy);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -.055em;
+}
+.lms-fees-brand:hover { color: var(--fees-navy); }
+.lms-fees-brand strong { color: var(--fees-red-deep); }
+.lms-fees-brand-icon { display: grid; place-items: center; font-size: 26px; width: 42px; height: 42px; }
+.lms-fees-header-links { display: flex; align-items: center; gap: 25px; }
+.lms-fees-header-links a { color: #536078; font-size: 13px; font-weight: 750; }
+.lms-fees-header-links a:hover { color: var(--fees-red-deep); }
+.lms-fees-header-links .lms-fees-header-action {
+  min-height: 42px; display: inline-flex; align-items: center; gap: 11px;
+  color: #fff; border-radius: 9px; background: var(--fees-red);
+  padding: 10px 17px;
+}
+.lms-fees-header-links .lms-fees-header-action:hover { color: #fff; background: var(--fees-red-deep); }
+
+.lms-fees-hero {
+  padding: 66px 0 75px;
+  background: radial-gradient(circle at 97% 25%, #ffe8e7, transparent 34%),
+    linear-gradient(120deg, #fffdfc 16%, #fff5f3 100%);
+}
+.lms-fees-hero-grid {
+  display: grid;
+  grid-template-columns: 1.1fr .9fr;
+  align-items: center;
+  gap: 62px;
+}
+.lms-fees-hero-copy { max-width: 680px; }
+.lms-fees-eyebrow,
+.lms-fees-section-eyebrow {
+  display: inline-block;
+  color: var(--fees-red-deep);
+  font-size: 11px;
+  letter-spacing: .13em;
+  font-weight: 820;
+}
+.lms-fees-eyebrow {
+  padding: 9px 12px;
+  border-radius: 40px;
+  background: #fff1f1;
+  border: 1px solid #f9dcde;
+}
+.lms-fees-hero-copy h1 {
+  margin: 20px 0 22px;
+  font-size: clamp(43px, 4.9vw, 65px);
+  font-weight: 830;
+  letter-spacing: -.055em;
+  line-height: 1.12;
+  max-width: 690px;
+}
+.lms-fees-hero-copy h1 span { color: var(--fees-red-deep); }
+.lms-fees-hero-copy > p { max-width: 520px; font-size: 17px; color: #56647e; line-height: 1.8; }
+.lms-fees-hero-note { display: flex; align-items: center; gap: 11px; margin-top: 24px; color: #64738b; font-size: 13px; font-weight: 650; }
+.lms-fees-hero-note > span { color: #16835f; background: #eaf8f1; width: 23px; height: 23px; display: grid; place-items: center; border-radius: 50%; font-weight: 900; }
+.lms-fees-hero-side { position: relative; min-height: 305px; display: grid; place-items: center; }
+.lms-fees-hero-circle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(315px, 85%);
+  aspect-ratio: 1;
+  background: linear-gradient(145deg, #ffc2b7, #f18d96);
+  border-radius: 48% 52% 50% 50%;
+  transform: rotate(-10deg);
+  box-shadow: 0 28px 55px #da59642c;
+}
+.lms-fees-hero-circle::after {
+  content: "";
+  position: absolute;
+  inset: 22px;
+  border: 2px dashed #ffffff88;
+  border-radius: 50%;
+}
+.lms-fees-hero-illustration { font-size: clamp(70px, 10vw, 126px); transform: rotate(10deg); filter: drop-shadow(0 10px 7px #a14b493d); }
+.lms-fees-floating { position: absolute; display: flex; align-items: center; gap: 10px; padding: 13px 18px; border-radius: 14px; background: #fff; font-size: 13px; font-weight: 800; color: var(--fees-navy); box-shadow: 0 20px 43px #18264424; white-space: nowrap; }
+.lms-fees-floating-top { top: 19%; left: -10px; transform: rotate(-4deg); }
+.lms-fees-floating-bottom { right: -8px; bottom: 14%; transform: rotate(3deg); }
+.lms-fees-floating span { color: #208657; font-size: 21px; }
+
+.lms-fees-content { padding-top: 65px; padding-bottom: 85px; }
+.lms-fees-region-panel {
+  display: grid; grid-template-columns: 1fr minmax(230px, 320px); align-items: center;
+  gap: 26px; padding: 32px 36px; border: 1px solid var(--fees-border);
+  border-radius: 21px; background: #fff; box-shadow: 0 15px 42px #202c480c;
+}
+.lms-fees-region-intro h2 { margin: 8px 0 7px; font-size: clamp(25px, 2.55vw, 35px); font-weight: 790; letter-spacing: -.04em; }
+.lms-fees-region-intro p { color: var(--fees-muted); font-size: 14px; }
+.lms-fees-select-wrap label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 760; color: #35425e; }
+.lms-fees-native-select { position: relative; }
+.lms-fees-native-select::after {
+  position: absolute; content: ""; pointer-events: none; right: 20px; top: 50%;
+  width: 9px; height: 9px; border-right: 2px solid #57657b; border-bottom: 2px solid #57657b;
+  transform: translateY(-75%) rotate(45deg);
+}
+.lms-fees-native-select select {
+  width: 100%; appearance: none; min-height: 54px; padding: 12px 45px 12px 16px;
+  border: 1px solid #d9dfeb; border-radius: 11px; background: #fff;
+  color: #24344f; font: inherit; font-size: 15px; font-weight: 700;
+  cursor: pointer;
+}
+.lms-fees-native-select select:hover { border-color: #efa9ac; }
+
+.lms-fees-summary {
+  display: flex; align-items: center; gap: 22px;
+  margin-top: 45px; margin-bottom: 25px;
+}
+.lms-fees-summary-icon { display: grid; place-items: center; width: 78px; height: 78px; flex: none; font-size: 37px; border-radius: 20px; background: #fff0f0; }
+.lms-fees-summary h2 { margin: 4px 0 8px; font-size: clamp(27px, 2.65vw, 37px); font-weight: 810; letter-spacing: -.045em; }
+.lms-fees-summary p { font-size: 14px; color: var(--fees-muted); max-width: 660px; }
+.lms-fees-currency-tag { display: grid; gap: 1px; justify-items: center; margin-left: auto; background: #f2f5fa; padding: 12px 19px; border-radius: 13px; color: #7b879c; font-size: 11px; font-weight: 720; }
+.lms-fees-currency-tag strong { color: var(--fees-navy); font-size: 20px; letter-spacing: .025em; }
+
+.lms-fees-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.lms-fees-card {
+  position: relative; display: flex; flex-direction: column; min-height: 306px;
+  padding: 32px 27px 26px; background: #fff; border: 1px solid var(--fees-border);
+  border-radius: 19px; box-shadow: 0 14px 33px #2333500a;
+}
+.lms-fees-card:hover { border-color: #f6c1c1; }
+.lms-fees-card-index { position: absolute; top: 25px; right: 26px; font-size: 12px; color: #9ba6b7; font-weight: 740; }
+.lms-fees-card-icon { display: grid; place-items: center; width: 55px; height: 55px; background: #fff0f0; border-radius: 14px; color: #df4350; font-size: 26px; font-weight: 780; }
+.lms-fees-card:nth-child(2) .lms-fees-card-icon { background: #eaf3ff; color: #427ac0; }
+.lms-fees-card:nth-child(3) .lms-fees-card-icon { background: #eaf8f0; color: #22865d; }
+.lms-fees-card h3 { margin: 20px 0 10px; font-size: 19px; font-weight: 800; letter-spacing: -.025em; }
+.lms-fees-card > p { color: var(--fees-muted); font-size: 13.5px; line-height: 1.8; }
+.lms-fees-card-bottom { margin-top: auto; padding-top: 23px; display: grid; gap: 5px; }
+.lms-fees-amount { color: var(--fees-navy); font-size: 23px; font-weight: 830; letter-spacing: -.035em; }
+.lms-fees-billing { color: #8190a4; font-size: 12px; }
+
+.lms-fees-info { display: flex; align-items: flex-start; gap: 15px; padding: 22px 24px; margin-top: 24px; background: #fff8f4; border: 1px solid #f7dfd8; border-radius: 13px; }
+.lms-fees-info-icon { display: grid; place-items: center; flex: none; height: 26px; width: 26px; border-radius: 50%; background: #ffdfd9; color: #a8493c; font-weight: 900; font-size: 15px; }
+.lms-fees-info strong { font-size: 14px; font-weight: 800; }
+.lms-fees-info p { margin-top: 4px; font-size: 13px; color: #715d60; line-height: 1.8; }
+
+.lms-fees-bottom { padding: 55px 0 65px; background: #f8f9fc; border-top: 1px solid #edf0f5; }
+.lms-fees-bottom-grid { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 55px; }
+.lms-fees-bottom h2 { font-size: clamp(28px, 3vw, 39px); font-weight: 820; letter-spacing: -.04em; margin: 8px 0 12px; }
+.lms-fees-bottom p { color: var(--fees-muted); font-size: 14px; line-height: 1.8; max-width: 680px; }
+.lms-fees-bottom-actions { display: flex; flex-direction: column; gap: 10px; min-width: 220px; }
+.lms-fees-button { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 19px; min-height: 50px; border-radius: 10px; background: var(--fees-red); color: #fff; font-weight: 790; font-size: 13px; }
+.lms-fees-button:hover { background: var(--fees-red-deep); color: #fff; }
+.lms-fees-button-outline { border: 1px solid #dae0ec; background: #fff; color: var(--fees-navy); }
+.lms-fees-button-outline:hover { background: #fff1f1; color: var(--fees-red-deep); }
+.lms-fees-footer { padding: 24px 0; background: #17243d; color: #c5cfdf; font-size: 12px; }
+.lms-fees-footer .lms-fees-container { display: flex; justify-content: space-between; gap: 22px; }
+
+@media (max-width: 950px) {
+  .lms-fees-hero-grid { gap: 28px; }
+  .lms-fees-hero-copy h1 { font-size: clamp(39px, 4.6vw, 55px); }
+  .lms-fees-floating { font-size: 11px; }
+  .lms-fees-cards { gap: 12px; }
+  .lms-fees-card { padding: 27px 20px 22px; }
+}
+@media (max-width: 760px) {
+  .lms-fees-container { width: min(100% - 36px, 680px); }
+  .lms-fees-hero { padding: 50px 0 60px; }
+  .lms-fees-hero-grid { grid-template-columns: 1fr; }
+  .lms-fees-hero-copy h1 { font-size: clamp(40px, 7.8vw, 56px); }
+  .lms-fees-hero-side { min-height: 240px; }
+  .lms-fees-hero-circle { width: 235px; }
+  .lms-fees-floating-top { left: 8%; }
+  .lms-fees-floating-bottom { right: 4%; }
+  .lms-fees-region-panel { grid-template-columns: 1fr; gap: 23px; padding: 26px; }
+  .lms-fees-content { padding-top: 45px; padding-bottom: 60px; }
+  .lms-fees-cards { grid-template-columns: 1fr; }
+  .lms-fees-card { min-height: 225px; padding: 25px; }
+  .lms-fees-summary { flex-wrap: wrap; gap: 15px; }
+  .lms-fees-currency-tag { margin-left: 0; }
+  .lms-fees-bottom-grid { grid-template-columns: 1fr; gap: 26px; }
+  .lms-fees-bottom-actions { flex-direction: row; flex-wrap: wrap; }
+  .lms-fees-footer .lms-fees-container { flex-direction: column; gap: 5px; }
+}
+@media (max-width: 430px) {
+  .lms-fees-container { width: calc(100% - 30px); }
+  .lms-fees-header-inner { min-height: 69px; }
+  .lms-fees-brand { font-size: 18px; }
+  .lms-fees-brand-icon { width: 33px; height: 33px; font-size: 22px; }
+  .lms-fees-header-links { gap: 10px; }
+  .lms-fees-header-links .lms-fees-header-action { padding: 8px 10px; font-size: 11px; }
+  .lms-fees-header-links > a:first-child { display: none; }
+  .lms-fees-hero-copy h1 { font-size: 39px; }
+  .lms-fees-hero-side { min-height: 190px; }
+  .lms-fees-hero-circle { width: 185px; }
+  .lms-fees-floating { padding: 9px 12px; font-size: 10px; }
+  .lms-fees-summary-icon { width: 62px; height: 62px; font-size: 30px; }
+  .lms-fees-summary { align-items: flex-start; }
+  .lms-fees-currency-tag { width: 100%; justify-items: start; }
+  .lms-fees-bottom-actions { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lms-fees *, .lms-fees *::before, .lms-fees *::after { transition-duration: .01ms !important; }
+}
