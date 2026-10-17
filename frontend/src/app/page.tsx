@@ -249,6 +249,7 @@ export default function Home() {
           <nav className="lms-landing-nav-links" aria-label="Main navigation">
             <a href="#top">Home</a>
             <a href="#features">Features</a>
+            <Link href="/fee-structure">Fee Structure</Link>
             <a href="#portals">Portals</a>
             <a href="#dashboards">Dashboards</a>
             <a href="#become-a-tutor">Teach With Us</a>
@@ -576,6 +577,7 @@ export default function Home() {
           <nav aria-label="Footer navigation">
             <a href="#top">Home</a>
             <a href="#features">Features</a>
+            <Link href="/fee-structure">Fee Structure</Link>
             <a href="#portals">Portals</a>
             <a href="#become-a-tutor">Teach With Us</a>
             <a href="#faq">FAQs</a>
