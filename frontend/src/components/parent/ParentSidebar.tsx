@@ -63,6 +63,11 @@ const navSections: ParentNavSection[] = [
         featureKey: "attendance",
       },
       {
+        label: "Leave Requests",
+        href: "/parent/leave-requests",
+        icon: "calendar",
+      },
+      {
         label: "Assignments",
         href: "/parent/assignments",
         icon: "assignments",
