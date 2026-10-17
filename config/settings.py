@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'notices',
     'currency',
     'ai_assistant',
+    'leave_requests',
 ]
 
 MIDDLEWARE = [
