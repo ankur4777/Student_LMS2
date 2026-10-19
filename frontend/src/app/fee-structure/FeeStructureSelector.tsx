@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { countryFees, formatFee, type FeeCountry } from "./fee-data";
+import { publicContact } from "@/lib/publicContact";
 
 const countryOptions: { value: FeeCountry; label: string }[] = [
   { value: "CA", label: "Canada (CAD)" },
@@ -166,9 +167,14 @@ export default function FeeStructureSelector() {
       </main>
 
       <footer className="lms-fees-footer">
-        <div className="lms-fees-container">
+        <div className="lms-fees-container lms-fees-footer-content">
           <span>© {new Date().getFullYear()} Student LMS.</span>
-          <span>Online tutoring rates are separate from each institution's LMS billing records.</span>
+          <div className="lms-fees-footer-contacts" aria-label="Contact information">
+            <a href={publicContact.phoneHref}>{publicContact.phoneDisplay}</a>
+            <a href={publicContact.emailHref}>{publicContact.email}</a>
+            <span>{publicContact.address}</span>
+          </div>
+          <span className="lms-fees-footer-disclaimer">Online tutoring rates are separate from each institution&apos;s LMS billing records.</span>
         </div>
       </footer>
     </div>
