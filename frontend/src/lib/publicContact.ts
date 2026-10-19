@@ -1,4 +1,4 @@
-/** Official public Student LMS contact information supplied by the business. */
+/** Official MySLS public contact information supplied by the business. */
 export const publicContact = {
   phoneDisplay: "+1 (604) 834-0062",
   phoneHref: "tel:+16048340062",
