@@ -255,3 +255,100 @@
   .lms-landing .lms-services-menu summary .bi,
   .lms-landing .lms-services-dropdown .lms-services-dropdown-item {transition:none}
 }
+
+
+/* Tutor hiring: homepage teaser only. The full functional form lives on /tutor-hiring. */
+.lms-landing .lms-home-hiring-card {
+  min-width:0;
+  border:1px solid #f4dadb;
+  border-radius:23px;
+  background:linear-gradient(160deg,#fff 10%,#fff8f7 100%);
+  box-shadow:0 22px 54px #27304b12;
+  padding:clamp(24px,3.4vw,42px);
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+.lms-landing .lms-home-hiring-illustration {
+  width:100%;
+  height:145px;
+  position:relative;
+  display:grid;
+  place-items:center;
+  border-radius:17px;
+  background:radial-gradient(circle at 70% 32%,#fff0e3 0,transparent 34%),linear-gradient(110deg,#fff0f1,#fce0df);
+  margin-bottom:28px;
+}
+.lms-landing .lms-home-hiring-icon {
+  width:96px;
+  height:96px;
+  display:grid;
+  place-items:center;
+  border-radius:25px;
+  background:#fff;
+  color:#d83246;
+  box-shadow:0 14px 30px #d6384730;
+}
+.lms-landing .lms-home-hiring-decoration {
+  position:absolute;
+  display:grid;
+  place-items:center;
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  background:#fff;
+  color:#d73549;
+  box-shadow:0 9px 20px #9d4b5820;
+}
+.lms-landing .lms-home-hiring-decoration.is-one {top:25px;left:21%}
+.lms-landing .lms-home-hiring-decoration.is-two {bottom:22px;right:20%}
+.lms-landing .lms-home-hiring-card h3 {
+  font-size:clamp(24px,2.6vw,33px);
+  line-height:1.23;
+  font-weight:815;
+  color:#23324b;
+  letter-spacing:-.04em;
+  margin:13px 0 11px;
+}
+.lms-landing .lms-home-hiring-card > p {
+  font-size:14px;
+  line-height:1.77;
+  color:#66758a;
+  margin:0;
+}
+.lms-landing .lms-home-hiring-highlights {
+  display:grid;
+  gap:11px;
+  margin:22px 0 25px;
+}
+.lms-landing .lms-home-hiring-highlights span {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  color:#3e526b;
+  font-size:13px;
+  font-weight:700;
+}
+.lms-landing .lms-home-hiring-highlights i {color:#159667}
+.lms-landing .lms-home-hiring-apply-link {width:100%;justify-content:center}
+.lms-landing .lms-home-hiring-note {
+  margin-top:13px;
+  font-size:11px;
+  line-height:1.6;
+  color:#8590a1;
+  text-align:center;
+  align-self:center;
+}
+/* Make the existing Tutor Hiring menu more discoverable. */
+.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring {
+  color:#cf3043;
+  font-weight:780;
+  display:inline-flex;
+  gap:6px;
+  align-items:center;
+}
+.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring:hover {color:#a91d30}
+@media(max-width:640px){
+  .lms-landing .lms-home-hiring-card {padding:22px}
+  .lms-landing .lms-home-hiring-illustration {height:124px}
+}
