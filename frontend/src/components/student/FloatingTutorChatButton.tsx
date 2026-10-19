@@ -16,23 +16,23 @@ async function readStudentApiJson(response: Response) {
   if (!contentType.includes("json")) {
     if (response.status >= 500) {
       throw new Error(
-        `The Student LMS server returned HTTP ${response.status}. Check the Django terminal. If chat history was just added, run 'python manage.py migrate' against your local database.`
+        `The MySLS server returned HTTP ${response.status}. Check the Django terminal. If chat history was just added, run 'python manage.py migrate' against your local database.`
       );
     }
     if (response.status === 404) {
       throw new Error(
-        "The Student LMS API endpoint was not found (HTTP 404). Verify NEXT_PUBLIC_API_BASE_URL and that the Django server is running."
+        "The MySLS API endpoint was not found (HTTP 404). Verify NEXT_PUBLIC_API_BASE_URL and that the Django server is running."
       );
     }
     throw new Error(
-      `The Student LMS returned an unexpected response (HTTP ${response.status}). Check the API URL and Django terminal.`
+      `The MySLS returned an unexpected response (HTTP ${response.status}). Check the API URL and Django terminal.`
     );
   }
   try {
     return await response.json();
   } catch {
     throw new Error(
-      `The Student LMS API returned invalid JSON (HTTP ${response.status}). Check the Django server log.`
+      `The MySLS API returned invalid JSON (HTTP ${response.status}). Check the Django server log.`
     );
   }
 }
