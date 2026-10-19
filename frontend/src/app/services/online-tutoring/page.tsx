@@ -207,9 +207,14 @@ export default function OnlineTutoringPage() {
                 </div>
               </article>
             </div>
-            <Link className="lms-landing-button" href="/#contact">
-              Ask about your subject <i className="bi bi-arrow-right" aria-hidden="true" />
-            </Link>
+            <div className="lms-service-actions">
+              <Link className="lms-landing-button" href="/#contact">
+                Ask about your subject <i className="bi bi-arrow-right" aria-hidden="true" />
+              </Link>
+              <Link className="lms-landing-button lms-landing-button-outline" href="/fee-structure">
+                View Fee Structure <i className="bi bi-arrow-right" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
           <div className="lms-service-subject-panel">
             <span className="lms-service-card-eyebrow">GRADES 11–12 · SUBJECT EXAMPLES</span>
