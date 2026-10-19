@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import TutorApplicationForm from "@/components/TutorApplicationForm";
+import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 
 import "../home.css";
+import "../home-updates.css";
 import "./tutor-hiring.css";
 
 export const metadata: Metadata = {
@@ -124,26 +126,7 @@ function Icon({ name, size = 24 }: { name: string; size?: number }) {
 export default function TutorHiringPage() {
   return (
     <main className="lms-landing lms-hiring" id="top">
-      <header className="lms-landing-header">
-        <div className="lms-landing-container lms-landing-nav">
-          <Link href="/" className="lms-landing-brand" aria-label="Student LMS homepage">
-            <span className="lms-landing-brand-symbol">
-              <Icon name="bi-mortarboard-fill" size={27} />
-            </span>
-            <span>Student <strong>LMS</strong></span>
-          </Link>
-          <nav className="lms-landing-nav-links" aria-label="Tutor hiring navigation">
-            <Link href="/">Home</Link>
-            <a href="#why-teach">Why Teach With Us</a>
-            <a href="#requirements">Who Can Apply</a>
-            <a href="#how-it-works">How It Works</a>
-            <a href="#faq">FAQs</a>
-          </nav>
-          <a href="#apply" className="lms-landing-button lms-landing-button-small">
-            Apply to Teach <Icon name="bi-arrow-up-right" size={15} />
-          </a>
-        </div>
-      </header>
+      <MarketingHeader />
 
       <section className="lms-hiring-hero" aria-labelledby="hiring-title">
         <div className="lms-landing-container lms-hiring-hero-grid">
@@ -348,28 +331,7 @@ export default function TutorHiringPage() {
         </div>
       </section>
 
-      <footer className="lms-landing-footer">
-        <div className="lms-landing-container lms-landing-footer-inner">
-          <div>
-            <Link href="/" className="lms-landing-brand">
-              <span className="lms-landing-brand-symbol"><Icon name="bi-mortarboard-fill" size={23} /></span>
-              <span>Student <strong>LMS</strong></span>
-            </Link>
-            <p>Making everyday education more connected, organized and accessible.</p>
-          </div>
-          <nav aria-label="Footer navigation">
-            <Link href="/">Home</Link>
-            <a href="#why-teach">Why Teach With Us</a>
-            <a href="#how-it-works">How It Works</a>
-            <a href="#apply">Apply to Teach</a>
-            <a href="#faq">FAQs</a>
-          </nav>
-        </div>
-        <div className="lms-landing-container lms-landing-footer-bottom">
-          <span>© {new Date().getFullYear()} Student LMS. All rights reserved.</span>
-          <span>Designed &amp; Developed by <strong>Shabdd Innovations</strong></span>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }
