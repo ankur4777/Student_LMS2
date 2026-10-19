@@ -94,7 +94,7 @@ const questions = [
   {
     question: "How do I apply to become a tutor?",
     answer:
-      "Complete the application form on this page with your contact details, subjects, qualification, experience and a short introduction. The form sends your application to the existing Student LMS application service.",
+      "Complete the online tutor application with your contact details, subjects, qualifications, experience and a short introduction. Our recruitment team will review your information.",
   },
   {
     question: "Do I need previous teaching experience?",
@@ -104,7 +104,7 @@ const questions = [
   {
     question: "Which subjects can I apply to teach?",
     answer:
-      "Describe the subjects and student levels you are qualified and interested in teaching. The examples on this page are illustrative and do not represent a list of confirmed open positions.",
+      "You can apply for subjects you are qualified to teach, such as Mathematics, Science, English or Computer Science. Please include the student levels you prefer in your application.",
   },
   {
     question: "Will submitting this form create my Teacher Portal account?",
@@ -114,7 +114,7 @@ const questions = [
   {
     question: "When will I hear back?",
     answer:
-      "Response timing depends on the team and whether a suitable opportunity is available. We cannot promise a fixed response time or that every applicant will be contacted.",
+      "Our team reviews submitted applications and contacts candidates whose skills match current teaching requirements. Response times depend on available opportunities.",
   },
 ];
 
@@ -137,16 +137,16 @@ export default function TutorHiringPage() {
         <div className="lms-landing-container lms-hiring-hero-grid">
           <div className="lms-hiring-hero-text">
             <span className="lms-hiring-pill">
-              <Icon name="bi-stars" size={16} /> TEACH WITH STUDENT LMS
+              <Icon name="bi-stars" size={16} /> TUTOR OPPORTUNITIES AT MYSLS
             </span>
             <h1 id="hiring-title">
-              Inspire students.
-              <span> Teach what you love.</span>
+              Become an online tutor.
+              <span> Help students succeed.</span>
             </h1>
             <p className="lms-hiring-hero-lead">
-              Great learning starts with educators who care. Share your subject
-              knowledge, teaching experience and passion for helping students
-              grow. We&apos;d love to learn more about you.
+              Apply to teach online with ShabddLearningSolution (MySLS).
+              Share your qualifications, subject expertise and experience
+              to be considered for one-to-one and group tutoring opportunities.
             </p>
             <div className="lms-hiring-hero-actions">
               <a href="#apply" className="lms-landing-button">
@@ -227,7 +227,7 @@ export default function TutorHiringPage() {
               <div className="lms-hiring-chip-list">
                 {subjects.map((subject) => <span key={subject}>{subject}</span>)}
               </div>
-              <small>These are examples, not advertisements for confirmed vacancies.</small>
+              <small>Teaching opportunities depend on subject demand and available positions.</small>
             </div>
             <a href="#apply" className="lms-hiring-text-link">
               Share your teaching background <Icon name="bi-arrow-right" size={16} />
@@ -252,7 +252,7 @@ export default function TutorHiringPage() {
           <div className="lms-hiring-heading is-centered">
             <span className="lms-landing-eyebrow">A STRAIGHTFORWARD APPLICATION</span>
             <h2 id="hiring-steps-heading">How the application process works</h2>
-            <p>Getting started is simple. Here&apos;s what happens after you share your details.</p>
+            <p>Send your online tutor application, share your teaching experience and let our team review your profile.</p>
           </div>
           <div className="lms-hiring-steps">
             {steps.map((step) => (
@@ -270,7 +270,7 @@ export default function TutorHiringPage() {
         <div className="lms-landing-container lms-hiring-apply-grid">
           <div className="lms-hiring-apply-copy">
             <span className="lms-landing-eyebrow">YOUR NEXT STEP</span>
-            <h2 id="hiring-apply-heading">Ready to share your teaching journey?</h2>
+            <h2 id="hiring-apply-heading">Apply to teach online with MySLS</h2>
             <p>
               Tell us about your background and the subjects you enjoy teaching.
               Our team can review your application and contact you if a suitable
@@ -304,7 +304,7 @@ export default function TutorHiringPage() {
           <div className="lms-hiring-heading">
             <span className="lms-landing-eyebrow">FREQUENTLY ASKED QUESTIONS</span>
             <h2 id="hiring-faq-heading">Have questions about applying?</h2>
-            <p>Find answers to common questions before you submit your details.</p>
+            <p>Learn what to include in your application and how our tutor recruitment process works.</p>
             <a href="#apply" className="lms-hiring-text-link">
               Go to application form <Icon name="bi-arrow-right" size={16} />
             </a>
