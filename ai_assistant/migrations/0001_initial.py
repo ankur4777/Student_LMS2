@@ -1,4 +1,4 @@
-# Generated for Student LMS AI Tutor conversation persistence.
+# Original migration for MySLS AI Tutor conversation persistence.
 import uuid
 
 import django.db.models.deletion
