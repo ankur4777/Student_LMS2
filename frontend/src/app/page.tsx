@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ContactInquiryForm from "@/components/ContactInquiryForm";
+import { publicContact } from "@/lib/publicContact";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 import StudentAITutorShowcase from "@/components/StudentAITutorShowcase";
 
@@ -647,6 +648,21 @@ export default function Home() {
               <div><span className="lms-landing-icon is-green"><Icon name="video" size={22} /></span><div><h3>For students &amp; families</h3><p>Enquire about subjects, levels and online class formats.</p></div></div>
               <div><span className="lms-landing-icon is-purple"><Icon name="shield" size={22} /></span><div><h3>Private, direct enquiry</h3><p>Your message goes to our team rather than being posted publicly.</p></div></div>
             </div>
+            <address className="lms-home-contact-details" aria-label="Our contact information">
+              <h3>Get in touch directly</h3>
+              <a href={publicContact.phoneHref}>
+                <span className="lms-home-contact-detail-icon"><i className="bi bi-telephone" aria-hidden="true" /></span>
+                <span><strong>Call us</strong>{publicContact.phoneDisplay}</span>
+              </a>
+              <a href={publicContact.emailHref}>
+                <span className="lms-home-contact-detail-icon"><i className="bi bi-envelope" aria-hidden="true" /></span>
+                <span><strong>Email us</strong>{publicContact.email}</span>
+              </a>
+              <div>
+                <span className="lms-home-contact-detail-icon"><i className="bi bi-geo-alt" aria-hidden="true" /></span>
+                <span><strong>Our address</strong>{publicContact.address}</span>
+              </div>
+            </address>
           </div>
           <ContactInquiryForm />
         </div>
