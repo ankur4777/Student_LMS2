@@ -1,6 +1,7 @@
 import Link from "next/link";
 import TutorApplicationForm from "@/components/TutorApplicationForm";
 import ContactInquiryForm from "@/components/ContactInquiryForm";
+import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 
 import "./home.css";
 import "./home-updates.css";
@@ -240,29 +241,7 @@ function DashboardPreview({ portal }: { portal: Portal }) {
 export default function Home() {
   return (
     <main className="lms-landing" id="top">
-      <header className="lms-landing-header">
-        <div className="lms-landing-container lms-landing-nav">
-          <Link href="/" className="lms-landing-brand" aria-label="Student LMS homepage">
-            <span className="lms-landing-brand-symbol">
-              <Icon name="cap" size={27} />
-            </span>
-            <span>Student <strong>LMS</strong></span>
-          </Link>
-          <nav className="lms-landing-nav-links" aria-label="Main navigation">
-            <a href="#top">Home</a>
-            <a href="#services">Our Services</a>
-            <a href="#features">LMS Features</a>
-            <a href="#why-choose-us">Why Choose Us</a>
-            <a href="#testimonials">Testimonials</a>
-            <a href="#portals">Portals</a>
-            <a href="#become-a-tutor">Teach With Us</a>
-            <a href="#contact">Contact Us</a>
-          </nav>
-          <a className="lms-landing-button lms-landing-button-small" href="#portals">
-            Login <Icon name="arrow" size={16} />
-          </a>
-        </div>
-      </header>
+      <MarketingHeader home />
 
       <section className="lms-landing-hero">
         <div className="lms-landing-container lms-landing-hero-layout">
@@ -320,7 +299,7 @@ export default function Home() {
               <h3>A complete LMS for your institution</h3>
               <p>Use Student LMS as your education-management product. Organize admissions and enrollments, academic classes, teachers, attendance, exams, learning resources and fee administration through secure role-based portals.</p>
               <div className="lms-home-service-tags"><span>College Management</span><span>School Management</span><span>Four Dedicated Portals</span></div>
-              <a className="lms-landing-inline-link" href="#contact">Enquire about our LMS <Icon name="arrow" size={17} /></a>
+              <Link className="lms-landing-inline-link" href="/services/school-college-lms">Explore School &amp; College LMS <Icon name="arrow" size={17} /></Link>
             </article>
             <article className="lms-home-service-card">
               <span className="lms-home-service-label">FOR STUDENTS &amp; FAMILIES</span>
@@ -328,7 +307,7 @@ export default function Home() {
               <h3>Live online tutoring that fits your needs</h3>
               <p>Choose one-to-one attention or learn in a group. Ask us about homework help, tuition classes and assignment support in relevant grades and subjects, including Physics, Chemistry, Mathematics and Biology.</p>
               <div className="lms-home-service-tags"><span>One-to-One Classes</span><span>Group Classes</span><span>Homework &amp; Assignment Help</span></div>
-              <a className="lms-landing-inline-link" href="#contact">Ask about online classes <Icon name="arrow" size={17} /></a>
+              <Link className="lms-landing-inline-link" href="/services/online-tutoring">Explore Online Tutoring <Icon name="arrow" size={17} /></Link>
             </article>
           </div>
         </div>
@@ -642,34 +621,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="lms-landing-footer">
-        <div className="lms-landing-container lms-landing-footer-inner">
-          <div>
-            <Link href="/" className="lms-landing-brand">
-              <span className="lms-landing-brand-symbol"><Icon name="cap" size={23} /></span>
-              <span>Student <strong>LMS</strong></span>
-            </Link>
-            <p>Education management software for schools and colleges, plus live one-to-one and group online tutoring for students.</p>
-          </div>
-          <nav aria-label="Footer navigation">
-            <a href="#top">Home</a>
-            <a href="#services">Our Services</a>
-            <a href="#features">LMS Features</a>
-            <a href="#portals">Portal Logins</a>
-            <a href="#why-choose-us">Why Choose Us</a>
-          </nav>
-          <nav aria-label="Support & contact links">
-            <a href="#testimonials">Testimonials</a>
-            <a href="#faq">FAQs</a>
-            <a href="#become-a-tutor">Teach With Us</a>
-            <a href="#contact">Contact Us</a>
-          </nav>
-        </div>
-        <div className="lms-landing-container lms-landing-footer-bottom">
-          <span>© {new Date().getFullYear()} Student LMS. All rights reserved.</span>
-          <span>Designed &amp; Developed by <strong>Shabdd Innovations</strong></span>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }
