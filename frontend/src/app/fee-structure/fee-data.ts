@@ -2,7 +2,7 @@
  * Public ONLINE TUTORING rates provided by the product owner (CAD).
  *
  * These rates are distinct from each school's/college's own LMS fee management.
- * Australian prices and Grade 11–12 group rates were NOT supplied.
+ * Australian prices were NOT supplied.
  * Important source ambiguity: Canadian Grade 7–10 one-to-one is listed
  * as $30 standard but $35 after the first 100 students. Preserve both
  * figures as provided and visibly flag for confirmation, not silently fix.
@@ -76,12 +76,12 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
       {
         key: "ca-g11-12-group",
         title: "Grades 11–12 · Group",
-        description: "Group tuition for Grades 11 and 12; hourly prices have not yet been supplied.",
-        amount: null,
-        discountedAmount: null,
+        description: "Group online tuition and learning support for Grades 11 and 12.",
+        amount: 45,
+        discountedAmount: 35,
         discountLabel: null,
         afterPromotionAmount: null,
-        billingLabel: "Hourly rate to be confirmed",
+        billingLabel: "Hourly rate · Discount eligibility not specified",
       },
     ],
   },
