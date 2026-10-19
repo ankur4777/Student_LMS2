@@ -339,15 +339,22 @@
   text-align:center;
   align-self:center;
 }
-/* Make the existing Tutor Hiring menu more discoverable. */
+/* Tutor Hiring has the normal navbar color until its own page is active. */
 .lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring {
-  color:#cf3043;
-  font-weight:780;
+  color:#56647c;
+  font-weight:600;
   display:inline-flex;
   gap:6px;
   align-items:center;
 }
-.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring:hover {color:#a91d30}
+.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring:hover,
+.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring:focus-visible,
+.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring.is-active {
+  color:var(--home-red-deep);
+}
+.lms-landing .lms-landing-nav-links .lms-nav-tutor-hiring.is-active {
+  font-weight:780;
+}
 @media(max-width:640px){
   .lms-landing .lms-home-hiring-card {padding:22px}
   .lms-landing .lms-home-hiring-illustration {height:124px}
