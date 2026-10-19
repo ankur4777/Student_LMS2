@@ -238,7 +238,7 @@ EMAIL_USE_SSL = os.environ.get(
 ).lower() in {'1', 'true', 'yes', 'on'}
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL',
-    EMAIL_HOST_USER or 'noreply@student-lms.local',
+    EMAIL_HOST_USER or 'info@shabddlearningsolution.com',
 )
 # Recipient for public tutor applications (required to enable email delivery).
 TUTOR_APPLICATION_NOTIFICATION_EMAIL = os.environ.get(
