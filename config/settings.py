@@ -245,6 +245,13 @@ TUTOR_APPLICATION_NOTIFICATION_EMAIL = os.environ.get(
     '',
 )
 
+# Recipient for the public LMS/tutoring contact form. Configure in deployment
+# environment; do not send user enquiries to a guessed address.
+CONTACT_INQUIRY_NOTIFICATION_EMAIL = os.environ.get(
+    'CONTACT_INQUIRY_NOTIFICATION_EMAIL',
+    '',
+)
+
 PASSWORD_RESET_FRONTEND_URL = os.environ.get(
     'PASSWORD_RESET_FRONTEND_URL',
     'http://localhost:3000',
@@ -267,6 +274,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'tutor_application': '5/hour',
+        'contact_inquiry': '5/hour',
         'student_ai_chat': '20/hour',
     },
     'DEFAULT_AUTHENTICATION_CLASSES': (
