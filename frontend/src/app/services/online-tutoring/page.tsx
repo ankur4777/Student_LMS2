@@ -107,8 +107,8 @@ export default function OnlineTutoringPage() {
         <div className="lms-landing-container lms-service-hero-grid">
           <div className="lms-service-hero-content">
             <span className="lms-service-kicker"><i className="bi bi-camera-video" aria-hidden="true"/> ONLINE TUTORING</span>
-            <h1>Personal attention. <span>Better learning together.</span></h1>
-            <p>Online one-to-one sessions and group classes designed to support students with tuition, homework, assignments and subject understanding.</p>
+            <h1>One-to-one online tutoring <span>and interactive group classes.</span></h1>
+            <p>ShabddLearningSolution (MySLS) provides online tuition for students in Grades 7–12, with individual lessons, group classes, homework help and assignment guidance in Mathematics and Science subjects.</p>
             <div className="lms-service-actions">
               <Link className="lms-landing-button" href="/#contact">
                 Enquire about online classes <i className="bi bi-arrow-right" aria-hidden="true" />
@@ -147,8 +147,8 @@ export default function OnlineTutoringPage() {
         <div className="lms-landing-container">
           <div className="lms-landing-section-heading is-centered">
             <span className="lms-landing-eyebrow">CHOOSE YOUR CLASS FORMAT</span>
-            <h2>A learning experience that fits the student.</h2>
-            <p>Some students want one-to-one guidance; others enjoy working with a group. Explore both online class formats.</p>
+            <h2>Choose one-to-one tutoring or group tuition</h2>
+            <p>Build subject confidence through individual attention or learn alongside other students in a structured online group class.</p>
           </div>
           <div className="lms-service-two-col">
             {tutoringFormats.map((item) => (
@@ -178,8 +178,8 @@ export default function OnlineTutoringPage() {
         <div className="lms-landing-container">
           <div className="lms-landing-section-heading is-centered">
             <span className="lms-landing-eyebrow">WHAT WE HELP WITH</span>
-            <h2>Support for learning inside and outside class.</h2>
-            <p>Tuition, homework and assignments all need clear explanations and opportunities to practise.</p>
+            <h2>Online tuition, homework help and assignment guidance</h2>
+            <p>Get additional explanations, guided practice and subject support for schoolwork and exam preparation.</p>
           </div>
           <div className="lms-service-feature-grid">
             {helpAreas.map((area) => (
@@ -231,7 +231,7 @@ export default function OnlineTutoringPage() {
             </div>
             <div className="lms-service-small-note">
               <i className="bi bi-info-circle" aria-hidden="true" />
-              Subject and tutor availability are confirmed before booking. These are example subjects, not a guaranteed class timetable.
+              Ask our team about available tutors, class times and subjects for your grade.
             </div>
           </div>
         </div>
@@ -274,8 +274,8 @@ export default function OnlineTutoringPage() {
       <section className="lms-landing-container lms-service-cta">
         <div>
           <span className="lms-landing-eyebrow">LET'S TALK ABOUT LEARNING</span>
-          <h2>Find the right online class for your needs.</h2>
-          <p>Ask about one-to-one lessons, group tutoring, subjects and scheduling in Canada or Australia.</p>
+          <h2>Ready to explore online tuition with MySLS?</h2>
+          <p>Contact our Surrey-based team about one-to-one sessions, group classes, subjects and tutoring options for Canada or Australia.</p>
         </div>
         <Link className="lms-landing-button" href="/#contact">
           Contact our team <i className="bi bi-arrow-right" aria-hidden="true" />
