@@ -218,10 +218,10 @@ class PasswordResetRequestAPIView(APIView):
 
             try:
                 send_mail(
-                    subject="Reset your Student LMS password",
+                    subject="Reset your MySLS password",
                     message=(
                         f"Hello {user.get_full_name().strip() or user.username},\n\n"
-                        "We received a request to reset your Student LMS password.\n"
+                        "We received a request to reset your MySLS password.\n"
                         f"Open this link to set a new password:\n{reset_url}\n\n"
                         "If you did not request this change, you can ignore this email."
                     ),
