@@ -406,30 +406,53 @@
   background:#ffecee;
   font-size:16px;
 }
+/* The shared footer is white; contacts need dark, readable text (not pale
+   colors intended for a dark footer). Applies on every public marketing page. */
 .lms-landing .lms-footer-contact {
   display:grid;
-  gap:12px;
-  margin-top:21px;
+  gap:14px;
+  margin-top:22px;
+  margin-left:39px;
   font-style:normal;
-  max-width:380px;
+  max-width:390px;
+  min-width:0;
 }
 .lms-landing .lms-footer-contact > a,
 .lms-landing .lms-footer-contact-address {
   display:flex;
   align-items:flex-start;
-  gap:11px;
-  color:#d4dbe6;
+  gap:12px;
+  color:#34465e;
   text-decoration:none;
-  font-size:12px;
-  line-height:1.75;
+  font-size:14px;
+  font-weight:600;
+  line-height:1.65;
+  overflow-wrap:anywhere;
+  word-break:normal;
+}
+.lms-landing .lms-footer-contact > a span,
+.lms-landing .lms-footer-contact-address span {
+  min-width:0;
   overflow-wrap:anywhere;
 }
-.lms-landing .lms-footer-contact > a:hover {color:#fff}
+.lms-landing .lms-footer-contact > a:hover {
+  color:#c52e42;
+  text-decoration:underline;
+  text-underline-offset:3px;
+}
+.lms-landing .lms-footer-contact > a:focus-visible {
+  outline:2px solid #e5394b;
+  outline-offset:3px;
+  border-radius:3px;
+}
 .lms-landing .lms-footer-contact .bi {
   flex:none;
   margin-top:3px;
-  font-size:15px;
-  color:#ff8c98;
+  font-size:17px;
+  color:#df3447;
+}
+@media(max-width:640px) {
+  .lms-landing .lms-footer-contact {margin-left:0}
 }
 @media(max-width:640px){
   .lms-landing .lms-home-contact-details {padding:19px}
