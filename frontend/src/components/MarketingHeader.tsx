@@ -2,6 +2,7 @@ import Link from "next/link";
 import { publicContact } from "@/lib/publicContact";
 import { siteBrand } from "@/lib/siteBrand";
 import ServicesDropdown from "@/components/ServicesDropdown";
+import TutorHiringNavLink from "@/components/TutorHiringNavLink";
 
 const ROOT = "/";
 
@@ -21,9 +22,7 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
         <nav className="lms-landing-nav-links" aria-label="Main navigation">
           <Link href={home ? "#top" : ROOT}>Home</Link>
           <ServicesDropdown />
-          <Link href="/tutor-hiring" className="lms-nav-tutor-hiring">
-            <i className="bi bi-person-plus" aria-hidden="true" /> Tutor Hiring
-          </Link>
+          <TutorHiringNavLink />
           <Link href="/fee-structure">Fee Structure</Link>
           <Link href={href("features")}>LMS Features</Link>
           <Link href={href("portals")}>Portals</Link>
