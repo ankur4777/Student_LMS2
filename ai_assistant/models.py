@@ -1,4 +1,4 @@
-"""Private AI chat records scoped to a Student LMS student and enrollment."""
+"""Private AI chat records scoped to a MySLS student and enrollment."""
 
 import uuid
 
