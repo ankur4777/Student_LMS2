@@ -295,7 +295,7 @@ class NotificationEmailTests(APITestCase):
             mail.outbox[0].to,
             ["student@example.com"],
         )
-        self.assertIn("Student LMS - Test Notification", mail.outbox[0].subject)
+        self.assertIn("MySLS - Test Notification", mail.outbox[0].subject)
         self.assertIn(
             "https://lms.example.com/student/dashboard",
             mail.outbox[0].body,
