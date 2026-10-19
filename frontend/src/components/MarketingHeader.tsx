@@ -45,8 +45,10 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
               </Link>
             </div>
           </details>
+          <Link href="/tutor-hiring" className="lms-nav-tutor-hiring">
+            <i className="bi bi-person-plus" aria-hidden="true" /> Tutor Hiring
+          </Link>
           <Link href="/fee-structure">Fee Structure</Link>
-          <Link href="/tutor-hiring">Tutor Hiring</Link>
           <Link href={href("features")}>LMS Features</Link>
           <Link href={href("portals")}>Portals</Link>
           <Link href={href("contact")}>Contact</Link>
