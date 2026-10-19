@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { publicContact } from "@/lib/publicContact";
+import { siteBrand } from "@/lib/siteBrand";
 import ServicesDropdown from "@/components/ServicesDropdown";
 
 const ROOT = "/";
@@ -10,11 +11,11 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
   return (
     <header className="lms-landing-header">
       <div className="lms-landing-container lms-landing-nav">
-        <Link href="/" className="lms-landing-brand" aria-label="Student LMS homepage">
+        <Link href="/" className="lms-landing-brand" aria-label={`${siteBrand.fullName} homepage`}>
           <span className="lms-landing-brand-symbol">
             <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{fontSize:27}} />
           </span>
-          <span>Student <strong>LMS</strong></span>
+          <span><strong>{siteBrand.shortName}</strong></span>
         </Link>
 
         <nav className="lms-landing-nav-links" aria-label="Main navigation">
@@ -45,10 +46,10 @@ export function MarketingFooter() {
             <span className="lms-landing-brand-symbol">
               <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{fontSize:23}} />
             </span>
-            <span>Student <strong>LMS</strong></span>
+            <span><strong>{siteBrand.shortName}</strong></span>
           </Link>
-          <p>Education management software for schools and colleges, plus live one-to-one and group online tutoring for students.</p>
-          <address className="lms-footer-contact" aria-label="Student LMS contact details">
+          <p><strong>{siteBrand.name}</strong> offers school and college management software, one-to-one online tutoring and group classes for students.</p>
+          <address className="lms-footer-contact" aria-label={`${siteBrand.shortName} contact details`}>
             <a href={publicContact.phoneHref}>
               <i className="bi bi-telephone" aria-hidden="true" />
               <span>{publicContact.phoneDisplay}</span>
@@ -80,8 +81,8 @@ export function MarketingFooter() {
         </nav>
       </div>
       <div className="lms-landing-container lms-landing-footer-bottom">
-        <span>© {new Date().getFullYear()} Student LMS. All rights reserved.</span>
-        <span>Designed &amp; Developed by <strong>Shabdd Innovations</strong></span>
+        <span>© {new Date().getFullYear()} {siteBrand.fullName}. All rights reserved.</span>
+        <span>School &amp; College LMS · Online Tutoring</span>
       </div>
     </footer>
   );
