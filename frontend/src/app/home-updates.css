@@ -1,0 +1,257 @@
+/* Extension of the EXISTING Student LMS homepage. No portal dashboard overrides. */
+
+.lms-landing #services,
+.lms-landing #why-choose-us,
+.lms-landing #testimonials,
+.lms-landing #contact {scroll-margin-top:28px}
+
+.lms-landing .lms-home-services-section {
+  background:linear-gradient(180deg,#fff 0%,#fff8f7 100%);
+}
+.lms-landing .lms-home-services-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:23px;
+}
+.lms-landing .lms-home-service-card {
+  background:#fff;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  padding:35px;
+  border:1px solid #e7eaf1;
+  border-radius:21px;
+  box-shadow:0 16px 42px #1b30400c;
+}
+.lms-home-service-label {
+  display:inline-flex;
+  color:var(--home-red-deep);
+  font-size:11px;
+  font-weight:850;
+  letter-spacing:.12em;
+  margin-bottom:20px;
+}
+.lms-home-service-card .lms-landing-icon {height:59px;width:59px;border-radius:14px;margin-bottom:20px}
+.lms-home-service-card h3 {font-size:clamp(22px,2.3vw,28px);line-height:1.25;letter-spacing:-.035em;margin:0 0 13px;color:var(--home-dark)}
+.lms-home-service-card p {font-size:14px;line-height:1.85;color:var(--home-muted);margin:0}
+.lms-home-service-tags {display:flex;flex-wrap:wrap;gap:8px;margin:23px 0 25px}
+.lms-home-service-tags span {display:inline-flex;padding:7px 11px;border:1px solid #edf0f5;border-radius:999px;color:#5b687c;font-size:11px;font-weight:700;background:#f9fafc}
+.lms-home-service-card .lms-landing-inline-link {margin-top:auto}
+
+.lms-home-testimonials-section {background:#fffaf8}
+.lms-home-testimonial-grid {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:19px}
+.lms-home-testimonial-card {display:flex;flex-direction:column;min-width:0;padding:30px 26px 29px;background:#fff;border:1px solid #e8ebf2;border-radius:19px;box-shadow:0 15px 35px #1d2b4108}
+.lms-home-testimonial-icon {display:grid;place-items:center;width:49px;height:49px;border-radius:14px;color:#d83c4b;background:#fff0f1}
+.lms-home-testimonial-card:nth-child(2) .lms-home-testimonial-icon {color:#347ca3;background:#eaf4fa}
+.lms-home-testimonial-card:nth-child(3) .lms-home-testimonial-icon {color:#31845d;background:#eaf8f1}
+.lms-home-testimonial-label {font-size:10px;color:var(--home-red-deep);font-weight:850;letter-spacing:.11em;margin-top:22px}
+.lms-home-testimonial-card h3 {font-size:19px;font-weight:790;letter-spacing:-.02em;line-height:1.3;color:var(--home-dark);margin:9px 0 10px}
+.lms-home-testimonial-card p {font-size:13.5px;color:var(--home-muted);line-height:1.76;margin:0 0 24px}
+.lms-home-testimonial-pending {display:inline-flex;align-items:center;gap:7px;padding-top:17px;margin-top:auto;border-top:1px solid #f0f0f3;color:#8190a2;font-size:11px;font-weight:710}
+
+.lms-landing .lms-home-contact-section {background:#fff;padding-block:92px 104px}
+.lms-home-contact-layout {display:grid;grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);align-items:start;gap:clamp(38px,5.7vw,84px)}
+.lms-home-contact-copy {padding-top:30px;min-width:0}
+.lms-home-contact-copy h2 {font-size:clamp(32px,3.2vw,48px);line-height:1.18;letter-spacing:-.045em;font-weight:820;margin:14px 0 18px}
+.lms-home-contact-copy h2 span {color:var(--home-red-deep)}
+.lms-home-contact-copy > p {color:var(--home-muted);font-size:16px;line-height:1.82;margin:0}
+.lms-home-contact-points {margin-top:29px;display:grid;gap:21px}
+.lms-home-contact-points > div {display:flex;gap:14px;align-items:flex-start}
+.lms-home-contact-points .lms-landing-icon {height:44px;width:44px;flex:none;border-radius:12px}
+.lms-home-contact-points h3 {color:var(--home-dark);font-size:16px;letter-spacing:-.02em;font-weight:780;margin:0 0 5px}
+.lms-home-contact-points p {color:var(--home-muted);font-size:13px;line-height:1.75;margin:0}
+
+.lms-home-contact-form {position:relative;background:#fff;border:1px solid #e6eaf0;border-radius:21px;padding:clamp(24px,3vw,38px);box-shadow:0 19px 50px #1b304018;min-width:0}
+.lms-home-contact-heading {margin-bottom:25px}
+.lms-home-contact-heading h3 {font-size:27px;color:var(--home-dark);font-weight:800;letter-spacing:-.035em;margin:8px 0 6px}
+.lms-home-contact-heading p {font-size:13px;color:var(--home-muted);line-height:1.75;margin:0}
+.lms-home-contact-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px}
+.lms-home-contact-fields label {display:block;min-width:0;color:#37465e;font-size:12px;font-weight:750}
+.lms-home-contact-fields label > span[aria-hidden="true"] {color:#d62e41}
+.lms-home-contact-optional {font-weight:500;color:#8995a6}
+.lms-home-contact-fields .lms-home-contact-wide {grid-column:1/-1}
+.lms-home-contact-fields input,
+.lms-home-contact-fields select,
+.lms-home-contact-fields textarea {
+  display:block;width:100%;min-height:45px;margin-top:7px;padding:10px 12px;
+  border:1px solid #dbe0ea;border-radius:8px;background:#fff;color:#26354d;
+  font:inherit;font-size:13px;font-weight:500;transition:border-color .2s,box-shadow .2s
+}
+.lms-home-contact-fields input::placeholder,
+.lms-home-contact-fields textarea::placeholder {color:#a1aab9}
+.lms-home-contact-fields textarea {min-height:107px;resize:vertical;line-height:1.65}
+.lms-home-contact-fields input:focus,
+.lms-home-contact-fields select:focus,
+.lms-home-contact-fields textarea:focus {outline:0;border-color:#e84b5c;box-shadow:0 0 0 3px #ffecef}
+.lms-home-contact-honeypot {position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+.lms-home-contact-consent {display:flex;gap:12px;align-items:flex-start;margin:23px 0 21px;color:#677487;font-size:12px;line-height:1.65;cursor:pointer}
+.lms-home-contact-consent input {width:17px;height:17px;margin-top:1px;accent-color:#e94050;flex:none}
+.lms-home-contact-submit {width:100%;justify-content:center;cursor:pointer}
+.lms-home-contact-submit:disabled {opacity:.6;cursor:wait}
+.lms-home-contact-feedback {border-radius:8px;padding:12px 14px;margin-bottom:15px;font-size:12px;line-height:1.65;border:1px solid}
+.lms-home-contact-feedback.is-success {background:#ebf9f1;border-color:#b6e7c9;color:#1b754a}
+.lms-home-contact-feedback.is-error {background:#fff0f0;border-color:#efc1c7;color:#b5263a}
+.lms-home-contact-small {color:#8994a5;font-size:11px;line-height:1.7;margin:12px 0 0}
+
+/* Fuller existing footer: two grouped navigations plus original brand. */
+.lms-landing .lms-landing-footer-inner {align-items:start;display:grid;grid-template-columns:1.45fr 1fr .95fr;gap:32px;padding-block:42px 32px}
+.lms-landing .lms-landing-footer-inner > div p {max-width:330px;line-height:1.75}
+.lms-landing .lms-landing-footer-inner nav {display:flex;align-items:flex-start;flex-direction:column;gap:13px}
+.lms-landing .lms-landing-footer-inner nav a {font-size:13px}
+.lms-landing .lms-landing-nav-links {gap:clamp(10px,1vw,21px)}
+.lms-landing .lms-landing-nav-links a {font-size:12px}
+@media(max-width:1100px){
+  .lms-home-contact-layout {gap:34px}
+  .lms-home-service-card {padding:27px}
+}
+@media(max-width:850px){
+  .lms-home-contact-layout {grid-template-columns:1fr}
+  .lms-home-contact-copy {padding-top:0}
+  .lms-home-contact-form {max-width:760px;width:100%}
+  .lms-landing .lms-landing-footer-inner {grid-template-columns:1fr 1fr;gap:25px}
+  .lms-landing .lms-landing-footer-inner > div {grid-column:1/-1}
+  .lms-home-testimonial-grid {grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  .lms-home-services-grid,.lms-home-testimonial-grid {grid-template-columns:1fr}
+  .lms-home-service-card {padding:24px}
+  .lms-home-contact-fields {grid-template-columns:1fr}
+  .lms-home-contact-fields .lms-home-contact-wide {grid-column:1}
+  .lms-landing .lms-home-contact-section {padding-block:65px}
+  .lms-home-contact-copy h2 {font-size:clamp(30px,8vw,40px)}
+  .lms-home-contact-form {padding:22px 18px}
+  .lms-landing .lms-landing-footer-inner {grid-template-columns:1fr 1fr}
+}
+@media(max-width:390px){
+  .lms-landing .lms-landing-footer-inner {grid-template-columns:1fr}
+  .lms-landing .lms-landing-footer-inner > div {grid-column:1}
+}
+@media(prefers-reduced-motion:reduce){
+  .lms-landing .lms-home-contact-fields input,
+  .lms-landing .lms-home-contact-fields select,
+  .lms-landing .lms-home-contact-fields textarea {transition:none}
+}
+
+
+/* Accessible click/keyboard Services dropdown shared by homepage and service pages. */
+.lms-landing .lms-services-menu {
+  position:relative;
+  flex:0 0 auto;
+  color:#56647c;
+}
+.lms-landing .lms-services-menu summary {
+  display:flex;
+  align-items:center;
+  gap:7px;
+  cursor:pointer;
+  list-style:none;
+  color:#56647c;
+  font-size:12px;
+  font-weight:650;
+  white-space:nowrap;
+  user-select:none;
+}
+.lms-landing .lms-services-menu summary::-webkit-details-marker {display:none}
+.lms-landing .lms-services-menu summary .bi {font-size:11px;transition:transform .2s ease}
+.lms-landing .lms-services-menu[open] summary,
+.lms-landing .lms-services-menu summary:hover {color:var(--home-red-deep)}
+.lms-landing .lms-services-menu[open] summary .bi {transform:rotate(180deg)}
+.lms-landing .lms-services-dropdown {
+  position:absolute;
+  z-index:90;
+  top:calc(100% + 16px);
+  left:-34px;
+  width:min(365px,calc(100vw - 36px));
+  padding:18px;
+  background:#fff;
+  border:1px solid #e4e8f0;
+  border-radius:16px;
+  box-shadow:0 24px 55px #20314b24;
+}
+.lms-landing .lms-services-dropdown::before {
+  content:"";
+  position:absolute;
+  height:16px;
+  top:-16px;
+  right:0;
+  left:0;
+}
+.lms-landing .lms-services-dropdown-heading {
+  display:block;
+  font-size:10px;
+  font-weight:850;
+  color:#b34a55;
+  letter-spacing:.12em;
+  padding:2px 10px 13px;
+}
+.lms-landing .lms-services-dropdown .lms-services-dropdown-item {
+  display:flex;
+  align-items:center;
+  gap:13px;
+  padding:14px 12px;
+  color:#29384f;
+  border-radius:11px;
+  text-decoration:none;
+  transition:background .15s ease;
+}
+.lms-landing .lms-services-dropdown .lms-services-dropdown-item:hover,
+.lms-landing .lms-services-dropdown .lms-services-dropdown-item:focus-visible {background:#fff5f3}
+.lms-landing .lms-services-dropdown-icon {
+  width:41px;
+  height:41px;
+  border-radius:11px;
+  display:grid;
+  place-items:center;
+  flex:none;
+  background:#fff0ef;
+  color:#dc3b4c;
+  font-size:20px;
+}
+.lms-landing .lms-services-dropdown-icon.is-blue {background:#eaf2ff;color:#3c7dbd}
+.lms-landing .lms-services-dropdown-icon.is-coral {background:#fff0ef;color:#dc3b4c}
+.lms-landing .lms-services-dropdown-item > span:nth-child(2) {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  flex:1;
+}
+.lms-landing .lms-services-dropdown-item strong {
+  font-size:13px;
+  line-height:1.3;
+  color:#1b2c46;
+  font-weight:790;
+}
+.lms-landing .lms-services-dropdown-item small {
+  font-size:11px;
+  font-weight:550;
+  line-height:1.55;
+  color:#7c899d;
+}
+.lms-landing .lms-services-dropdown-item > .bi {color:#c84250;font-size:15px}
+@media(max-width:850px){
+  .lms-landing .lms-services-dropdown {left:0}
+}
+@media(max-width:640px){
+  /* Avoid the original horizontal scrolling navbar clipping an open submenu. */
+  .lms-landing .lms-landing-nav-links {
+    flex-wrap:wrap;
+    overflow:visible;
+    justify-content:center;
+    gap:13px 18px;
+  }
+  .lms-landing .lms-services-menu[open] {flex-basis:100%}
+  .lms-landing .lms-services-menu[open] > summary {justify-content:center}
+  .lms-landing .lms-services-dropdown {
+    position:static;
+    width:100%;
+    max-width:370px;
+    margin:12px auto 0;
+  }
+  .lms-landing .lms-services-dropdown::before {display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  .lms-landing .lms-services-menu summary .bi,
+  .lms-landing .lms-services-dropdown .lms-services-dropdown-item {transition:none}
+}

@@ -1,7 +1,10 @@
 import Link from "next/link";
 import TutorApplicationForm from "@/components/TutorApplicationForm";
+import ContactInquiryForm from "@/components/ContactInquiryForm";
+import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 
 import "./home.css";
+import "./home-updates.css";
 
 type HomeIcon =
   | "cap"
@@ -238,59 +241,38 @@ function DashboardPreview({ portal }: { portal: Portal }) {
 export default function Home() {
   return (
     <main className="lms-landing" id="top">
-      <header className="lms-landing-header">
-        <div className="lms-landing-container lms-landing-nav">
-          <Link href="/" className="lms-landing-brand" aria-label="Student LMS homepage">
-            <span className="lms-landing-brand-symbol">
-              <Icon name="cap" size={27} />
-            </span>
-            <span>Student <strong>LMS</strong></span>
-          </Link>
-          <nav className="lms-landing-nav-links" aria-label="Main navigation">
-            <a href="#top">Home</a>
-            <a href="#features">Features</a>
-            <a href="#portals">Portals</a>
-            <a href="#dashboards">Dashboards</a>
-            <a href="#become-a-tutor">Teach With Us</a>
-            <a href="#contact">Get Started</a>
-          </nav>
-          <a className="lms-landing-button lms-landing-button-small" href="#portals">
-            Login <Icon name="arrow" size={16} />
-          </a>
-        </div>
-      </header>
+      <MarketingHeader home />
 
       <section className="lms-landing-hero">
         <div className="lms-landing-container lms-landing-hero-layout">
           <div className="lms-landing-hero-copy">
             <span className="lms-landing-tag">
               <Icon name="sparkle" size={16} />
-              A connected learning experience
+              Education technology & online tutoring
             </span>
             <h1>
               One connected campus.
               <span> A brighter way to learn.</span>
             </h1>
             <p className="lms-landing-hero-lead">
-              Give every part of your institution a place to thrive.
-              Student LMS brings <strong>college administration, teaching, learning and parent communication</strong> into one thoughtfully connected platform.
+              <strong>Give schools and colleges their own LMS platform</strong> to manage students, teachers, classes, attendance, fees and academic records. We also provide <strong>online one-to-one and group tutoring</strong> for learners.
             </p>
             <p className="lms-landing-hero-support">
-              From classroom activities and online examinations to attendance, fee updates and recorded learning,
-              stay organized without losing sight of what matters: student progress.
+              Whether you're running an institution or looking for homework help, tuition classes or assignment support,
+              our services are built to make learning and administration easier.
             </p>
             <div className="lms-landing-hero-actions">
-              <a href="#portals" className="lms-landing-button">
-                Find your portal <Icon name="arrow" size={18} />
+              <a href="#services" className="lms-landing-button">
+                Explore our services <Icon name="arrow" size={18} />
               </a>
-              <a href="#features" className="lms-landing-button lms-landing-button-outline">
-                See what’s possible
+              <a href="#contact" className="lms-landing-button lms-landing-button-outline">
+                Talk to our team
               </a>
             </div>
             <div className="lms-landing-trust-notes">
-              <span><Icon name="check" size={16} /> Dedicated role-based portals</span>
-              <span><Icon name="check" size={16} /> Connected academic workflows</span>
-              <span><Icon name="check" size={16} /> Desktop &amp; mobile friendly</span>
+              <span><Icon name="check" size={16} /> LMS for schools &amp; colleges</span>
+              <span><Icon name="check" size={16} /> 1-to-1 &amp; group sessions</span>
+              <span><Icon name="check" size={16} /> Homework, tuition &amp; assignment help</span>
             </div>
           </div>
           <div className="lms-landing-hero-visual">
@@ -299,6 +281,34 @@ export default function Home() {
               role="img"
               aria-label="Student studying on a laptop at a sunlit campus with education graphics and books"
             />
+          </div>
+        </div>
+      </section>
+
+      <section className="lms-landing-section lms-home-services-section" id="services" aria-labelledby="lms-home-services-title">
+        <div className="lms-landing-container">
+          <div className="lms-landing-section-heading is-centered">
+            <span className="lms-landing-eyebrow">WHAT WE OFFER</span>
+            <h2 id="lms-home-services-title">Two ways to make education work better.</h2>
+            <p>We help institutions manage their academic operations, and we help individual learners grow with live online tutoring.</p>
+          </div>
+          <div className="lms-home-services-grid">
+            <article className="lms-home-service-card">
+              <span className="lms-home-service-label">FOR SCHOOLS &amp; COLLEGES</span>
+              <span className="lms-landing-icon is-blue"><Icon name="admin" size={29} /></span>
+              <h3>A complete LMS for your institution</h3>
+              <p>Use Student LMS as your education-management product. Organize admissions and enrollments, academic classes, teachers, attendance, exams, learning resources and fee administration through secure role-based portals.</p>
+              <div className="lms-home-service-tags"><span>College Management</span><span>School Management</span><span>Four Dedicated Portals</span></div>
+              <Link className="lms-landing-inline-link" href="/services/school-college-lms">Explore School &amp; College LMS <Icon name="arrow" size={17} /></Link>
+            </article>
+            <article className="lms-home-service-card">
+              <span className="lms-home-service-label">FOR STUDENTS &amp; FAMILIES</span>
+              <span className="lms-landing-icon is-coral"><Icon name="video" size={29} /></span>
+              <h3>Live online tutoring that fits your needs</h3>
+              <p>Choose one-to-one attention or learn in a group. Ask us about homework help, tuition classes and assignment support in relevant grades and subjects, including Physics, Chemistry, Mathematics and Biology.</p>
+              <div className="lms-home-service-tags"><span>One-to-One Classes</span><span>Group Classes</span><span>Homework &amp; Assignment Help</span></div>
+              <Link className="lms-landing-inline-link" href="/services/online-tutoring">Explore Online Tutoring <Icon name="arrow" size={17} /></Link>
+            </article>
           </div>
         </div>
       </section>
@@ -356,34 +366,35 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="lms-landing-section lms-landing-why-section">
+      <section className="lms-landing-section lms-landing-why-section" id="why-choose-us">
         <div className="lms-landing-container lms-landing-why-layout">
           <div className="lms-landing-why-copy">
-            <span className="lms-landing-eyebrow">BUILT FOR EVERY CAMPUS</span>
-            <h2>Spend less time switching tools. <span>More time moving forward.</span></h2>
+            <span className="lms-landing-eyebrow">WHY CHOOSE US</span>
+            <h2>One team for education technology <span>and personal learning.</span></h2>
             <p>
-              A connected campus needs more than separate pages for separate tasks.
-              Student LMS helps academic teams bring the everyday details of college life into a clearer, more manageable workflow.
+              We understand that institutions need reliable day-to-day management tools while
+              students often need more focused teaching time. Our two services support both needs.
             </p>
             <p>
-              Follow the relationships between classes, subjects, learners and teachers—while giving each person access to the information relevant to them.
+              From class administration to tailored one-to-one or group sessions, our approach
+              focuses on practical tools, clear communication and helpful learning support.
             </p>
-            <a className="lms-landing-inline-link" href="#how-it-works">
-              See how it works <Icon name="arrow" size={17} />
+            <a className="lms-landing-inline-link" href="#contact">
+              Let's talk about your needs <Icon name="arrow" size={17} />
             </a>
           </div>
           <div className="lms-landing-why-items">
             <div>
               <span className="lms-landing-icon is-blue"><Icon name="link" size={23} /></span>
-              <div><h3>Connected academic records</h3><p>Keep students, class enrollments, subjects and teacher information connected instead of repeating the same lookup across different pages.</p></div>
+              <div><h3>Built for schools and colleges</h3><p>Bring student records, fees, assessments, teachers and classes into a single platform with dedicated roles and access controls.</p></div>
             </div>
             <div>
               <span className="lms-landing-icon is-purple"><Icon name="lock" size={23} /></span>
-              <div><h3>Access for every role</h3><p>Role-specific dashboards and configurable class feature access help users focus on what they are authorized to use.</p></div>
+              <div><h3>Flexible tutoring formats</h3><p>Choose focused one-to-one support or interactive group online classes based on learning needs.</p></div>
             </div>
             <div>
               <span className="lms-landing-icon is-green"><Icon name="chart" size={23} /></span>
-              <div><h3>Clearer oversight</h3><p>Bring attendance, learning activities, fee information and results into a more complete academic picture.</p></div>
+              <div><h3>Support across the learning journey</h3><p>From homework and tuition to assignment support, we help learners find the kind of study help they need.</p></div>
             </div>
           </div>
         </div>
@@ -485,6 +496,9 @@ export default function Home() {
               Share your qualifications, subjects and teaching experience through the application form.
               Our team can review your details and reach out if there is a suitable opportunity.
             </p>
+            <Link href="/tutor-hiring" className="lms-landing-inline-link">
+              Learn about our Tutor Hiring process <Icon name="arrow" size={17} />
+            </Link>
             <div className="lms-landing-tutor-benefits">
               <div>
                 <span className="lms-landing-tutor-benefit-icon"><Icon name="book" size={22} /></span>
@@ -516,6 +530,40 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="lms-landing-section lms-home-testimonials-section" id="testimonials">
+        <div className="lms-landing-container">
+          <SectionTitle
+            eyebrow="TESTIMONIALS"
+            title="Learning is better when we listen."
+            description="We are preparing a space for genuine feedback from parents, educators and partner institutions. Verified testimonials will be added only with their permission."
+            centered
+          />
+          <div className="lms-home-testimonial-grid">
+            <article className="lms-home-testimonial-card">
+              <span className="lms-home-testimonial-icon"><Icon name="parent" size={23} /></span>
+              <span className="lms-home-testimonial-label">PARENTS &amp; STUDENTS</span>
+              <h3>Parent and student experiences</h3>
+              <p>Approved reviews of one-to-one and group tutoring will appear here.</p>
+              <span className="lms-home-testimonial-pending">Verified testimonial pending</span>
+            </article>
+            <article className="lms-home-testimonial-card">
+              <span className="lms-home-testimonial-icon"><Icon name="teacher" size={23} /></span>
+              <span className="lms-home-testimonial-label">TUTORS &amp; EDUCATORS</span>
+              <h3>Teacher perspectives</h3>
+              <p>We will share real experiences from educators once those reviews are available.</p>
+              <span className="lms-home-testimonial-pending">Verified testimonial pending</span>
+            </article>
+            <article className="lms-home-testimonial-card">
+              <span className="lms-home-testimonial-icon"><Icon name="admin" size={23} /></span>
+              <span className="lms-home-testimonial-label">SCHOOLS &amp; COLLEGES</span>
+              <h3>Institution feedback</h3>
+              <p>Approved feedback on managing education with our LMS will be featured here.</p>
+              <span className="lms-home-testimonial-pending">Verified testimonial pending</span>
+            </article>
+          </div>
+        </div>
+      </section>
+
       <section className="lms-landing-section lms-landing-faq-section" id="faq">
         <div className="lms-landing-container lms-landing-faq-layout">
           <div className="lms-landing-faq-intro">
@@ -524,6 +572,14 @@ export default function Home() {
             <p>Understand how the platform works, choose the right portal and make the most of the tools available to your institution.</p>
           </div>
           <div className="lms-landing-faq-list">
+            <details>
+              <summary>What services do you provide?</summary>
+              <p>We provide Student LMS software for schools and colleges to manage academic operations, plus live online one-to-one and group tutoring with homework, tuition and assignment support.</p>
+            </details>
+            <details>
+              <summary>Can I book one-to-one or group online classes?</summary>
+              <p>Yes. Use the contact form below to tell us the learner's grade, subjects and preferred one-to-one or group format so our team can respond with available options.</p>
+            </details>
             <details>
               <summary>What is Student LMS?</summary>
               <p>Student LMS brings key academic and administrative tools into one platform, with separate workspaces for college administrators, teachers, students and parents.</p>
@@ -552,40 +608,23 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="lms-landing-container lms-landing-cta" id="contact">
-        <div className="lms-landing-cta-icon"><Icon name="cap" size={38} /></div>
-        <div>
-          <span className="lms-landing-eyebrow">LET’S GET STARTED</span>
-          <h2>Your next step starts here.</h2>
-          <p>Whether you are preparing a class, following student progress or managing a college, find your dedicated workspace and continue with confidence. Need login details? Contact your college administration.</p>
+      <section className="lms-landing-section lms-home-contact-section" id="contact">
+        <div className="lms-landing-container lms-home-contact-layout">
+          <div className="lms-home-contact-copy">
+            <span className="lms-landing-eyebrow">CONTACT US</span>
+            <h2>Let's make learning <span>work better together.</span></h2>
+            <p>Looking for an LMS for your school or college? Interested in one-to-one lessons, group classes, homework help or assignment support? Send us a message and tell us what you need.</p>
+            <div className="lms-home-contact-points">
+              <div><span className="lms-landing-icon is-blue"><Icon name="admin" size={22} /></span><div><h3>For institutions</h3><p>Discuss LMS setup and management for your school or college.</p></div></div>
+              <div><span className="lms-landing-icon is-green"><Icon name="video" size={22} /></span><div><h3>For students &amp; families</h3><p>Enquire about subjects, levels and online class formats.</p></div></div>
+              <div><span className="lms-landing-icon is-purple"><Icon name="shield" size={22} /></span><div><h3>Private, direct enquiry</h3><p>Your message goes to our team rather than being posted publicly.</p></div></div>
+            </div>
+          </div>
+          <ContactInquiryForm />
         </div>
-        <a href="#portals" className="lms-landing-button">
-          Choose your portal <Icon name="arrow" size={18} />
-        </a>
       </section>
 
-      <footer className="lms-landing-footer">
-        <div className="lms-landing-container lms-landing-footer-inner">
-          <div>
-            <Link href="/" className="lms-landing-brand">
-              <span className="lms-landing-brand-symbol"><Icon name="cap" size={23} /></span>
-              <span>Student <strong>LMS</strong></span>
-            </Link>
-            <p>Making everyday education more connected, organized and accessible.</p>
-          </div>
-          <nav aria-label="Footer navigation">
-            <a href="#top">Home</a>
-            <a href="#features">Features</a>
-            <a href="#portals">Portals</a>
-            <a href="#become-a-tutor">Teach With Us</a>
-            <a href="#faq">FAQs</a>
-          </nav>
-        </div>
-        <div className="lms-landing-container lms-landing-footer-bottom">
-          <span>© {new Date().getFullYear()} Student LMS. All rights reserved.</span>
-          <span>Designed &amp; Developed by <strong>Shabdd Innovations</strong></span>
-        </div>
-      </footer>
+      <MarketingFooter />
     </main>
   );
 }

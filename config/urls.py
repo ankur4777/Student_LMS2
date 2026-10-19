@@ -24,6 +24,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 urlpatterns = [
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('api/ai-assistant/', include('ai_assistant.urls')),
+    path('api/leave-requests/', include('leave_requests.urls')),
     path('admin/', admin.site.urls),
 
     path(

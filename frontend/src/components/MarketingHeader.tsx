@@ -1,0 +1,97 @@
+import Link from "next/link";
+
+const ROOT = "/";
+
+export function MarketingHeader({ home = false }: { home?: boolean }) {
+  const href = (anchor: string) => home ? "#" + anchor : "/#" + anchor;
+
+  return (
+    <header className="lms-landing-header">
+      <div className="lms-landing-container lms-landing-nav">
+        <Link href="/" className="lms-landing-brand" aria-label="Student LMS homepage">
+          <span className="lms-landing-brand-symbol">
+            <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{fontSize:27}} />
+          </span>
+          <span>Student <strong>LMS</strong></span>
+        </Link>
+
+        <nav className="lms-landing-nav-links" aria-label="Main navigation">
+          <Link href={home ? "#top" : ROOT}>Home</Link>
+          <details className="lms-services-menu">
+            <summary aria-label="Services — open submenu">
+              Services <i className="bi bi-chevron-down" aria-hidden="true" />
+            </summary>
+            <div className="lms-services-dropdown">
+              <span className="lms-services-dropdown-heading">EXPLORE OUR SERVICES</span>
+              <Link href="/services/online-tutoring" className="lms-services-dropdown-item">
+                <span className="lms-services-dropdown-icon is-coral">
+                  <i className="bi bi-camera-video" aria-hidden="true" />
+                </span>
+                <span>
+                  <strong>Online Tutoring</strong>
+                  <small>One-to-one &amp; group online classes</small>
+                </span>
+                <i className="bi bi-arrow-up-right" aria-hidden="true" />
+              </Link>
+              <Link href="/services/school-college-lms" className="lms-services-dropdown-item">
+                <span className="lms-services-dropdown-icon is-blue">
+                  <i className="bi bi-buildings" aria-hidden="true" />
+                </span>
+                <span>
+                  <strong>School &amp; College LMS</strong>
+                  <small>Software for academic management</small>
+                </span>
+                <i className="bi bi-arrow-up-right" aria-hidden="true" />
+              </Link>
+            </div>
+          </details>
+          <Link href="/fee-structure">Fee Structure</Link>
+          <Link href="/tutor-hiring">Tutor Hiring</Link>
+          <Link href={href("features")}>LMS Features</Link>
+          <Link href={href("portals")}>Portals</Link>
+          <Link href={href("contact")}>Contact</Link>
+        </nav>
+        <Link href={href("portals")} className="lms-landing-button lms-landing-button-small">
+          Login <i className="bi bi-arrow-right" aria-hidden="true" />
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+export function MarketingFooter() {
+  return (
+    <footer className="lms-landing-footer">
+      <div className="lms-landing-container lms-landing-footer-inner">
+        <div>
+          <Link href="/" className="lms-landing-brand">
+            <span className="lms-landing-brand-symbol">
+              <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{fontSize:23}} />
+            </span>
+            <span>Student <strong>LMS</strong></span>
+          </Link>
+          <p>Education management software for schools and colleges, plus live one-to-one and group online tutoring for students.</p>
+        </div>
+        <nav aria-label="Service and platform links">
+          <Link href="/">Home</Link>
+          <Link href="/services/online-tutoring">Online Tutoring</Link>
+          <Link href="/services/school-college-lms">School &amp; College LMS</Link>
+          <Link href="/fee-structure">Fee Structure</Link>
+          <Link href="/#features">LMS Features</Link>
+          <Link href="/#portals">Portal Logins</Link>
+        </nav>
+        <nav aria-label="Information and contact links">
+          <Link href="/#why-choose-us">Why Choose Us</Link>
+          <Link href="/#testimonials">Testimonials</Link>
+          <Link href="/#faq">FAQs</Link>
+          <Link href="/tutor-hiring">Tutor Hiring</Link>
+          <Link href="/#contact">Contact Us</Link>
+        </nav>
+      </div>
+      <div className="lms-landing-container lms-landing-footer-bottom">
+        <span>© {new Date().getFullYear()} Student LMS. All rights reserved.</span>
+        <span>Designed &amp; Developed by <strong>Shabdd Innovations</strong></span>
+      </div>
+    </footer>
+  );
+}
