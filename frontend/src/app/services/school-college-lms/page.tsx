@@ -92,9 +92,9 @@ const portals = [
 
 const faqs = [
   {
-    question: "Who can use Student LMS?",
+    question: "Who can use MySLS?",
     answer:
-      "Student LMS is intended for schools and colleges looking for a connected way to manage academic operations. Staff, students and parents access dedicated portals according to their roles and permissions.",
+      "ShabddLearningSolution (MySLS) helps schools and colleges manage academic work in one place. College administrators, teachers, students and parents use separate portals with role-based access.",
   },
   {
     question: "Can a school or college manage its own students and teachers?",
@@ -109,7 +109,7 @@ const faqs = [
   {
     question: "How does AI Tutor work?",
     answer:
-      "Subject Tutor provides study assistance for enrolled subjects when enabled. It can use permitted excerpts from teacher-published PDFs. My Dashboard mode helps with supported LMS information. AI answers can be imperfect, and official institutional records remain authoritative.",
+      "Students can ask subject questions, use available teacher-published study materials and check permitted dashboard information when their institution enables AI Tutor. Teachers and official academic records remain the primary source of truth.",
   },
   {
     question: "How can our institution get started?",
@@ -129,11 +129,11 @@ export default function SchoolCollegeLMSPage() {
             <span className="lms-service-kicker">
               <i className="bi bi-buildings" aria-hidden="true" /> LMS FOR SCHOOLS &amp; COLLEGES
             </span>
-            <h1>Your institution. <span>One connected learning platform.</span></h1>
-            <p>Give your school or college a central place to organize students, teachers, academic classes, fee records, assessments and daily communication.</p>
+            <h1>School &amp; college management software <span>built for everyday education.</span></h1>
+            <p>MySLS is a learning management system for schools and colleges. Manage student records, teachers, attendance, fees, classes, online exams and learning resources with secure role-based access.</p>
             <div className="lms-service-actions">
               <Link className="lms-landing-button" href="/#contact">
-                Enquire about Student LMS <i className="bi bi-arrow-right" aria-hidden="true" />
+                Enquire about MySLS <i className="bi bi-arrow-right" aria-hidden="true" />
               </Link>
               <a href="#lms-modules" className="lms-landing-button lms-landing-button-outline">
                 Explore LMS features <i className="bi bi-arrow-down" aria-hidden="true" />
@@ -149,7 +149,7 @@ export default function SchoolCollegeLMSPage() {
             <div className="lms-service-hero-image lms-service-dashboard-image">
               <Image
                 src="/college-admin-dashboard.webp"
-                alt="Real Student LMS College Admin dashboard interface"
+                alt="MySLS school and college administration dashboard showing academic management tools"
                 fill priority sizes="(max-width: 850px) 100vw, 43vw"
               />
             </div>
@@ -168,7 +168,7 @@ export default function SchoolCollegeLMSPage() {
           <div className="lms-landing-section-heading is-centered">
             <span className="lms-landing-eyebrow">PLATFORM FEATURES</span>
             <h2>Academic management, all in one place.</h2>
-            <p>Student LMS supports the everyday work of an institution, from teaching to assessments and administrative records.</p>
+            <p>Manage your school's or college's academic operations in one platform, from class scheduling and student attendance to exams, fee tracking and parent updates.</p>
           </div>
           <div className="lms-service-feature-grid">
             {modules.map(item => (
@@ -216,11 +216,11 @@ export default function SchoolCollegeLMSPage() {
       <section className="lms-landing-section lms-service-white" id="connected-campus">
         <div className="lms-landing-container lms-service-split">
           <div className="lms-service-preview-frame">
-            <div className="lms-service-preview-bar" aria-hidden="true"><i /><i /><i /> <span>Student LMS</span></div>
+            <div className="lms-service-preview-bar" aria-hidden="true"><i /><i /><i /> <span>MySLS</span></div>
             <div className="lms-service-preview-image">
               <Image
                 src="/student-dashboard.webp"
-                alt="Real Student LMS student dashboard preview with academic tools"
+                alt="MySLS student portal dashboard with learning and attendance features"
                 fill sizes="(max-width: 850px) 100vw, 50vw"
               />
             </div>
@@ -274,7 +274,7 @@ export default function SchoolCollegeLMSPage() {
           <div>
             <span className="lms-landing-eyebrow">COMMON QUESTIONS</span>
             <h2>Considering an LMS for your institution?</h2>
-            <p>Get to know how Student LMS supports academic workflows and the people involved.</p>
+            <p>Learn how MySLS supports institutional workflows, teachers, students and families.</p>
             <Link href="/#contact" className="lms-landing-inline-link">
               Ask our team <i className="bi bi-arrow-right" aria-hidden="true" />
             </Link>
@@ -294,7 +294,7 @@ export default function SchoolCollegeLMSPage() {
         <div>
           <span className="lms-landing-eyebrow">FOR SCHOOLS &amp; COLLEGES</span>
           <h2>Let's talk about how your campus works.</h2>
-          <p>Share your institution's needs and learn how Student LMS could fit into your existing processes.</p>
+          <p>Tell us about your school or college, current challenges and the tools you need. Our team can discuss a suitable MySLS setup.</p>
         </div>
         <Link href="/#contact" className="lms-landing-button">
           Enquire about the LMS <i className="bi bi-arrow-right" aria-hidden="true" />
