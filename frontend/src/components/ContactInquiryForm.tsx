@@ -111,7 +111,7 @@ export default function ContactInquiryForm() {
       </div>
       <label className="lms-home-contact-consent">
         <input name="consent" type="checkbox" required />
-        <span>I agree that Student LMS may use my information to respond to this enquiry.</span>
+        <span>I agree that ShabddLearningSolution (MySLS) may use my information to respond to this enquiry.</span>
       </label>
       {feedback && (
         <p role="status" aria-live="polite" className={"lms-home-contact-feedback is-"+feedback.kind}>
