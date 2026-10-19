@@ -496,6 +496,9 @@ export default function Home() {
               Share your qualifications, subjects and teaching experience through the application form.
               Our team can review your details and reach out if there is a suitable opportunity.
             </p>
+            <Link href="/tutor-hiring" className="lms-landing-inline-link">
+              Learn about our Tutor Hiring process <Icon name="arrow" size={17} />
+            </Link>
             <div className="lms-landing-tutor-benefits">
               <div>
                 <span className="lms-landing-tutor-benefit-icon"><Icon name="book" size={22} /></span>
