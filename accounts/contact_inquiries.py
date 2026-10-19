@@ -1,4 +1,4 @@
-"""Public Student LMS service enquiries (not tenant/student records)."""
+"""Public MySLS service enquiries (not tenant/student records)."""
 
 import logging
 
@@ -84,7 +84,7 @@ class ContactInquiryAPIView(APIView):
             details["region"], details["region"]
         )
         body = "\n".join([
-            "New enquiry from Student LMS public website",
+            "New enquiry from MySLS public website",
             "",
             f"Name: {details['full_name']}",
             f"Email: {details['email']}",
@@ -98,7 +98,7 @@ class ContactInquiryAPIView(APIView):
             "The sender agreed to be contacted about this enquiry.",
         ])
         mail = EmailMessage(
-            subject=f"Student LMS enquiry | {service_label}",
+            subject=f"MySLS enquiry | {service_label}",
             body=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[recipient],
