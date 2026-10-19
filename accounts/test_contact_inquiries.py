@@ -6,6 +6,7 @@ from django.core import mail
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
+from rest_framework.throttling import ScopedRateThrottle
 
 
 @override_settings(
@@ -60,6 +61,7 @@ class ContactInquiryAPITests(TestCase):
         ]
         for payload in cases:
             with self.subTest(payload=payload):
+                cache.clear()
                 response = self.client.post(self.url, payload, format="json")
                 self.assertEqual(response.status_code, 400)
         self.assertEqual(len(mail.outbox), 0)
@@ -84,11 +86,16 @@ class ContactInquiryAPITests(TestCase):
             response = self.client.post(self.url, self.payload, format="json")
         self.assertEqual(response.status_code, 503)
 
-    @override_settings(REST_FRAMEWORK={"DEFAULT_THROTTLE_RATES": {"contact_inquiry": "2/hour"}})
     def test_throttled_after_two_submissions(self):
-        status_codes = [
-            self.client.post(self.url, self.payload, format="json", REMOTE_ADDR="203.0.113.81").status_code
-            for _ in range(3)
-        ]
+        # DRF caches throttle rates at import time. Patch the live class settings,
+        # not REST_FRAMEWORK via override_settings, to test the actual limiter.
+        cache.clear()
+        with patch.dict(ScopedRateThrottle.THROTTLE_RATES, {"contact_inquiry": "2/hour"}):
+            status_codes = [
+                self.client.post(
+                    self.url, self.payload, format="json", REMOTE_ADDR="203.0.113.81"
+                ).status_code
+                for _ in range(3)
+            ]
         self.assertEqual(status_codes, [200, 200, 429])
         self.assertEqual(len(mail.outbox), 2)
