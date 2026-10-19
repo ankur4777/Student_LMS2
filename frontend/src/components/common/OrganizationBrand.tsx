@@ -57,7 +57,7 @@ export default function OrganizationBrand({
   tokenKey,
   userStorageKey,
   portalLabel,
-  fallbackName = "Shabdd LMS",
+  fallbackName = "MySLS",
 }: OrganizationBrandProps) {
   const [branding, setBranding] = useState<OrganizationBranding>(() =>
     readSavedBranding(userStorageKey, fallbackName)
