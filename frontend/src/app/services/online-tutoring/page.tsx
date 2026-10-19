@@ -8,9 +8,14 @@ import "../../home-updates.css";
 import "../services.css";
 
 export const metadata: Metadata = {
-  title: "Online Tutoring | One-to-One & Group Classes | Student LMS",
+  title: "Online Tutoring for Grades 7–12",
   description:
-    "Explore online one-to-one and group tutoring, tuition classes, homework and assignment support for Grades 7–12. Ask about classes for students in Canada or Australia.",
+    "Explore one-to-one online tutoring and group tuition for Grades 7–12 with ShabddLearningSolution (MySLS). Homework help, assignment guidance and science and maths support.",
+  keywords: ["online tutoring for students", "one-to-one tutoring", "group online tuition", "homework help", "assignment help", "Grades 7–12", "MySLS"],
+  openGraph: {
+    title: "One-to-One & Group Online Tutoring | MySLS",
+    description: "Online classes, homework guidance and assignment support for school students in Grades 7–12.",
+  },
 };
 
 const tutoringFormats = [
