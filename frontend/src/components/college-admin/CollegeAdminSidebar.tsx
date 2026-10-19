@@ -154,7 +154,7 @@ interface OrganizationBranding {
 function getSavedBranding(): OrganizationBranding {
   if (typeof window === "undefined") {
     return {
-      name: "Shabdd LMS",
+      name: "MySLS",
       logo: "",
     };
   }
@@ -165,12 +165,12 @@ function getSavedBranding(): OrganizationBranding {
     );
 
     return {
-      name: saved.organization || "Shabdd LMS",
+      name: saved.organization || "MySLS",
       logo: saved.organization_logo || "",
     };
   } catch {
     return {
-      name: "Shabdd LMS",
+      name: "MySLS",
       logo: "",
     };
   }
@@ -273,7 +273,7 @@ export default function CollegeAdminSidebar() {
       const result = await response.json();
 
       const nextBranding = {
-        name: result.name || "Shabdd LMS",
+        name: result.name || "MySLS",
         logo: result.logo || "",
       };
 
