@@ -74,7 +74,7 @@ export function MarketingFooter() {
         </nav>
         <nav aria-label="Information and contact links">
           <Link href="/#why-choose-us">Why Choose Us</Link>
-          <Link href="/#testimonials">Testimonials</Link>
+          <Link href="/#testimonials">Community Feedback</Link>
           <Link href="/#faq">FAQs</Link>
           <Link href="/tutor-hiring">Tutor Hiring</Link>
           <Link href="/#contact">Contact Us</Link>
