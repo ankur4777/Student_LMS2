@@ -2,9 +2,11 @@ import Link from "next/link";
 import TutorApplicationForm from "@/components/TutorApplicationForm";
 import ContactInquiryForm from "@/components/ContactInquiryForm";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
+import StudentAITutorShowcase from "@/components/StudentAITutorShowcase";
 
 import "./home.css";
 import "./home-updates.css";
+import "./ai-tutor-showcase.css";
 
 type HomeIcon =
   | "cap"
@@ -61,7 +63,7 @@ const portals: Portal[] = [
   },
   {
     name: "Student Portal",
-    description: "Join live lessons, explore recorded classes, complete assignments and follow your academic results.",
+    description: "Join classes, complete assignments, review results and get learning help from your AI Tutor when enabled.",
     href: "/student/login",
     previewImage: "/student-dashboard.webp",
     previewAlt: "Real Student dashboard showing live classes, attendance and recorded learning",
@@ -110,6 +112,12 @@ const features: {
     title: "Assignments & Exams",
     description: "Create academic work and online assessments, from objective questions to teacher-evaluated answers.",
     accent: "purple",
+  },
+  {
+    icon: "sparkle",
+    title: "AI Tutor for Students",
+    description: "Learn with Subject Tutor, ask about permitted LMS dashboard information, and revisit saved chat history.",
+    accent: "pink",
   },
   {
     icon: "wallet",
@@ -365,6 +373,8 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      <StudentAITutorShowcase />
 
       <section className="lms-landing-section lms-landing-why-section" id="why-choose-us">
         <div className="lms-landing-container lms-landing-why-layout">
