@@ -45,9 +45,9 @@ jobs:
         run: python manage.py check
       - name: Check migration definitions
         run: python manage.py makemigrations --check --dry-run
-      - name: Run exam and AI assistant authorization regression tests
-        timeout-minutes: 4
-        run: python -u manage.py test studentresults.test_online_exams studentresults.tests academics.tests.ClassFeatureAccessTests ai_assistant.tests ai_assistant.test_chat ai_assistant.test_history accounts.test_contact_inquiries --noinput --verbosity 2
+      - name: Run exam, AI assistant, contact and leave request regression tests
+        timeout-minutes: 5
+        run: python -u manage.py test studentresults.test_online_exams studentresults.tests academics.tests.ClassFeatureAccessTests ai_assistant.tests ai_assistant.test_chat ai_assistant.test_history accounts.test_contact_inquiries leave_requests.tests --noinput --verbosity 2
 
   frontend:
     runs-on: ubuntu-latest
