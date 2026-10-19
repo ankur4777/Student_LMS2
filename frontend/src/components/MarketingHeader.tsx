@@ -24,9 +24,6 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
           <ServicesDropdown />
           <TutorHiringNavLink />
           <Link href="/fee-structure">Fee Structure</Link>
-          <Link href={href("features")}>LMS Features</Link>
-          <Link href={href("portals")}>Portals</Link>
-          <Link href={href("contact")}>Contact</Link>
         </nav>
         <Link href={href("portals")} className="lms-landing-button lms-landing-button-small">
           Login <i className="bi bi-arrow-right" aria-hidden="true" />
