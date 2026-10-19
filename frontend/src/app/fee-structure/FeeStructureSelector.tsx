@@ -38,9 +38,8 @@ export default function FeeStructureSelector() {
               <span className="lms-fees-eyebrow">FEES &amp; PRICING</span>
               <h1>Clearer fees, <span>wherever you learn.</span></h1>
               <p>
-                Explore the fee structure for your location. Canada and
-                Australia have their own fee schedules, shown in their
-                local currency.
+                Explore hourly online tuition rates for one-to-one and group classes.
+                Choose Canada or Australia to see country-specific information.
               </p>
               <div className="lms-fees-hero-note">
                 <span aria-hidden="true">✓</span>
@@ -66,7 +65,7 @@ export default function FeeStructureSelector() {
             <div className="lms-fees-region-intro">
               <span className="lms-fees-section-eyebrow">YOUR LOCATION</span>
               <h2 id="country-heading">Where will you be studying?</h2>
-              <p>Select a country below to view its fee structure and currency.</p>
+              <p>Choose a country to see the hourly tuition rates for online tutoring.</p>
             </div>
             <div className="lms-fees-select-wrap">
               <label htmlFor="lms-fees-country">Select Country</label>
@@ -106,15 +105,29 @@ export default function FeeStructureSelector() {
               <article className="lms-fees-card" key={fee.key}>
                 <span className="lms-fees-card-index">0{index + 1}</span>
                 <div className="lms-fees-card-icon" aria-hidden="true">
-                  {fee.key === "program" ? "▤" : fee.key === "registration" ? "✦" : "◫"}
+                  {fee.title.includes("One-to-one") ? "✦" : "◫"}
                 </div>
                 <h3>{fee.title}</h3>
                 <p>{fee.description}</p>
                 <div className="lms-fees-card-bottom">
-                  <span className="lms-fees-amount">{formatFee(fee.amount, selected)}</span>
-                  <span className="lms-fees-billing">
-                    {fee.amount === null ? selected.currency + " · Rate pending" : fee.billingLabel}
-                  </span>
+                  {fee.discountedAmount !== null && (
+                    <div className="lms-fees-rate-row">
+                      <span className="lms-fees-rate-label">Discounted rate</span>
+                      <strong className="lms-fees-amount lms-fees-discount">{formatFee(fee.discountedAmount, selected)} <small>/hour</small></strong>
+                      {fee.discountLabel && <span className="lms-fees-offer-note">{fee.discountLabel}</span>}
+                    </div>
+                  )}
+                  <div className="lms-fees-rate-row">
+                    <span className="lms-fees-rate-label">{fee.discountedAmount !== null ? "Listed regular rate" : "Hourly rate"}</span>
+                    <strong className="lms-fees-regular">{formatFee(fee.amount, selected)}{fee.amount !== null && " /hour"}</strong>
+                  </div>
+                  {fee.afterPromotionAmount !== null && (
+                    <div className="lms-fees-rate-row">
+                      <span className="lms-fees-rate-label">After first 100 students (as provided)</span>
+                      <strong className="lms-fees-regular">{formatFee(fee.afterPromotionAmount, selected)} /hour</strong>
+                    </div>
+                  )}
+                  <span className="lms-fees-billing">{fee.billingLabel}</span>
                 </div>
               </article>
             ))}
@@ -123,13 +136,8 @@ export default function FeeStructureSelector() {
           <div className="lms-fees-info" role="note">
             <span className="lms-fees-info-icon" aria-hidden="true">i</span>
             <div>
-              <strong>Official fee amounts have not yet been provided.</strong>
-              <p>
-                These are informational fee categories, not a confirmed quote
-                or an invoice. The Canada and Australia schedules are configured
-                separately and can display their different verified amounts
-                as soon as those amounts are supplied. {selected.countryNotice}
-              </p>
+              <strong>{selectedCountry === "CA" ? "Rate notes & important clarification" : "Australian prices are not yet available"}</strong>
+              <p>{selected.countryNotice}</p>
             </div>
           </div>
         </section>
@@ -138,16 +146,16 @@ export default function FeeStructureSelector() {
           <div className="lms-fees-container lms-fees-bottom-grid">
             <div>
               <span className="lms-fees-section-eyebrow">NEED MORE DETAILS?</span>
-              <h2>Questions about your fee structure?</h2>
+              <h2>Questions about tutoring fees or class availability?</h2>
               <p>
-                For your exact course fee, due dates, available installments
-                and payments, contact your institution or view the fee details
-                assigned to your student account.
+                Contact our team about online one-to-one or group classes, subjects,
+                homework help, tuition classes and assignment help. Confirm
+                discounts and availability before booking.
               </p>
             </div>
             <div className="lms-fees-bottom-actions">
-              <Link href="/student/login" className="lms-fees-button">
-                Open Student Portal <span aria-hidden="true">↗</span>
+              <Link href="/#contact" className="lms-fees-button">
+                Enquire about classes <span aria-hidden="true">↗</span>
               </Link>
               <Link href="/#portals" className="lms-fees-button lms-fees-button-outline">
                 View all portals <span aria-hidden="true">↗</span>
@@ -160,7 +168,7 @@ export default function FeeStructureSelector() {
       <footer className="lms-fees-footer">
         <div className="lms-fees-container">
           <span>© {new Date().getFullYear()} Student LMS.</span>
-          <span>Official student fees and payment status are available through your institution.</span>
+          <span>Online tutoring rates are separate from each institution's LMS billing records.</span>
         </div>
       </footer>
     </div>
