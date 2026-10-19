@@ -45,11 +45,10 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
               </Link>
             </div>
           </details>
+          <Link href="/fee-structure">Fee Structure</Link>
+          <Link href="/tutor-hiring">Tutor Hiring</Link>
           <Link href={href("features")}>LMS Features</Link>
-          <Link href={href("why-choose-us")}>Why Choose Us</Link>
-          <Link href={href("testimonials")}>Testimonials</Link>
           <Link href={href("portals")}>Portals</Link>
-          <Link href={href("become-a-tutor")}>Teach With Us</Link>
           <Link href={href("contact")}>Contact</Link>
         </nav>
         <Link href={href("portals")} className="lms-landing-button lms-landing-button-small">
@@ -77,6 +76,7 @@ export function MarketingFooter() {
           <Link href="/">Home</Link>
           <Link href="/services/online-tutoring">Online Tutoring</Link>
           <Link href="/services/school-college-lms">School &amp; College LMS</Link>
+          <Link href="/fee-structure">Fee Structure</Link>
           <Link href="/#features">LMS Features</Link>
           <Link href="/#portals">Portal Logins</Link>
         </nav>
@@ -84,7 +84,7 @@ export function MarketingFooter() {
           <Link href="/#why-choose-us">Why Choose Us</Link>
           <Link href="/#testimonials">Testimonials</Link>
           <Link href="/#faq">FAQs</Link>
-          <Link href="/#become-a-tutor">Teach With Us</Link>
+          <Link href="/tutor-hiring">Tutor Hiring</Link>
           <Link href="/#contact">Contact Us</Link>
         </nav>
       </div>
