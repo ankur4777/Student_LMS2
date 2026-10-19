@@ -1,4 +1,4 @@
-"""Verified Student LMS account-help replies independent of AI model classification.
+"""Verified MySLS account-help replies independent of AI model classification.
 
 Routes and instructions follow the existing Student Profile, Login and
 Forgot Password components. This handler does not access credentials or
@@ -23,7 +23,7 @@ def get_student_account_help(message):
 
     return {
         "reply": (
-            "To reset or change your Student LMS password:\n\n"
+            "To reset or change your MySLS password:\n\n"
             "1. If you know your current password, open Profile → Change "
             "Password. Enter your current password and a new one, then "
             "sign in again after the update.\n\n"
