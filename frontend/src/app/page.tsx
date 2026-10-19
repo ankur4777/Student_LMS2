@@ -3,6 +3,7 @@ import TutorApplicationForm from "@/components/TutorApplicationForm";
 import ContactInquiryForm from "@/components/ContactInquiryForm";
 
 import "./home.css";
+import "./home-updates.css";
 
 type HomeIcon =
   | "cap"
