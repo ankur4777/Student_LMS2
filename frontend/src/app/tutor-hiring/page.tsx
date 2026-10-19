@@ -9,9 +9,14 @@ import "../home-updates.css";
 import "./tutor-hiring.css";
 
 export const metadata: Metadata = {
-  title: "Become a Tutor | Teaching Opportunities | Student LMS",
+  title: "Become an Online Tutor | Tutor Applications",
   description:
-    "Interested in teaching with Student LMS? Learn about the tutor application process and submit your qualifications, subjects, and teaching experience for review.",
+    "Apply to teach online with ShabddLearningSolution (MySLS). Share your qualifications, subject expertise and experience for consideration for online tutoring opportunities.",
+  keywords: ["online tutor hiring", "apply to become a tutor", "online tutoring opportunities", "teaching application", "MySLS"],
+  openGraph: {
+    title: "Become an Online Tutor | MySLS",
+    description: "Interested in teaching online? Apply to join the ShabddLearningSolution tutor community.",
+  },
 };
 
 const highlights = [
