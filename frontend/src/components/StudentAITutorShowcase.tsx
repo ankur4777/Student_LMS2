@@ -15,12 +15,11 @@ export default function StudentAITutorShowcase() {
         <div className="lms-ai-showcase-copy">
           <span className="lms-landing-eyebrow">AI-POWERED STUDENT LEARNING</span>
           <h2 id="student-ai-tutor-heading">
-            Meet Your AI Tutor. <span>Study with more confidence.</span>
+            Meet MySLS AI Tutor. <span>Get help when you need it.</span>
           </h2>
           <p className="lms-ai-showcase-lead">
-            Students can ask questions while they learn, revisit a topic they
-            did not understand, and find useful information from their LMS —
-            without leaving the Student Portal.
+            Students can explore topics, ask follow-up questions and find available
+            learning resources directly in their MySLS Student Portal.
           </p>
 
           <div className="lms-ai-showcase-benefits">
@@ -76,7 +75,7 @@ export default function StudentAITutorShowcase() {
         </div>
 
         <div className="lms-ai-showcase-demo-wrap">
-          <span className="lms-ai-showcase-demo-label">AI TUTOR INTERFACE · ILLUSTRATIVE PREVIEW</span>
+          <span className="lms-ai-showcase-demo-label">AI TUTOR · SAMPLE STUDY CONVERSATION</span>
           <div className="lms-ai-showcase-chat">
             <div className="lms-ai-showcase-chat-header">
               <span className="lms-ai-showcase-avatar" aria-hidden="true">🎓</span>
