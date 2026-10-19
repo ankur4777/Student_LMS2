@@ -66,19 +66,19 @@ def _send_notification_email(notification):
         message_lines.extend(
             [
                 "",
-                f"Open Student LMS: {link}",
+                f"Open MySLS: {link}",
             ]
         )
 
     message_lines.extend(
         [
             "",
-            "This is an automatic notification from Student LMS.",
+            "This is an automatic notification from MySLS.",
         ]
     )
 
     send_mail(
-        subject=f"Student LMS - {notification.title}",
+        subject=f"MySLS - {notification.title}",
         message="\n".join(message_lines),
         from_email=settings.DEFAULT_FROM_EMAIL,
         recipient_list=[email],
