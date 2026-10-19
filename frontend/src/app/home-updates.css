@@ -155,7 +155,8 @@
 .lms-landing .lms-services-menu summary::-webkit-details-marker {display:none}
 .lms-landing .lms-services-menu summary .bi {font-size:11px;transition:transform .2s ease}
 .lms-landing .lms-services-menu[open] summary,
-.lms-landing .lms-services-menu summary:hover {color:var(--home-red-deep)}
+.lms-landing .lms-services-menu summary:hover,
+.lms-landing .lms-services-menu:focus-within summary {color:var(--home-red-deep)}
 .lms-landing .lms-services-menu[open] summary .bi {transform:rotate(180deg)}
 .lms-landing .lms-services-dropdown {
   position:absolute;
@@ -176,6 +177,10 @@
   top:-16px;
   right:0;
   left:0;
+}
+/* Keep the submenu visible while the pointer is over Services or its panel. */
+.lms-landing .lms-services-menu:hover > .lms-services-dropdown {
+  display:block !important;
 }
 .lms-landing .lms-services-dropdown-heading {
   display:block;
@@ -230,6 +235,12 @@
   color:#7c899d;
 }
 .lms-landing .lms-services-dropdown-item > .bi {color:#c84250;font-size:15px}
+@media(min-width:641px){
+  .lms-landing .lms-services-menu:hover .lms-services-dropdown,
+  .lms-landing .lms-services-menu:focus-within .lms-services-dropdown {display:block}
+  .lms-landing .lms-services-menu:hover summary .bi,
+  .lms-landing .lms-services-menu:focus-within summary .bi {transform:rotate(180deg)}
+}
 @media(max-width:850px){
   .lms-landing .lms-services-dropdown {left:0}
 }
