@@ -1,5 +1,4 @@
 import Link from "next/link";
-import TutorApplicationForm from "@/components/TutorApplicationForm";
 import ContactInquiryForm from "@/components/ContactInquiryForm";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 import StudentAITutorShowcase from "@/components/StudentAITutorShowcase";
@@ -503,11 +502,11 @@ export default function Home() {
               who bring subject knowledge, patience and enthusiasm to their teaching.
             </p>
             <p>
-              Share your qualifications, subjects and teaching experience through the application form.
-              Our team can review your details and reach out if there is a suitable opportunity.
+              Looking to teach with Student LMS? Discover the subjects, teaching qualities and
+              application process on our dedicated Tutor Hiring page. Apply there in just a few steps.
             </p>
-            <Link href="/tutor-hiring" className="lms-landing-inline-link">
-              Learn about our Tutor Hiring process <Icon name="arrow" size={17} />
+            <Link href="/tutor-hiring#apply" className="lms-landing-inline-link">
+              Apply to become a tutor <Icon name="arrow" size={17} />
             </Link>
             <div className="lms-landing-tutor-benefits">
               <div>
@@ -536,7 +535,26 @@ export default function Home() {
               Submitting an application does not guarantee employment. Our team will contact you if your profile matches an available opportunity.
             </div>
           </div>
-          <TutorApplicationForm />
+          <aside className="lms-home-hiring-card" aria-label="Tutor Hiring application information">
+            <div className="lms-home-hiring-illustration" aria-hidden="true">
+              <span className="lms-home-hiring-icon"><Icon name="cap" size={40} /></span>
+              <span className="lms-home-hiring-decoration is-one"><Icon name="book" size={19} /></span>
+              <span className="lms-home-hiring-decoration is-two"><Icon name="sparkle" size={22} /></span>
+            </div>
+            <span className="lms-landing-eyebrow">TUTOR OPPORTUNITIES</span>
+            <h3>Ready to help students learn?</h3>
+            <p>Our tutor application is now on a dedicated page. Tell us about your qualifications,
+              preferred subjects and teaching experience.</p>
+            <div className="lms-home-hiring-highlights">
+              <span><Icon name="check" size={18} /> Complete your tutor profile</span>
+              <span><Icon name="check" size={18} /> Share subjects and experience</span>
+              <span><Icon name="check" size={18} /> Submit for review</span>
+            </div>
+            <Link href="/tutor-hiring#apply" className="lms-landing-button lms-home-hiring-apply-link">
+              Apply as a Tutor <Icon name="arrow" size={18} />
+            </Link>
+            <span className="lms-home-hiring-note">Application and review take place on our Tutor Hiring page.</span>
+          </aside>
         </div>
       </section>
 
