@@ -1,4 +1,4 @@
-# AGENTS.md — Student LMS
+# AGENTS.md — ShabddLearningSolution (MySLS)
 
 ## 1. Primary Instruction
 
@@ -33,7 +33,9 @@ Do not inspect attendance, live classes, results, or unrelated modules unless a 
 
 ## 2. Project Stack
 
-Project: Student LMS
+Product: ShabddLearningSolution (MySLS)
+
+Repository and API identifiers retain their existing names for compatibility.
 
 Backend:
 - Django
