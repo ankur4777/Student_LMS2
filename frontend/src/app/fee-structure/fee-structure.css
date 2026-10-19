@@ -246,3 +246,16 @@
 .lms-fees-regular {font-size:16px;color:#243651;font-weight:820}
 .lms-fees-offer-note {font-size:11px;font-weight:740;color:#187e55;background:#eaf8ef;padding:5px 9px;border-radius:999px;line-height:1.5}
 @media(max-width:760px){.lms-fees-cards {grid-template-columns:1fr}}
+
+
+/* Contact information on the standalone Fee Structure footer. */
+.lms-fees .lms-fees-footer-content {flex-wrap:wrap;align-items:center;gap:16px 30px}
+.lms-fees .lms-fees-footer-contacts {display:flex;flex-wrap:wrap;gap:8px 19px;align-items:center}
+.lms-fees .lms-fees-footer-contacts > a {color:#f4dae0;text-decoration:none;font-weight:700;overflow-wrap:anywhere}
+.lms-fees .lms-fees-footer-contacts > a:hover {text-decoration:underline;color:#fff}
+.lms-fees .lms-fees-footer-contacts > span {color:#c5cfdf;overflow-wrap:anywhere}
+.lms-fees .lms-fees-footer-disclaimer {color:#aebad0;font-size:11px}
+@media(max-width:760px) {
+  .lms-fees .lms-fees-footer-contacts {flex-direction:column;align-items:flex-start}
+  .lms-fees .lms-fees-footer-content {flex-direction:column;align-items:flex-start}
+}
