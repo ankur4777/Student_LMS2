@@ -3,6 +3,7 @@ import { publicContact } from "@/lib/publicContact";
 import { siteBrand } from "@/lib/siteBrand";
 import ServicesDropdown from "@/components/ServicesDropdown";
 import TutorHiringNavLink from "@/components/TutorHiringNavLink";
+import Script from "next/script";
 
 const ROOT = "/";
 
@@ -14,7 +15,7 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
       <div className="lms-landing-container lms-landing-nav">
         <Link href="/" className="lms-landing-brand" aria-label={`${siteBrand.fullName} homepage`}>
           <span className="lms-landing-brand-symbol">
-            <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{fontSize:27}} />
+            <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{ fontSize: 27 }} />
           </span>
           <span><strong>{siteBrand.shortName}</strong></span>
         </Link>
@@ -29,6 +30,11 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
           Login <i className="bi bi-arrow-right" aria-hidden="true" />
         </Link>
       </div>
+      <Script
+        src="https://chatbot.lms.shabddtravels.in/widget/loader.js"
+        data-widget-key="WGT_KZI9ERLDJOWGNO4Q"
+        strategy="afterInteractive"
+      />
     </header>
   );
 }
@@ -40,7 +46,7 @@ export function MarketingFooter() {
         <div>
           <Link href="/" className="lms-landing-brand">
             <span className="lms-landing-brand-symbol">
-              <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{fontSize:23}} />
+              <i className="bi bi-mortarboard-fill" aria-hidden="true" style={{ fontSize: 23 }} />
             </span>
             <span><strong>{siteBrand.shortName}</strong></span>
           </Link>
