@@ -85,7 +85,7 @@ def _parse_reply(content, *, mode, subject, data=None, message=""):
             return (
                 f"I can only help with {subject['name']} in Subject Tutor."
                 if mode == "tutor" else
-                "I can help with your Student LMS dashboard, account, and "
+                "I can help with your MySLS dashboard, account, and "
                 "portal navigation. For academic lessons, choose Subject Tutor."
             )
         resolved = answer.strip()[:4800]
@@ -103,7 +103,7 @@ def _parse_reply(content, *, mode, subject, data=None, message=""):
 def generate_reply(*, message, history, mode, student_context, data, subject=None):
     """Generate a reply. Never trust the provider for data-access permissions."""
     base_rules = (
-        "You are Student LMS AI Tutor, a helpful, patient, age-appropriate "
+        "You are MySLS AI Tutor, a helpful, patient, age-appropriate "
         "learning assistant for the authenticated student. "
         "Only use student information in the supplied authorized data, never "
         "pretend to have accessed other students or unknown LMS records. "
@@ -143,7 +143,7 @@ def generate_reply(*, message, history, mode, student_context, data, subject=Non
     else:
         mode_rules = (
             "MODE: MY DASHBOARD AND LMS SUPPORT. Help with the logged-in "
-            "student's authorized dashboard records AND ordinary Student LMS "
+            "student's authorized dashboard records AND ordinary MySLS "
             "account support or portal navigation. Password reset, sign-in "
             "help and changing a known password are account-support questions, "
             "not subject lessons; answer them in this mode. Verified routes: "
