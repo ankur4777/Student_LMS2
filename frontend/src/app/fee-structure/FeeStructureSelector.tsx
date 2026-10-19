@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { countryFees, formatFee, type FeeCountry } from "./fee-data";
 import { publicContact } from "@/lib/publicContact";
+import { siteBrand } from "@/lib/siteBrand";
 
 const countryOptions: { value: FeeCountry; label: string }[] = [
   { value: "CA", label: "Canada (CAD)" },
@@ -19,9 +20,9 @@ export default function FeeStructureSelector() {
     <div className="lms-fees">
       <header className="lms-fees-header">
         <div className="lms-fees-container lms-fees-header-inner">
-          <Link href="/" className="lms-fees-brand" aria-label="Student LMS homepage">
+          <Link href="/" className="lms-fees-brand" aria-label={`${siteBrand.fullName} homepage`}>
             <span className="lms-fees-brand-icon" aria-hidden="true">🎓</span>
-            <span>Student <strong>LMS</strong></span>
+            <span><strong>{siteBrand.shortName}</strong></span>
           </Link>
           <nav aria-label="Fee page navigation" className="lms-fees-header-links">
             <Link href="/">Home</Link>
@@ -36,15 +37,14 @@ export default function FeeStructureSelector() {
         <section className="lms-fees-hero">
           <div className="lms-fees-container lms-fees-hero-grid">
             <div className="lms-fees-hero-copy">
-              <span className="lms-fees-eyebrow">FEES &amp; PRICING</span>
-              <h1>Clearer fees, <span>wherever you learn.</span></h1>
+              <span className="lms-fees-eyebrow">ONLINE TUTORING FEES</span>
+              <h1>Online tutoring rates <span>for every learning style.</span></h1>
               <p>
-                Explore hourly online tuition rates for one-to-one and group classes.
-                Choose Canada or Australia to see country-specific information.
+                Explore one-to-one and group tutoring rates for Grades 7–12. Choose Canada or Australia to view fees and enquire about available classes.
               </p>
               <div className="lms-fees-hero-note">
                 <span aria-hidden="true">✓</span>
-                Choose your country to view the relevant fee categories.
+                Find the right grade and class format for your student.
               </div>
             </div>
             <div className="lms-fees-hero-side" aria-hidden="true">
@@ -65,8 +65,8 @@ export default function FeeStructureSelector() {
           <div className="lms-fees-region-panel">
             <div className="lms-fees-region-intro">
               <span className="lms-fees-section-eyebrow">YOUR LOCATION</span>
-              <h2 id="country-heading">Where will you be studying?</h2>
-              <p>Choose a country to see the hourly tuition rates for online tutoring.</p>
+              <h2 id="country-heading">Find tutoring rates for your country</h2>
+              <p>Select Canada or Australia to explore one-to-one and group tuition options.</p>
             </div>
             <div className="lms-fees-select-wrap">
               <label htmlFor="lms-fees-country">Select Country</label>
@@ -119,12 +119,12 @@ export default function FeeStructureSelector() {
                     </div>
                   )}
                   <div className="lms-fees-rate-row">
-                    <span className="lms-fees-rate-label">{fee.discountedAmount !== null ? "Listed regular rate" : "Hourly rate"}</span>
+                    <span className="lms-fees-rate-label">{fee.discountedAmount !== null ? "Regular hourly rate" : "Hourly rate"}</span>
                     <strong className="lms-fees-regular">{formatFee(fee.amount, selected)}{fee.amount !== null && " /hour"}</strong>
                   </div>
                   {fee.afterPromotionAmount !== null && (
                     <div className="lms-fees-rate-row">
-                      <span className="lms-fees-rate-label">After first 100 students (as provided)</span>
+                      <span className="lms-fees-rate-label">Rate after the first 100 students</span>
                       <strong className="lms-fees-regular">{formatFee(fee.afterPromotionAmount, selected)} /hour</strong>
                     </div>
                   )}
@@ -137,7 +137,7 @@ export default function FeeStructureSelector() {
           <div className="lms-fees-info" role="note">
             <span className="lms-fees-info-icon" aria-hidden="true">i</span>
             <div>
-              <strong>{selectedCountry === "CA" ? "Rate notes & important clarification" : "Australian prices are not yet available"}</strong>
+              <strong>{selectedCountry === "CA" ? "Canadian tuition rates and offers" : "Australian tutoring fees"}</strong>
               <p>{selected.countryNotice}</p>
             </div>
           </div>
@@ -168,13 +168,13 @@ export default function FeeStructureSelector() {
 
       <footer className="lms-fees-footer">
         <div className="lms-fees-container lms-fees-footer-content">
-          <span>© {new Date().getFullYear()} Student LMS.</span>
+          <span>© {new Date().getFullYear()} {siteBrand.fullName}.</span>
           <div className="lms-fees-footer-contacts" aria-label="Contact information">
             <a href={publicContact.phoneHref}>{publicContact.phoneDisplay}</a>
             <a href={publicContact.emailHref}>{publicContact.email}</a>
             <span>{publicContact.address}</span>
           </div>
-          <span className="lms-fees-footer-disclaimer">Online tutoring rates are separate from each institution&apos;s LMS billing records.</span>
+          <span className="lms-fees-footer-disclaimer">Tutoring fees are billed separately from school or college LMS fees.</span>
         </div>
       </footer>
     </div>
