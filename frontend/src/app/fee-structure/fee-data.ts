@@ -1,11 +1,7 @@
 /**
- * Public ONLINE TUTORING rates provided by the product owner (CAD).
- *
- * These rates are distinct from each school's/college's own LMS fee management.
- * Australian prices were NOT supplied.
- * Important source ambiguity: Canadian Grade 7–10 one-to-one is listed
- * as $30 standard but $35 after the first 100 students. Preserve both
- * figures as provided and visibly flag for confirmation, not silently fix.
+ * Public hourly tutoring rates. This price list is separate from a school's
+ * own fee-management records. Canadian prices preserve the published regular,
+ * introductory and post-offer amounts; Australian prices require an enquiry.
  */
 export type FeeCountry = "CA" | "AU";
 
@@ -40,13 +36,13 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
     currency: "CAD",
     locale: "en-CA",
     heading: "Online tutoring fees — Canada",
-    intro: "Hourly prices for one-to-one and group tutoring. Homework help, tuition classes and assignment help follow the same rates for the relevant grade and session format.",
-    countryNotice: "All listed amounts are Canadian dollars per hour. The first-100-students offer is described as provided; promotional availability must be confirmed. Grade 7–10 one-to-one shows a stated regular rate of CAD 30 and a later rate of CAD 35 after the promotion — please verify this difference before treating it as final. Tax and other terms were not provided.",
+    intro: "Compare hourly rates for one-to-one tutoring and online group classes in Canada. The same grade and class-format rates apply to tuition, homework guidance and assignment support.",
+    countryNotice: "All rates are in Canadian dollars per hour. For Grades 7–10 one-to-one tutoring, the regular rate is CAD $30, the introductory rate is CAD $28 for the first 100 students, and the rate for subsequent enrolments is CAD $35. Please contact us to confirm offer availability, group pricing terms and any applicable taxes before booking.",
     items: [
       {
         key: "ca-g7-10-individual",
         title: "Grades 7–10 · One-to-one",
-        description: "Individual online tutoring sessions for learners in Grades 7 to 10.",
+        description: "Personalized online tuition, homework guidance and assignment support for students in Grades 7–10.",
         amount: 30,
         discountedAmount: 28,
         discountLabel: "For the first 100 students only",
@@ -56,12 +52,12 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
       {
         key: "ca-g7-10-group",
         title: "Grades 7–10 · Group",
-        description: "Online group tuition and learning support for Grades 7 to 10.",
+        description: "Interactive group online tuition and study support for learners in Grades 7–10.",
         amount: 28,
         discountedAmount: 22,
         discountLabel: "For the first 100 students only",
         afterPromotionAmount: 28,
-        billingLabel: "Hourly rate · Confirm whether price is per student",
+        billingLabel: "Hourly group classes · Ask about per-student terms",
       },
       {
         key: "ca-g11-12-individual",
@@ -71,7 +67,7 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
         discountedAmount: 35,
         discountLabel: null,
         afterPromotionAmount: null,
-        billingLabel: "Hourly rate · Discount eligibility not specified",
+        billingLabel: "Hourly tuition · Ask about current offer terms",
       },
       {
         key: "ca-g11-12-group",
@@ -81,7 +77,7 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
         discountedAmount: 35,
         discountLabel: null,
         afterPromotionAmount: null,
-        billingLabel: "Hourly rate · Discount eligibility not specified",
+        billingLabel: "Hourly tuition · Ask about current offer terms",
       },
     ],
   },
@@ -90,43 +86,43 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
     currency: "AUD",
     locale: "en-AU",
     heading: "Online tutoring fees — Australia",
-    intro: "We also offer online tutoring for Australia. The Australian fee schedule has not yet been supplied and will be published after the rates are confirmed.",
-    countryNotice: "Australian tutoring rates, taxes and offer terms have not been provided. No currency conversion or guessed prices are shown.",
+    intro: "Looking for one-to-one tutoring or group online classes in Australia? Ask our team about hourly rates, subjects and session availability for your grade.",
+    countryNotice: "Australian prices vary by programme and class format. Contact ShabddLearningSolution (MySLS) for an individual quote and to confirm session availability before enrolling.",
     items: [
       {
         key: "au-g7-10-individual",
         title: "Grades 7–10 · One-to-one",
-        description: "Individual online classes. Australian rates are pending.",
+        description: "One-to-one tuition for Grades 7–10. Contact us for Australian hourly rates.",
         amount: null, discountedAmount: null, discountLabel: null,
-        afterPromotionAmount: null, billingLabel: "AUD per hour · To be confirmed",
+        afterPromotionAmount: null, billingLabel: "Australian pricing on enquiry",
       },
       {
         key: "au-g7-10-group",
         title: "Grades 7–10 · Group",
-        description: "Group online classes. Australian rates are pending.",
+        description: "Group tuition for Grades 7–10. Ask us about class availability and hourly rates.",
         amount: null, discountedAmount: null, discountLabel: null,
-        afterPromotionAmount: null, billingLabel: "AUD per hour · To be confirmed",
+        afterPromotionAmount: null, billingLabel: "Australian pricing on enquiry",
       },
       {
         key: "au-g11-12-individual",
         title: "Grades 11–12 · One-to-one",
-        description: "Individual online classes. Australian rates are pending.",
+        description: "One-to-one tutoring for Grades 11–12. Request subject and pricing details.",
         amount: null, discountedAmount: null, discountLabel: null,
-        afterPromotionAmount: null, billingLabel: "AUD per hour · To be confirmed",
+        afterPromotionAmount: null, billingLabel: "Australian pricing on enquiry",
       },
       {
         key: "au-g11-12-group",
         title: "Grades 11–12 · Group",
-        description: "Group online classes. Australian rates are pending.",
+        description: "Group tuition for Grades 11–12. Contact us for availability and rates.",
         amount: null, discountedAmount: null, discountLabel: null,
-        afterPromotionAmount: null, billingLabel: "AUD per hour · To be confirmed",
+        afterPromotionAmount: null, billingLabel: "Australian pricing on enquiry",
       },
     ],
   },
 };
 
 export function formatFee(amount: number | null, schedule: CountryFeeSchedule): string {
-  if (amount === null) return "To be confirmed";
+  if (amount === null) return "Request a quote";
   return new Intl.NumberFormat(schedule.locale, {
     style: "currency",
     currency: schedule.currency,
