@@ -1,7 +1,7 @@
 export default function ProductCredit() {
   return (
     <div className="product-credit">
-      Designed &amp; Developed by <span>Shabdd Innovations</span>
+      Powered by <span>ShabddLearningSolution (MySLS)</span>
     </div>
   );
 }
