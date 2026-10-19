@@ -352,3 +352,85 @@
   .lms-landing .lms-home-hiring-card {padding:22px}
   .lms-landing .lms-home-hiring-illustration {height:124px}
 }
+
+
+/* Official business contact details: homepage and shared footer. */
+.lms-landing .lms-home-contact-details {
+  display:grid;
+  gap:13px;
+  margin-top:30px;
+  padding:22px 24px;
+  background:#fff8f7;
+  border:1px solid #f2e1df;
+  border-radius:15px;
+  font-style:normal;
+}
+.lms-landing .lms-home-contact-details h3 {
+  margin:0 0 3px;
+  color:#26334e;
+  font-size:17px;
+  font-weight:800;
+  letter-spacing:-.025em;
+}
+.lms-landing .lms-home-contact-details > a,
+.lms-landing .lms-home-contact-details > div {
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  color:#4e5e76;
+  font-size:13px;
+  line-height:1.6;
+  text-decoration:none;
+  min-width:0;
+}
+.lms-landing .lms-home-contact-details > a:hover {color:#c52e42}
+.lms-landing .lms-home-contact-details > a > span:last-child,
+.lms-landing .lms-home-contact-details > div > span:last-child {
+  display:grid;
+  gap:2px;
+  overflow-wrap:anywhere;
+}
+.lms-landing .lms-home-contact-details strong {
+  font-size:11px;
+  font-weight:800;
+  color:#7b8799;
+}
+.lms-landing .lms-home-contact-detail-icon {
+  width:36px;
+  height:36px;
+  flex:none;
+  display:grid;
+  place-items:center;
+  color:#dc384a;
+  border-radius:10px;
+  background:#ffecee;
+  font-size:16px;
+}
+.lms-landing .lms-footer-contact {
+  display:grid;
+  gap:12px;
+  margin-top:21px;
+  font-style:normal;
+  max-width:380px;
+}
+.lms-landing .lms-footer-contact > a,
+.lms-landing .lms-footer-contact-address {
+  display:flex;
+  align-items:flex-start;
+  gap:11px;
+  color:#d4dbe6;
+  text-decoration:none;
+  font-size:12px;
+  line-height:1.75;
+  overflow-wrap:anywhere;
+}
+.lms-landing .lms-footer-contact > a:hover {color:#fff}
+.lms-landing .lms-footer-contact .bi {
+  flex:none;
+  margin-top:3px;
+  font-size:15px;
+  color:#ff8c98;
+}
+@media(max-width:640px){
+  .lms-landing .lms-home-contact-details {padding:19px}
+}
