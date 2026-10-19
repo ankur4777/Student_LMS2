@@ -236,7 +236,7 @@ function DashboardPreview({ portal }: { portal: Portal }) {
         </div>
         <div>
           <h3>{portal.name} Dashboard</h3>
-          <p>A look inside the real dashboard for this role.</p>
+          <p>Explore the tools available to this role.</p>
         </div>
       </div>
       <Link href={portal.href} className="lms-landing-preview-link">
@@ -259,15 +259,15 @@ export default function Home() {
               Education technology & online tutoring
             </span>
             <h1>
-              One connected campus.
-              <span> A brighter way to learn.</span>
+              School management software
+              <span> and online tutoring that connects learning.</span>
             </h1>
             <p className="lms-landing-hero-lead">
-              <strong>Give schools and colleges their own LMS platform</strong> to manage students, teachers, classes, attendance, fees and academic records. We also provide <strong>online one-to-one and group tutoring</strong> for learners.
+              <strong>ShabddLearningSolution (MySLS)</strong> helps schools and colleges manage students, teachers, attendance, fees, classes and academic records. We also provide <strong>one-to-one online tutoring and group tuition</strong> for school students.
             </p>
             <p className="lms-landing-hero-support">
-              Whether you're running an institution or looking for homework help, tuition classes or assignment support,
-              our services are built to make learning and administration easier.
+              Run your institution from one connected LMS or find tailored academic support
+              with live online classes, homework guidance and assignment help.
             </p>
             <div className="lms-landing-hero-actions">
               <a href="#services" className="lms-landing-button">
@@ -297,23 +297,23 @@ export default function Home() {
         <div className="lms-landing-container">
           <div className="lms-landing-section-heading is-centered">
             <span className="lms-landing-eyebrow">WHAT WE OFFER</span>
-            <h2 id="lms-home-services-title">Two ways to make education work better.</h2>
-            <p>We help institutions manage their academic operations, and we help individual learners grow with live online tutoring.</p>
+            <h2 id="lms-home-services-title">School &amp; college LMS software and online tutoring</h2>
+            <p>Explore our two education services: a learning management system for institutions and live online tuition for students in Grades 7–12.</p>
           </div>
           <div className="lms-home-services-grid">
             <article className="lms-home-service-card">
               <span className="lms-home-service-label">FOR SCHOOLS &amp; COLLEGES</span>
               <span className="lms-landing-icon is-blue"><Icon name="admin" size={29} /></span>
-              <h3>A complete LMS for your institution</h3>
-              <p>Use Student LMS as your education-management product. Organize admissions and enrollments, academic classes, teachers, attendance, exams, learning resources and fee administration through secure role-based portals.</p>
+              <h3>School and college management software</h3>
+              <p>MySLS brings student admissions, enrollments, class schedules, teacher assignments, attendance, online exams, learning resources and fee management into one secure platform.</p>
               <div className="lms-home-service-tags"><span>College Management</span><span>School Management</span><span>Four Dedicated Portals</span></div>
               <Link className="lms-landing-inline-link" href="/services/school-college-lms">Explore School &amp; College LMS <Icon name="arrow" size={17} /></Link>
             </article>
             <article className="lms-home-service-card">
               <span className="lms-home-service-label">FOR STUDENTS &amp; FAMILIES</span>
               <span className="lms-landing-icon is-coral"><Icon name="video" size={29} /></span>
-              <h3>Live online tutoring that fits your needs</h3>
-              <p>Choose one-to-one attention or learn in a group. Ask us about homework help, tuition classes and assignment support in relevant grades and subjects, including Physics, Chemistry, Mathematics and Biology.</p>
+              <h3>One-to-one and group online tutoring</h3>
+              <p>Choose individual or group tuition for Grades 7–12. Get help with Mathematics, Physics, Chemistry, Biology, homework and assignments through live online classes.</p>
               <div className="lms-home-service-tags"><span>One-to-One Classes</span><span>Group Classes</span><span>Homework &amp; Assignment Help</span></div>
               <Link className="lms-landing-inline-link" href="/services/online-tutoring">Explore Online Tutoring <Icon name="arrow" size={17} /></Link>
             </article>
@@ -346,7 +346,7 @@ export default function Home() {
           </div>
           <p className="lms-landing-portals-note">
             <Icon name="shield" size={18} />
-            New to Student LMS? Your institution provides account access and can help you choose the right portal.
+            New to MySLS? Your school or college manages portal access. Contact your institution for login details.
           </p>
         </div>
       </section>
@@ -355,8 +355,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="POWERFUL FEATURES"
-            title="Everyday campus essentials, working together."
-            description="The details of college life matter. Organize routine tasks, deliver engaging lessons and make academic information easier to find, follow and manage across your institution."
+            title="Everything your school or college needs to stay organized."
+            description="Manage attendance, teaching resources, online classes, assignments, exams, fees and notices through connected academic tools."
           />
           <div className="lms-landing-feature-grid">
             {features.map((feature) => (
@@ -415,7 +415,7 @@ export default function Home() {
           <SectionTitle
             eyebrow="HOW IT WORKS"
             title="The right tools are just a few steps away."
-            description="Student LMS is designed to make getting started straightforward, whether you are managing an institution or checking your next class."
+            description="Institutions can set up role-based access, while teachers, students and parents sign in to their dedicated MySLS portals."
             centered
           />
           <div className="lms-landing-steps">
@@ -482,8 +482,8 @@ export default function Home() {
         <div className="lms-landing-container">
           <SectionTitle
             eyebrow="DASHBOARD PREVIEWS"
-            title="Explore the real Student LMS dashboards."
-            description="See how College Admins, Teachers, Students and Parents stay organized with their own dedicated workspaces. These previews show actual screens from Student LMS."
+            title="Explore MySLS dashboards for every role."
+            description="See the administrative, teaching, learning and parent dashboards available through MySLS, with each user seeing information relevant to their role."
           />
           <div className="lms-landing-dashboard-grid">
             {portals.map((portal) => (
@@ -503,8 +503,8 @@ export default function Home() {
               who bring subject knowledge, patience and enthusiasm to their teaching.
             </p>
             <p>
-              Looking to teach with Student LMS? Discover the subjects, teaching qualities and
-              application process on our dedicated Tutor Hiring page. Apply there in just a few steps.
+              Interested in becoming an online tutor at ShabddLearningSolution?
+              Learn about our teaching opportunities and submit your application on the Tutor Hiring page.
             </p>
             <Link href="/tutor-hiring#apply" className="lms-landing-inline-link">
               Apply to become a tutor <Icon name="arrow" size={17} />
@@ -544,8 +544,7 @@ export default function Home() {
             </div>
             <span className="lms-landing-eyebrow">TUTOR OPPORTUNITIES</span>
             <h3>Ready to help students learn?</h3>
-            <p>Our tutor application is now on a dedicated page. Tell us about your qualifications,
-              preferred subjects and teaching experience.</p>
+            <p>Share your qualifications, teaching subjects and experience through our online tutor application.</p>
             <div className="lms-home-hiring-highlights">
               <span><Icon name="check" size={18} /> Complete your tutor profile</span>
               <span><Icon name="check" size={18} /> Share subjects and experience</span>
@@ -554,7 +553,7 @@ export default function Home() {
             <Link href="/tutor-hiring#apply" className="lms-landing-button lms-home-hiring-apply-link">
               Apply as a Tutor <Icon name="arrow" size={18} />
             </Link>
-            <span className="lms-home-hiring-note">Application and review take place on our Tutor Hiring page.</span>
+            <span className="lms-home-hiring-note">Our team reviews applications and contacts suitable candidates.</span>
           </aside>
         </div>
       </section>
@@ -562,32 +561,32 @@ export default function Home() {
       <section className="lms-landing-section lms-home-testimonials-section" id="testimonials">
         <div className="lms-landing-container">
           <SectionTitle
-            eyebrow="TESTIMONIALS"
-            title="Learning is better when we listen."
-            description="We are preparing a space for genuine feedback from parents, educators and partner institutions. Verified testimonials will be added only with their permission."
+            eyebrow="COMMUNITY &amp; FEEDBACK"
+            title="Your experience matters to the MySLS community."
+            description="Student feedback, family perspectives and educator insights help improve the learning experience. We welcome genuine stories from the people who use our services."
             centered
           />
           <div className="lms-home-testimonial-grid">
             <article className="lms-home-testimonial-card">
               <span className="lms-home-testimonial-icon"><Icon name="parent" size={23} /></span>
               <span className="lms-home-testimonial-label">PARENTS &amp; STUDENTS</span>
-              <h3>Parent and student experiences</h3>
-              <p>Approved reviews of one-to-one and group tutoring will appear here.</p>
-              <span className="lms-home-testimonial-pending">Verified testimonial pending</span>
+              <h3>Tell us about your learning journey</h3>
+              <p>Share your experience with individual tuition, group classes or homework support.</p>
+              <Link href="#contact" className="lms-home-testimonial-pending">Share your feedback <Icon name="arrow" size={15} /></Link>
             </article>
             <article className="lms-home-testimonial-card">
               <span className="lms-home-testimonial-icon"><Icon name="teacher" size={23} /></span>
               <span className="lms-home-testimonial-label">TUTORS &amp; EDUCATORS</span>
-              <h3>Teacher perspectives</h3>
-              <p>We will share real experiences from educators once those reviews are available.</p>
-              <span className="lms-home-testimonial-pending">Verified testimonial pending</span>
+              <h3>Help us improve the teaching experience</h3>
+              <p>Let us know how our teaching tools and academic resources support your work.</p>
+              <Link href="#contact" className="lms-home-testimonial-pending">Get in touch <Icon name="arrow" size={15} /></Link>
             </article>
             <article className="lms-home-testimonial-card">
               <span className="lms-home-testimonial-icon"><Icon name="admin" size={23} /></span>
               <span className="lms-home-testimonial-label">SCHOOLS &amp; COLLEGES</span>
-              <h3>Institution feedback</h3>
-              <p>Approved feedback on managing education with our LMS will be featured here.</p>
-              <span className="lms-home-testimonial-pending">Verified testimonial pending</span>
+              <h3>Share your institution&apos;s perspective</h3>
+              <p>Tell us which campus management processes are working well and where you need more support.</p>
+              <Link href="#contact" className="lms-home-testimonial-pending">Contact our team <Icon name="arrow" size={15} /></Link>
             </article>
           </div>
         </div>
@@ -603,22 +602,22 @@ export default function Home() {
           <div className="lms-landing-faq-list">
             <details>
               <summary>What services do you provide?</summary>
-              <p>We provide Student LMS software for schools and colleges to manage academic operations, plus live online one-to-one and group tutoring with homework, tuition and assignment support.</p>
+              <p>ShabddLearningSolution (MySLS) offers school and college management software, one-to-one online tutoring, group tuition, homework help and assignment guidance.</p>
             </details>
             <details>
               <summary>Can I book one-to-one or group online classes?</summary>
               <p>Yes. Use the contact form below to tell us the learner's grade, subjects and preferred one-to-one or group format so our team can respond with available options.</p>
             </details>
             <details>
-              <summary>What is Student LMS?</summary>
-              <p>Student LMS brings key academic and administrative tools into one platform, with separate workspaces for college administrators, teachers, students and parents.</p>
+              <summary>What is ShabddLearningSolution (MySLS)?</summary>
+              <p>MySLS is a learning management platform that helps schools and colleges organize students, teachers, academic schedules, attendance, fees, online assessments and communication through separate role-based portals.</p>
             </details>
             <details>
               <summary>Which login portal should I choose?</summary>
               <p>Choose the portal that matches your role. Your institution provides the username or registered email and password for your account.</p>
             </details>
             <details>
-              <summary>Can I access Student LMS from my phone?</summary>
+              <summary>Can I access MySLS on a phone or tablet?</summary>
               <p>Yes. The landing page and portals are designed to adapt to desktop, tablet and mobile screens. The tools you see depend on your role and your institution’s settings.</p>
             </details>
             <details>
