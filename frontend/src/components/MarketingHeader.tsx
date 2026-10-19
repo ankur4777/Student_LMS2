@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { publicContact } from "@/lib/publicContact";
 
 const ROOT = "/";
 
@@ -73,6 +74,20 @@ export function MarketingFooter() {
             <span>Student <strong>LMS</strong></span>
           </Link>
           <p>Education management software for schools and colleges, plus live one-to-one and group online tutoring for students.</p>
+          <address className="lms-footer-contact" aria-label="Student LMS contact details">
+            <a href={publicContact.phoneHref}>
+              <i className="bi bi-telephone" aria-hidden="true" />
+              <span>{publicContact.phoneDisplay}</span>
+            </a>
+            <a href={publicContact.emailHref}>
+              <i className="bi bi-envelope" aria-hidden="true" />
+              <span>{publicContact.email}</span>
+            </a>
+            <div className="lms-footer-contact-address">
+              <i className="bi bi-geo-alt" aria-hidden="true" />
+              <span>{publicContact.address}</span>
+            </div>
+          </address>
         </div>
         <nav aria-label="Service and platform links">
           <Link href="/">Home</Link>
