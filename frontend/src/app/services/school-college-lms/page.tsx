@@ -10,9 +10,14 @@ import "../services.css";
 import "../../ai-tutor-showcase.css";
 
 export const metadata: Metadata = {
-  title: "LMS Software for Schools & Colleges | Student LMS",
+  title: "School & College Management LMS Software",
   description:
-    "Student LMS helps schools and colleges manage academic classes, teachers, students, attendance, fees, online exams, learning resources and role-based portals.",
+    "Discover ShabddLearningSolution (MySLS), learning management software for schools and colleges. Manage students, attendance, teachers, classes, online exams, fees and academic records.",
+  keywords: ["school management software", "college management software", "learning management system", "attendance management", "online exams", "MySLS"],
+  openGraph: {
+    title: "School & College Management LMS Software | MySLS",
+    description: "Bring teaching, attendance, student records, assessments, fee administration and parent communication together.",
+  },
 };
 
 const modules = [
