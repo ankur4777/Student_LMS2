@@ -1,10 +1,10 @@
-name: Student LMS online exam checks
+name: MySLS LMS and online learning checks
 
 on:
   pull_request:
     branches: [main]
   push:
-    branches: [feature/mixed-online-exams]
+    branches: [main, feature/mixed-online-exams]
   workflow_dispatch:
 
 jobs:
