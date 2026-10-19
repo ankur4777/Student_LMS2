@@ -95,7 +95,7 @@ class TutorApplicationAPIView(APIView):
         )
         body = "\n".join(
             [
-                "New tutor application received from the Student LMS public homepage.",
+                "New tutor application received from the ShabddLearningSolution (MySLS) Tutor Hiring page.",
                 "",
                 f"Full name: {data['full_name']}",
                 f"Email: {data['email']}",
@@ -115,7 +115,7 @@ class TutorApplicationAPIView(APIView):
         )
 
         message = EmailMessage(
-            subject="New tutor application | Student LMS",
+            subject="New tutor application | MySLS",
             body=body,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[recipient],
