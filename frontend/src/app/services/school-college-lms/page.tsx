@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
+import StudentAITutorShowcase from "@/components/StudentAITutorShowcase";
 
 import "../../home.css";
 import "../../home-updates.css";
 import "../services.css";
+import "../../ai-tutor-showcase.css";
 
 export const metadata: Metadata = {
   title: "LMS Software for Schools & Colleges | Student LMS",
@@ -43,8 +45,8 @@ const modules = [
     detail: "Enable scheduled online lessons, recordings and permitted access to learning courses.",
   },
   {
-    icon: "stars", title: "AI-powered study support",
-    detail: "Offer Subject Tutor and dashboard help when enabled for the student's college and class.",
+    icon: "stars", title: "AI Tutor for Students",
+    detail: "Help students learn through Subject Tutor, ask LMS questions with My Dashboard and resume saved chats when authorized.",
   },
 ];
 
@@ -68,7 +70,7 @@ const portals = [
   {
     icon: "mortarboard-fill",
     heading: "Student",
-    copy: "View scheduled classes, accessible study materials, learning tasks, exams and academic progress.",
+    copy: "Join classes, access study materials, see academic progress and use the AI Tutor where your institution enables it.",
     href: "/student/login",
     label: "Student Login",
     tint: "purple",
@@ -176,6 +178,8 @@ export default function SchoolCollegeLMSPage() {
           </div>
         </div>
       </section>
+
+      <StudentAITutorShowcase />
 
       <section className="lms-landing-section lms-service-tint" id="role-portals">
         <div className="lms-landing-container">
