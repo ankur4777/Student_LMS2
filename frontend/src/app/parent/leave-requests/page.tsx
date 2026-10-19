@@ -25,6 +25,42 @@ type LeaveRecord = {
 type LeaveData = {children: Child[]; upcoming_classes: UpcomingClass[]; requests: LeaveRecord[]};
 type ParentUser = {name?:string;username?:string;organization?:string};
 
+// A 404/500 can return an HTML error page instead of JSON. Do not mistake
+// that failure for "no linked students" or quietly discard the HTTP status.
+async function readLeaveResponse(response: Response): Promise<Record<string, unknown>> {
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    if (response.status === 404) {
+      throw new Error(
+        "Leave Requests API not found (HTTP 404). Update and restart your Django backend on the leave-request branch, and check NEXT_PUBLIC_API_BASE_URL in frontend/.env.local."
+      );
+    }
+    if (response.status >= 500) {
+      throw new Error(
+        "Leave Requests API server error (HTTP " + response.status + "). Check your Django terminal for the traceback and verify the leave_requests database migration was applied to your local database."
+      );
+    }
+    throw new Error(
+      "Leave Requests API returned HTTP " + response.status + " without JSON. Check your Django backend and NEXT_PUBLIC_API_BASE_URL."
+    );
+  }
+
+  let data: Record<string, unknown>;
+  try {
+    data = await response.json() as Record<string, unknown>;
+  } catch {
+    throw new Error("Leave Requests API returned invalid JSON. Check your Django backend terminal.");
+  }
+  if (!response.ok) {
+    const detail = typeof data.detail === "string" ? data.detail : "";
+    throw new Error(detail || (
+      "Leave Requests API returned HTTP " + response.status +
+      ". Check the Django terminal and your local database migrations."
+    ));
+  }
+  return data;
+}
+
 const formatWhen = (item: UpcomingClass) => {
   const date = new Date(item.class_date + "T12:00:00");
   const formatted = Number.isNaN(date.getTime()) ? item.class_date
@@ -42,6 +78,7 @@ export default function ParentLeaveRequestsPage() {
   const [selectedClass, setSelectedClass] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -57,19 +94,25 @@ export default function ParentLeaveRequestsPage() {
 
   const load = useCallback(async () => {
     const token = getToken();
-    const response = await fetch(API_BASE + "/api/leave-requests/parent/", {
-      headers: {Authorization: "Bearer " + token}, cache: "no-store",
-    });
+    let response: Response;
+    try {
+      response = await fetch(API_BASE + "/api/leave-requests/parent/", {
+        headers: {Authorization: "Bearer " + token}, cache: "no-store",
+      });
+    } catch {
+      throw new Error(
+        "Cannot connect to the Leave Requests API. Check that Django is running and NEXT_PUBLIC_API_BASE_URL points to its address."
+      );
+    }
     if (response.status === 401) {
       router.replace("/parent/login");
       throw new Error("Please sign in again.");
     }
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.detail || "Unable to load leave requests.");
-    const data = result as LeaveData;
+    const data = await readLeaveResponse(response) as unknown as LeaveData;
     setChildren(data.children || []);
     setClasses(data.upcoming_classes || []);
     setRecords(data.requests || []);
+    setHasLoaded(true);
     setSelectedChild(current => {
       if (data.children?.some(child => String(child.id) === current)) return current;
       return data.children?.length === 1 ? String(data.children[0].id) : "";
@@ -90,6 +133,17 @@ export default function ParentLeaveRequestsPage() {
     void init();
     return () => {active=false;};
   }, [load]);
+
+  const retry = async () => {
+    setLoading(true);
+    setHasLoaded(false);
+    setError("");
+    setNotice("");
+    try { await load(); }
+    catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load leave requests.");
+    } finally { setLoading(false); }
+  };
 
   const available = useMemo(() => {
     const alreadyRequested = new Set(records.map(item => item.student_id + "-" + item.live_class.id));
@@ -112,8 +166,7 @@ export default function ParentLeaveRequestsPage() {
           student_id:Number(selectedChild), live_class_id:Number(selectedClass),reason:reason.trim(),
         }),
       });
-      const result = await response.json().catch(() => ({}));
-      if(!response.ok)throw new Error(result.detail || "Unable to submit leave request.");
+      await readLeaveResponse(response);
       setReason("");setSelectedClass("");
       await load();
       setNotice("Leave request submitted. The assigned teacher and college admin have been notified. Awaiting college admin approval.");
@@ -136,7 +189,15 @@ export default function ParentLeaveRequestsPage() {
             </div>
             {error && <div role="alert" className="lms-leave-alert lms-leave-error">{error}</div>}
             {notice && <div role="status" className="lms-leave-alert lms-leave-success">{notice}</div>}
-            {loading ? <div className="lms-leave-empty">Loading students and class schedules...</div> : (
+            {loading ? <div className="lms-leave-empty">Loading students and class schedules...</div>
+              : !hasLoaded ? (
+                <div className="lms-leave-empty" role="status">
+                  <p>Student and class information could not be loaded. This does not mean that you have no linked students.</p>
+                  <button type="button" className="lms-leave-button mt-3" onClick={() => void retry()}>
+                    Retry loading
+                  </button>
+                </div>
+              ) : (
               <div className="lms-leave-grid">
                 <section className="lms-leave-card">
                   <h3>Request leave</h3>
