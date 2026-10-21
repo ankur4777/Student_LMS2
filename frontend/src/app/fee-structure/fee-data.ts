@@ -37,7 +37,7 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
     locale: "en-CA",
     heading: "Online tutoring fees — Canada",
     intro: "Compare hourly rates for one-to-one tutoring and online group classes in Canada. The same grade and class-format rates apply to tuition, homework guidance and assignment support.",
-    countryNotice: "All rates are in Canadian dollars per hour. For Grades 7–10 one-to-one tutoring, the regular rate is CAD $30, the introductory rate is CAD $28 for the first 100 students, and the rate for subsequent enrolments is CAD $35. Please contact us to confirm offer availability, group pricing terms and any applicable taxes before booking.",
+    countryNotice: "All rates are in Canadian dollars per hour. Discounted prices and any separately listed post-offer rates are shown for reference. Please contact our team to confirm current eligibility, final pricing, group tuition terms and any applicable taxes before booking.",
     items: [
       {
         key: "ca-g7-10-individual",
@@ -45,7 +45,7 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
         description: "Personalized online tuition, homework guidance and assignment support for students in Grades 7–10.",
         amount: 30,
         discountedAmount: 28,
-        discountLabel: "For the first 100 students only",
+        discountLabel: null,
         afterPromotionAmount: 35,
         billingLabel: "Hourly rate",
       },
@@ -55,7 +55,7 @@ export const countryFees: Record<FeeCountry, CountryFeeSchedule> = {
         description: "Interactive group online tuition and study support for learners in Grades 7–10.",
         amount: 28,
         discountedAmount: 22,
-        discountLabel: "For the first 100 students only",
+        discountLabel: null,
         afterPromotionAmount: 28,
         billingLabel: "Hourly group classes · Ask about per-student terms",
       },
