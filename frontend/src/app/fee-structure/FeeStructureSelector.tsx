@@ -124,7 +124,7 @@ export default function FeeStructureSelector() {
                   </div>
                   {fee.afterPromotionAmount !== null && (
                     <div className="lms-fees-rate-row">
-                      <span className="lms-fees-rate-label">Rate after the first 100 students</span>
+                      <span className="lms-fees-rate-label">Listed rate after the offer</span>
                       <strong className="lms-fees-regular">{formatFee(fee.afterPromotionAmount, selected)} /hour</strong>
                     </div>
                   )}
