@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import FeeStructureSelector from "./FeeStructureSelector";
 
 import "./fee-structure.css";
+import "../marketing-typography.css";
 
 export const metadata: Metadata = {
   title: "Online Tutoring Fees in Canada & Australia",

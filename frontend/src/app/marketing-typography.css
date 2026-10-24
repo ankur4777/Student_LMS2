@@ -1,0 +1,316 @@
+/*
+ * MySLS public website typography system
+ * Scoped exclusively to marketing pages. Authenticated dashboards are untouched.
+ * Uses local/system font fallbacks; no external font download or build dependency.
+ */
+.lms-landing,
+.lms-fees {
+  --marketing-font: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --marketing-ink: #17243d;
+  --marketing-body: #52627b;
+  --marketing-soft: #65748d;
+  --marketing-hero-size: clamp(2.6rem, 4.55vw, 4.2rem);
+  --marketing-section-size: clamp(1.9rem, 3.15vw, 2.75rem);
+  --marketing-card-size: 1.25rem;
+  font-family: var(--marketing-font);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.65;
+  letter-spacing: 0;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.lms-landing :is(button, input, select, textarea),
+.lms-fees :is(button, input, select, textarea) {
+  font-family: inherit;
+}
+
+/* Clear editorial hierarchy: one display scale, one section scale, fewer
+   arbitrary heavy 800–850 weights and excessive negative tracking values. */
+.lms-landing :is(.mysls-hero h1, .lms-landing-hero h1, .lms-service-hero h1, .lms-hiring-hero h1),
+.lms-fees .lms-fees-hero-copy h1 {
+  font-size: var(--marketing-hero-size);
+  font-weight: 750;
+  line-height: 1.11;
+  letter-spacing: -.038em;
+  text-wrap: balance;
+}
+
+.lms-landing :is(
+  .lms-landing-section-heading h2,
+  .lms-landing-why-copy h2,
+  .lms-landing-faq-intro h2,
+  .lms-home-contact-copy h2,
+  .lms-ai-showcase-copy > h2,
+  .lms-service-copy h2,
+  .lms-service-faq-layout h2,
+  .lms-hiring-heading h2,
+  .lms-hiring-apply-copy h2
+),
+.lms-fees :is(.lms-fees-region-intro h2, .lms-fees-summary h2, .lms-fees-bottom h2) {
+  font-size: var(--marketing-section-size);
+  font-weight: 740;
+  line-height: 1.19;
+  letter-spacing: -.032em;
+  text-wrap: balance;
+}
+
+.lms-landing :is(.lms-service-cta h2, .lms-hiring-bottom h2, .lms-landing-cta h2) {
+  font-size: clamp(1.8rem, 2.7vw, 2.4rem);
+  line-height: 1.2;
+  letter-spacing: -.025em;
+  font-weight: 730;
+}
+
+.lms-landing :is(
+  .lms-landing-portal h3,
+  .lms-landing-feature h3,
+  .lms-landing-journey-card h3,
+  .lms-home-service-card h3,
+  .lms-home-testimonial-card h3,
+  .lms-home-contact-points h3,
+  .lms-ai-showcase-benefit h3,
+  .lms-service-feature-card h3,
+  .lms-service-portal-card h3,
+  .lms-service-step-grid h3,
+  .lms-hiring-feature h3,
+  .lms-hiring-step h3,
+  .lms-hiring-quality h3
+),
+.lms-fees .lms-fees-card h3 {
+  font-size: clamp(1.125rem, 1.65vw, 1.375rem);
+  font-weight: 700;
+  line-height: 1.32;
+  letter-spacing: -.02em;
+}
+
+.lms-landing :is(.lms-service-format-card h3, .lms-home-contact-heading h3, .lms-landing-tutor-form-heading h3),
+.lms-fees .lms-fees-summary h3 {
+  font-size: clamp(1.375rem, 2.05vw, 1.625rem);
+  font-weight: 730;
+  line-height: 1.27;
+  letter-spacing: -.025em;
+}
+
+/* Lead paragraphs stand apart from descriptions and small supporting copy. */
+.lms-landing :is(
+  .mysls-hero__intro,
+  .lms-landing-hero-lead,
+  .lms-landing-section-heading p,
+  .lms-landing-why-copy > p,
+  .lms-landing-faq-intro p,
+  .lms-home-contact-copy > p,
+  .lms-ai-showcase-lead,
+  .lms-service-hero-content > p,
+  .lms-service-copy > p,
+  .lms-hiring-hero-lead,
+  .lms-hiring-heading > p,
+  .lms-hiring-apply-copy > p
+),
+.lms-fees .lms-fees-hero-copy > p {
+  font-size: clamp(1rem, 1.22vw, 1.125rem);
+  font-weight: 400;
+  line-height: 1.72;
+  letter-spacing: 0;
+  color: var(--marketing-body);
+}
+
+.lms-landing :is(
+  .lms-landing-portal p,
+  .lms-landing-feature p,
+  .lms-landing-journey-card p,
+  .lms-home-service-card p,
+  .lms-home-testimonial-card p,
+  .lms-home-contact-points p,
+  .lms-ai-showcase-benefit p,
+  .lms-service-format-card > p,
+  .lms-service-feature-card p,
+  .lms-service-portal-card p,
+  .lms-service-step-grid p,
+  .lms-hiring-feature p,
+  .lms-hiring-step p,
+  .lms-hiring-quality p
+),
+.lms-fees :is(.lms-fees-card > p, .lms-fees-bottom p) {
+  font-size: .9rem;
+  line-height: 1.72;
+  font-weight: 400;
+  color: var(--marketing-soft);
+}
+
+/* Eyebrows: quiet signposts, not oversized or heavily tracked badges. */
+.lms-landing :is(
+  .lms-landing-eyebrow,
+  .mysls-hero__eyebrow,
+  .lms-service-kicker,
+  .lms-hiring .lms-landing-eyebrow,
+  .lms-landing-tutor-form-kicker,
+  .lms-home-testimonial-label
+),
+.lms-fees .lms-fees-hero-label {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .065em;
+  line-height: 1.5;
+}
+
+/* Navigation & actions: consistent, medium-bold and easy to scan. */
+.lms-landing :is(.lms-landing-nav-links a, .lms-services-menu summary, .lms-landing-footer nav a),
+.lms-fees .lms-fees-header-links a {
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+.lms-landing :is(
+  .lms-landing-button,
+  .mysls-hero__cta,
+  .lms-landing-portal-action,
+  .lms-landing-tutor-submit,
+  .lms-home-contact-submit
+),
+.lms-fees :is(.lms-fees-button, .lms-fees-header-action) {
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: -.005em;
+}
+.lms-landing :is(.lms-landing-inline-link, .lms-hiring-text-link, .lms-hiring-teacher-login a) {
+  font-size: .875rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.lms-landing :is(.mysls-hero__benefits span, .mysls-hero__tab, .lms-service-highlights > span, .lms-hiring-trust span) {
+  font-size: .8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Forms: readable labels, inputs, validation and consent text. */
+.lms-landing :is(.lms-home-contact-fields label, .lms-landing-tutor-fields label),
+.lms-fees .lms-fees-select-wrap label {
+  font-size: .8125rem;
+  font-weight: 650;
+  line-height: 1.45;
+  letter-spacing: 0;
+}
+.lms-landing :is(
+  .lms-home-contact-fields input,
+  .lms-home-contact-fields select,
+  .lms-home-contact-fields textarea,
+  .lms-landing-tutor-fields input,
+  .lms-landing-tutor-fields select,
+  .lms-landing-tutor-fields textarea
+),
+.lms-fees .lms-fees-select-wrap select {
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.lms-landing :is(.lms-home-contact-consent, .lms-landing-tutor-consent, .lms-home-contact-feedback, .lms-landing-tutor-feedback) {
+  font-size: .8125rem;
+  font-weight: 400;
+  line-height: 1.65;
+}
+.lms-landing :is(.lms-home-contact-small, .lms-landing-tutor-fineprint, .lms-landing-tutor-disclaimer) {
+  font-size: .75rem;
+  line-height: 1.6;
+}
+
+/* Help content, FAQs and supplementary notices. */
+.lms-landing :is(.lms-landing-faq-list summary, .lms-hiring-faq-list summary) {
+  font-size: .9375rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.lms-landing :is(.lms-landing-faq-list details p, .lms-hiring-faq-list details p) {
+  font-size: .875rem;
+  line-height: 1.72;
+  font-weight: 400;
+}
+
+/* Footer typography works on the newly introduced dark navy background. */
+.lms-landing .lms-landing-footer-inner .lms-landing-brand {
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -.025em;
+}
+.lms-landing .lms-landing-footer-inner > div p,
+.lms-landing :is(.lms-footer-contact > a, .lms-footer-contact-address) {
+  font-size: .875rem;
+  font-weight: 400;
+  line-height: 1.7;
+}
+.lms-landing .lms-landing-footer-inner nav a {
+  font-size: .875rem;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.lms-landing .lms-landing-footer-bottom {
+  font-size: .75rem;
+  line-height: 1.6;
+}
+
+/* Fees page: clear amounts and labels, without aggressive font-weight jumps. */
+.lms-fees .lms-fees-card h3 { font-size: 1.25rem; }
+.lms-fees .lms-fees-amount,
+.lms-fees .lms-fees-discount {
+  font-size: clamp(1.5rem, 2.2vw, 1.8rem);
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+}
+.lms-fees .lms-fees-regular {
+  font-size: 1rem;
+  font-weight: 650;
+}
+.lms-fees :is(.lms-fees-rate-label, .lms-fees-billing, .lms-fees-offer-note, .lms-fees-footer) {
+  font-size: .75rem;
+  line-height: 1.6;
+}
+
+/* Illustration microcopy is still compact but no longer excessively tiny. */
+.lms-landing .mysls-hero-art__campus-panel h2 {
+  font-size: 1.4rem;
+  font-weight: 740;
+  line-height: 1.25;
+  letter-spacing: -.025em;
+}
+.lms-landing .mysls-hero-art__badge strong,
+.lms-landing .mysls-hero-art__role strong {
+  font-size: .75rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+.lms-landing .mysls-hero-art__badge div span,
+.lms-landing .mysls-hero-art__role div > span {
+  font-size: .6875rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+@media (max-width: 640px) {
+  .lms-landing, .lms-fees {
+    --marketing-hero-size: clamp(2.125rem, 8.9vw, 2.875rem);
+    --marketing-section-size: clamp(1.7rem, 7.4vw, 2.25rem);
+  }
+  .lms-landing :is(
+    .lms-landing-portal p,
+    .lms-landing-feature p,
+    .lms-home-service-card p,
+    .lms-home-testimonial-card p,
+    .lms-service-feature-card p,
+    .lms-service-format-card > p,
+    .lms-hiring-feature p
+  ) { font-size: .875rem; }
+  .lms-landing .mysls-hero__intro { font-size: .9375rem; }
+  .lms-landing .mysls-hero__eyebrow { font-size: .6875rem; }
+  .lms-landing .mysls-hero__tab { font-size: .6875rem; }
+  .lms-landing .mysls-hero-art__badge strong { font-size: .6875rem; }
+  .lms-landing .mysls-hero-art__badge div span { font-size: .625rem; }
+  .lms-landing .mysls-hero-art__role strong { font-size: .625rem; }
+  .lms-landing .mysls-hero-art__role div > span { font-size: .5625rem; }
+}

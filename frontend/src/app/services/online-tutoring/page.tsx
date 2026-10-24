@@ -6,6 +6,7 @@ import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 import "../../home.css";
 import "../../home-updates.css";
 import "../services.css";
+import "../../marketing-typography.css";
 
 export const metadata: Metadata = {
   title: "Online Tutoring for Grades 7–12",

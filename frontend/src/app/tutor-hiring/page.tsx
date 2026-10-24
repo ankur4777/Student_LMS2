@@ -7,6 +7,7 @@ import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 import "../home.css";
 import "../home-updates.css";
 import "./tutor-hiring.css";
+import "../marketing-typography.css";
 
 export const metadata: Metadata = {
   title: "Become an Online Tutor | Tutor Applications",

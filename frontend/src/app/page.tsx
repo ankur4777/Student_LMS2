@@ -9,6 +9,7 @@ import "./home.css";
 import "./home-updates.css";
 import "./home-hero-carousel.css";
 import "./ai-tutor-showcase.css";
+import "./marketing-typography.css";
 
 type HomeIcon =
   | "cap"

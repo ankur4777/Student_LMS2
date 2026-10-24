@@ -8,6 +8,7 @@ import "../../home.css";
 import "../../home-updates.css";
 import "../services.css";
 import "../../ai-tutor-showcase.css";
+import "../../marketing-typography.css";
 
 export const metadata: Metadata = {
   title: "School & College Management LMS Software",
