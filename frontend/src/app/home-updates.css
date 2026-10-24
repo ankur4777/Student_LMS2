@@ -424,8 +424,7 @@
   background:#ffecee;
   font-size:16px;
 }
-/* The shared footer is white; contacts need dark, readable text (not pale
-   colors intended for a dark footer). Applies on every public marketing page. */
+/* Shared marketing footer contact layout. Footer-specific dark-theme colors follow below. */
 .lms-landing .lms-footer-contact {
   display:grid;
   gap:14px;
@@ -474,4 +473,49 @@
 }
 @media(max-width:640px){
   .lms-landing .lms-home-contact-details {padding:19px}
+}
+
+
+/* Shared marketing footer — deep navy from the MySLS brand palette.
+   Contrast-safe text and contact links on home, tutoring, college and hiring pages. */
+.lms-landing .lms-landing-footer {
+  background: #17243d;
+  color: #dbe4f3;
+  border-top: 1px solid #253653;
+}
+.lms-landing .lms-landing-footer-inner .lms-landing-brand {
+  color: #fff;
+}
+.lms-landing .lms-landing-footer-inner .lms-landing-brand strong {
+  color: #ff6974;
+}
+.lms-landing .lms-landing-footer-inner > div p {
+  color: #c7d3e7;
+}
+.lms-landing .lms-landing-footer-inner > div p strong {
+  color: #fff;
+}
+.lms-landing .lms-landing-footer-inner nav a {
+  color: #dce5f5;
+}
+.lms-landing .lms-landing-footer-inner nav a:hover,
+.lms-landing .lms-landing-footer-inner nav a:focus-visible {
+  color: #ff9298;
+}
+.lms-landing .lms-footer-contact > a,
+.lms-landing .lms-footer-contact-address {
+  color: #dce5f5;
+}
+.lms-landing .lms-footer-contact > a:hover {
+  color: #ff9298;
+}
+.lms-landing .lms-footer-contact .bi {
+  color: #ff737e;
+}
+.lms-landing .lms-landing-footer-bottom {
+  color: #acbbd1;
+  border-top: 1px solid #3c4c68;
+}
+.lms-landing .lms-landing-footer-bottom strong {
+  color: #ff9298;
 }
