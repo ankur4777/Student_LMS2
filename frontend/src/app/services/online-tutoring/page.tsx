@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import TutoringDemoForm from "@/components/TutoringDemoForm";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 
 import "../../home.css";
 import "../../home-updates.css";
 import "../services.css";
+import "./tutoring-demo.css";
 import "../../marketing-typography.css";
 
 export const metadata: Metadata = {
@@ -111,8 +113,8 @@ export default function OnlineTutoringPage() {
             <h1>One-to-one online tutoring <span>and interactive group classes.</span></h1>
             <p>ShabddLearningSolution (MySLS) provides online tuition for students in Grades 7–12, with individual lessons, group classes, homework help and assignment guidance in Mathematics and Science subjects.</p>
             <div className="lms-service-actions">
-              <Link className="lms-landing-button" href="/#contact">
-                Enquire about online classes <i className="bi bi-arrow-right" aria-hidden="true" />
+              <Link className="lms-landing-button" href="#book-demo">
+                Book a tutoring demo <i className="bi bi-arrow-right" aria-hidden="true" />
               </Link>
               <a href="#class-formats" className="lms-landing-button lms-landing-button-outline">
                 Explore class formats <i className="bi bi-arrow-down" aria-hidden="true" />
@@ -250,6 +252,22 @@ export default function OnlineTutoringPage() {
             <article><span className="lms-service-step-num">02</span><h3>Choose a format</h3><p>Discuss one-to-one or group tutoring, timing and applicable terms.</p></article>
             <article><span className="lms-service-step-num">03</span><h3>Begin learning</h3><p>Once availability is confirmed, follow the agreed session schedule.</p></article>
           </div>
+        </div>
+      </section>
+
+      <section className="lms-landing-section lms-service-demo-section" id="book-demo" aria-labelledby="tutoring-demo-title">
+        <div className="lms-landing-container lms-service-demo-layout">
+          <div className="lms-service-demo-copy">
+            <span className="lms-landing-eyebrow">BOOK A TUTORING DEMO</span>
+            <h2 id="tutoring-demo-title">Experience a more personal way to learn.</h2>
+            <p>Interested in online tutoring for Grades 7–12? Request a demo and speak with our team about your learner's subject, preferred format and next steps.</p>
+            <div className="lms-service-demo-benefits">
+              <div><span className="lms-service-demo-icon"><i className="bi bi-person-video3" aria-hidden="true" /></span><div><h3>Find your learning format</h3><p>Explore one-to-one or group tutoring based on your needs.</p></div></div>
+              <div><span className="lms-service-demo-icon"><i className="bi bi-journal-check" aria-hidden="true" /></span><div><h3>Discuss grades and subjects</h3><p>Tell us where your learner would benefit from support.</p></div></div>
+              <div><span className="lms-service-demo-icon"><i className="bi bi-calendar2-check" aria-hidden="true" /></span><div><h3>Arrange a suitable time</h3><p>Our team will follow up to confirm options and availability.</p></div></div>
+            </div>
+          </div>
+          <TutoringDemoForm />
         </div>
       </section>
 
