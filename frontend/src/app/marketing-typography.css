@@ -9,7 +9,7 @@
   --marketing-ink: #17243d;
   --marketing-body: #4f5d73;
   --marketing-muted: #5f6d83;
-  --marketing-display-size: clamp(2.5rem, 4.45vw, 4rem);
+  --marketing-display-size: clamp(2.25rem, 3.6vw, 3.25rem);
   --marketing-section-size: clamp(1.875rem, 3.05vw, 2.75rem);
   --marketing-card-size: clamp(1.1875rem, 1.6vw, 1.375rem);
   font-family: var(--marketing-font);
@@ -449,7 +449,7 @@
 @media (max-width: 850px) {
   .lms-landing,
   .lms-fees {
-    --marketing-display-size: clamp(2.375rem, 6.6vw, 3.375rem);
+    --marketing-display-size: clamp(2.125rem, 4.4vw, 3rem);
     --marketing-section-size: clamp(1.875rem, 4.35vw, 2.5rem);
   }
 }
@@ -457,7 +457,7 @@
 @media (max-width: 640px) {
   .lms-landing,
   .lms-fees {
-    --marketing-display-size: clamp(2.125rem, 8.6vw, 2.625rem);
+    --marketing-display-size: clamp(2rem, 7.8vw, 2.5rem);
     --marketing-section-size: clamp(1.75rem, 7.2vw, 2.125rem);
     --marketing-card-size: 1.1875rem;
   }
