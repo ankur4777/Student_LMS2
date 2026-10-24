@@ -610,8 +610,9 @@ export default function Home() {
               <div><span className="lms-landing-icon is-green"><Icon name="video" size={22} /></span><div><h3>For students &amp; families</h3><p>Enquire about subjects, levels and online class formats.</p></div></div>
               <div><span className="lms-landing-icon is-purple"><Icon name="shield" size={22} /></span><div><h3>Private, direct enquiry</h3><p>Your message goes to our team rather than being posted publicly.</p></div></div>
             </div>
-            <address className="lms-home-contact-details" aria-label="Our contact information">
+            <address className="lms-home-contact-details" aria-label="Our Canada and India contact information">
               <h3>Get in touch directly</h3>
+              <h4 className="lms-home-contact-region">Canada</h4>
               <a href={publicContact.phoneHref}>
                 <span className="lms-home-contact-detail-icon"><i className="bi bi-telephone" aria-hidden="true" /></span>
                 <span><strong>Call us</strong>{publicContact.phoneDisplay}</span>
@@ -623,6 +624,19 @@ export default function Home() {
               <div>
                 <span className="lms-home-contact-detail-icon"><i className="bi bi-geo-alt" aria-hidden="true" /></span>
                 <span><strong>Our address</strong>{publicContact.address}</span>
+              </div>
+              <h4 className="lms-home-contact-region">India</h4>
+              <a href={publicContact.india.phoneHref}>
+                <span className="lms-home-contact-detail-icon"><i className="bi bi-telephone" aria-hidden="true" /></span>
+                <span><strong>Call us</strong>{publicContact.india.phoneDisplay}</span>
+              </a>
+              <a href={publicContact.india.emailHref}>
+                <span className="lms-home-contact-detail-icon"><i className="bi bi-envelope" aria-hidden="true" /></span>
+                <span><strong>Email us</strong>{publicContact.india.email}</span>
+              </a>
+              <div>
+                <span className="lms-home-contact-detail-icon"><i className="bi bi-geo-alt" aria-hidden="true" /></span>
+                <span><strong>Our address</strong>{publicContact.india.address}</span>
               </div>
             </address>
           </div>
