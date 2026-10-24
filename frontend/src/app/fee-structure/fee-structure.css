@@ -249,13 +249,21 @@
 
 
 /* Contact information on the standalone Fee Structure footer. */
-.lms-fees .lms-fees-footer-content {flex-wrap:wrap;align-items:center;gap:16px 30px}
-.lms-fees .lms-fees-footer-contacts {display:flex;flex-wrap:wrap;gap:8px 19px;align-items:center}
-.lms-fees .lms-fees-footer-contacts > a {color:#f4dae0;text-decoration:none;font-weight:700;overflow-wrap:anywhere}
-.lms-fees .lms-fees-footer-contacts > a:hover {text-decoration:underline;color:#fff}
-.lms-fees .lms-fees-footer-contacts > span {color:#c5cfdf;overflow-wrap:anywhere}
+.lms-fees .lms-fees-footer-content {flex-wrap:wrap;align-items:flex-start;gap:20px 30px}
+.lms-fees .lms-fees-footer-contacts {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:18px 28px;
+  flex:1 1 580px;
+  min-width:0;
+}
+.lms-fees .lms-fees-footer-office {display:grid;align-content:start;gap:6px;min-width:0}
+.lms-fees .lms-fees-footer-office > strong {color:#fff;font-size:14px;font-weight:700}
+.lms-fees .lms-fees-footer-office > a {color:#f4dae0;text-decoration:none;font-weight:600;overflow-wrap:anywhere}
+.lms-fees .lms-fees-footer-office > a:hover {text-decoration:underline;color:#fff}
+.lms-fees .lms-fees-footer-office > span {color:#c5cfdf;overflow-wrap:anywhere;line-height:1.55}
 .lms-fees .lms-fees-footer-disclaimer {color:#aebad0;font-size:11px}
 @media(max-width:760px) {
-  .lms-fees .lms-fees-footer-contacts {flex-direction:column;align-items:flex-start}
+  .lms-fees .lms-fees-footer-contacts {grid-template-columns:1fr;width:100%}
   .lms-fees .lms-fees-footer-content {flex-direction:column;align-items:flex-start}
 }
