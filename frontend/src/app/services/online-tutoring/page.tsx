@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import TutoringDemoForm from "@/components/TutoringDemoForm";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
@@ -124,23 +123,6 @@ export default function OnlineTutoringPage() {
               <span><i className="bi bi-check-circle-fill" aria-hidden="true" /> One-to-one &amp; group learning</span>
               <span><i className="bi bi-check-circle-fill" aria-hidden="true" /> Homework &amp; tuition support</span>
               <span><i className="bi bi-check-circle-fill" aria-hidden="true" /> Grade-based subject guidance</span>
-            </div>
-          </div>
-          <div className="lms-service-image-wrap">
-            <div className="lms-service-hero-image">
-              <Image
-                src="/student-lms-hero.webp"
-                alt="Student using a laptop and learning resources"
-                fill priority sizes="(max-width: 850px) 100vw, 43vw"
-              />
-            </div>
-            <div className="lms-service-float lms-service-float-top">
-              <i className="bi bi-mortarboard-fill" aria-hidden="true" />
-              Learning support for your goals
-            </div>
-            <div className="lms-service-float lms-service-float-bottom">
-              <i className="bi bi-check-circle-fill" aria-hidden="true" />
-              Choose how you learn
             </div>
           </div>
         </div>
