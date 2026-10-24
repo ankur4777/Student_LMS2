@@ -3,9 +3,11 @@ import ContactInquiryForm from "@/components/ContactInquiryForm";
 import { publicContact } from "@/lib/publicContact";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 import StudentAITutorShowcase from "@/components/StudentAITutorShowcase";
+import HomeHeroCarousel from "@/components/HomeHeroCarousel";
 
 import "./home.css";
 import "./home-updates.css";
+import "./home-hero-carousel.css";
 import "./ai-tutor-showcase.css";
 
 type HomeIcon =
@@ -251,47 +253,7 @@ export default function Home() {
     <main className="lms-landing" id="top">
       <MarketingHeader home />
 
-      <section className="lms-landing-hero">
-        <div className="lms-landing-container lms-landing-hero-layout">
-          <div className="lms-landing-hero-copy">
-            <span className="lms-landing-tag">
-              <Icon name="sparkle" size={16} />
-              Education technology & online tutoring
-            </span>
-            <h1>
-              School management software
-              <span> and online tutoring that connects learning.</span>
-            </h1>
-            <p className="lms-landing-hero-lead">
-              <strong>ShabddLearningSolution (MySLS)</strong> helps schools and colleges manage students, teachers, attendance, fees, classes and academic records. We also provide <strong>one-to-one online tutoring and group tuition</strong> for school students.
-            </p>
-            <p className="lms-landing-hero-support">
-              Run your institution from one connected LMS or find tailored academic support
-              with live online classes, homework guidance and assignment help.
-            </p>
-            <div className="lms-landing-hero-actions">
-              <a href="#services" className="lms-landing-button">
-                Explore our services <Icon name="arrow" size={18} />
-              </a>
-              <a href="#contact" className="lms-landing-button lms-landing-button-outline">
-                Talk to our team
-              </a>
-            </div>
-            <div className="lms-landing-trust-notes">
-              <span><Icon name="check" size={16} /> LMS for schools &amp; colleges</span>
-              <span><Icon name="check" size={16} /> 1-to-1 &amp; group sessions</span>
-              <span><Icon name="check" size={16} /> Homework, tuition &amp; assignment help</span>
-            </div>
-          </div>
-          <div className="lms-landing-hero-visual">
-            <div
-              className="lms-landing-hero-image"
-              role="img"
-              aria-label="Student studying on a laptop at a sunlit campus with education graphics and books"
-            />
-          </div>
-        </div>
-      </section>
+      <HomeHeroCarousel />
 
       <section className="lms-landing-section lms-home-services-section" id="services" aria-labelledby="lms-home-services-title">
         <div className="lms-landing-container">
