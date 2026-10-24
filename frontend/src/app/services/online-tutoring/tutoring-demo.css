@@ -1,0 +1,51 @@
+/* Tutoring-only demo request; mirrors the existing MySLS contact design. */
+.lms-landing.lms-service-page .lms-service-demo-section {
+  background: linear-gradient(130deg, #fff9f8 0%, #fff1ef 53%, #f8faff 100%);
+  border-block: 1px solid #f5e1e2;
+}
+.lms-service-demo-layout {
+  display: grid;
+  grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
+  align-items: start;
+  gap: clamp(32px, 5.5vw, 80px);
+}
+.lms-service-demo-copy { padding-top: 38px; min-width: 0; }
+.lms-landing .lms-service-demo-copy h2 {
+  margin: 16px 0 18px;
+  color: #17243d;
+  font-size: var(--marketing-section-size, clamp(1.875rem, 3.05vw, 2.75rem));
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -.027em;
+  text-wrap: balance;
+}
+.lms-service-demo-copy > p { color: #53627b; font-size: 1rem; line-height: 1.76; max-width: 530px; }
+.lms-service-demo-benefits { display: grid; gap: 25px; margin-top: 35px; }
+.lms-service-demo-benefits > div { display: flex; align-items: flex-start; gap: 15px; }
+.lms-service-demo-icon {
+  flex: none; display: grid; place-items: center; width: 46px; height: 46px;
+  background: #fff; color: #db3449; border: 1px solid #f4d5d8; border-radius: 13px;
+  font-size: 21px;
+}
+.lms-service-demo-benefits h3 { font-size: 1.0625rem; font-weight: 700; line-height: 1.4; color: #17243d; margin: 0 0 5px; }
+.lms-service-demo-benefits p { font-size: .9375rem; line-height: 1.7; color: #5a6a81; margin: 0; }
+.lms-service-demo-form { border-color: #f0dfe1; box-shadow: 0 24px 60px #283b5314; }
+.lms-service-demo-form .lms-home-contact-heading h3 { font-size: clamp(1.5rem, 2vw, 1.75rem); font-weight: 700; letter-spacing: -.025em; }
+.lms-service-demo-form .lms-home-contact-heading p { font-size: .9375rem; line-height: 1.7; }
+.lms-service-demo-form .lms-home-contact-fields label { font-size: .875rem; font-weight: 600; }
+.lms-service-demo-form .lms-home-contact-fields :is(input, select, textarea) { font-size: .9375rem; font-weight: 400; }
+.lms-service-demo-form .lms-home-contact-fields :is(input, textarea)::placeholder { color: #6f7c91; }
+.lms-service-demo-form .lms-home-contact-submit { display: flex; gap: 12px; align-items: center; }
+@media (max-width: 900px) {
+  .lms-service-demo-layout { grid-template-columns: 1fr; gap: 32px; }
+  .lms-service-demo-copy { padding-top: 0; }
+  .lms-service-demo-benefits { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
+  .lms-service-demo-benefits > div { flex-direction: column; }
+}
+@media (max-width: 640px) {
+  .lms-landing.lms-service-page .lms-service-demo-section { padding-block: 58px; }
+  .lms-service-demo-benefits { grid-template-columns: 1fr; gap: 20px; margin-top: 26px; }
+  .lms-service-demo-benefits > div { flex-direction: row; }
+  .lms-service-demo-form { padding: 24px 18px; }
+  .lms-service-demo-form .lms-home-contact-fields { grid-template-columns: 1fr; }
+}
