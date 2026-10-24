@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 type SlideId = "tutoring" | "management";
@@ -35,35 +36,24 @@ const slides = [
 
 function TutoringArtwork() {
   return (
-    <div className="mysls-hero-art mysls-hero-art--tutoring" aria-label="Illustration of live online tutoring and study support">
+    <div className="mysls-hero-art mysls-hero-art--tutoring" aria-label="Student attending a live online tutoring session">
       <div className="mysls-hero-art__halo" aria-hidden="true" />
       <span className="mysls-hero-art__spark mysls-hero-art__spark--one" aria-hidden="true">✳</span>
       <span className="mysls-hero-art__spark mysls-hero-art__spark--two" aria-hidden="true">✦</span>
-      <div className="mysls-hero-art__tutor-panel">
-        <div className="mysls-hero-art__panel-top">
-          <span><span className="mysls-hero-art__live-dot" /> LIVE ONLINE CLASS</span>
-          <i className="bi bi-camera-video-fill" aria-hidden="true" />
-        </div>
-        <div className="mysls-hero-art__lesson-illustration">
-          <div className="mysls-hero-art__lesson-board" aria-hidden="true">
-            <span>Let's understand it</span>
-            <strong>a² + b² = c²</strong>
-            <span className="mysls-hero-art__board-line" />
-            <span className="mysls-hero-art__board-line mysls-hero-art__board-line--short" />
-          </div>
-          <div className="mysls-hero-art__tutor-avatar" aria-hidden="true"><i className="bi bi-person-fill" /></div>
-        </div>
-        <div className="mysls-hero-art__panel-caption">
-          <div>
-            <strong>Learn at your pace</strong>
-            <span>Explore · Understand · Practice</span>
-          </div>
-          <span className="mysls-hero-art__caption-icon" aria-hidden="true"><i className="bi bi-arrow-up-right" /></span>
-        </div>
+      <div className="mysls-hero-art__photo-frame">
+        <Image
+          src="/online-tutoring-hero.avif"
+          alt="Student writing study notes while joining an online class on her laptop"
+          width={480}
+          height={270}
+          priority
+          sizes="(max-width: 850px) 85vw, 40vw"
+          className="mysls-hero-art__photo"
+        />
       </div>
       <div className="mysls-hero-art__badge mysls-hero-art__badge--top">
-        <span className="mysls-hero-art__badge-icon"><i className="bi bi-chat-heart-fill" aria-hidden="true" /></span>
-        <div><strong>Ask questions</strong><span>Learn with confidence</span></div>
+        <span className="mysls-hero-art__badge-icon"><i className="bi bi-camera-video-fill" aria-hidden="true" /></span>
+        <div><strong>Interactive lessons</strong><span>Online, from anywhere</span></div>
       </div>
       <div className="mysls-hero-art__badge mysls-hero-art__badge--bottom">
         <span className="mysls-hero-art__badge-icon"><i className="bi bi-check2-circle" aria-hidden="true" /></span>

@@ -165,126 +165,26 @@
 }
 .lms-landing .mysls-hero-art__spark--one { left: 5%; top: 5%; }
 .lms-landing .mysls-hero-art__spark--two { right: 1%; bottom: 13%; }
-.lms-landing .mysls-hero-art__tutor-panel {
-  width: min(81%, 405px);
-  border-radius: 25px;
-  border: 7px solid #fff;
-  overflow: hidden;
-  background: white;
-  box-shadow: 0 28px 63px rgba(108, 34, 46, .18);
-  transform: rotate(-2.5deg);
-}
-.lms-landing .mysls-hero-art__panel-top {
-  padding: 16px 18px;
-  background: var(--hero-accent-deep);
-  color: #fff;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.lms-landing .mysls-hero-art__panel-top > span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 10px;
-  letter-spacing: .09em;
-  font-weight: 850;
-}
-.lms-landing .mysls-hero-art__panel-top > i { font-size: 18px; }
-.lms-landing .mysls-hero-art__live-dot {
-  height: 7px;
-  width: 7px;
-  display: inline-block;
-  background: #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px #ffffff3d;
-}
-.lms-landing .mysls-hero-art__lesson-illustration {
+/* The real online-tutoring photograph is included in the repository, not hotlinked. */
+.lms-landing .mysls-hero-art__photo-frame {
   position: relative;
-  min-height: 205px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #fff4ec, #ffe6e7);
+  width: min(93%, 530px);
+  aspect-ratio: 16 / 9;
   overflow: hidden;
-}
-.lms-landing .mysls-hero-art__lesson-board {
-  position: relative;
-  margin: 10px 0 20px -52px;
-  width: 225px;
-  height: 156px;
-  padding: 23px 18px;
-  background: #26344d;
-  border-radius: 15px;
-  color: #fff;
-  box-shadow: 0 14px 28px #24304e25;
-  transform: rotate(-5deg);
-}
-.lms-landing .mysls-hero-art__lesson-board > span:first-child {
-  display: block;
-  color: #c1d3f2;
-  font-size: 11px;
-  font-weight: 670;
-  margin-bottom: 10px;
-}
-.lms-landing .mysls-hero-art__lesson-board strong {
-  display: block;
-  font-size: 25px;
-  letter-spacing: -.035em;
-}
-.lms-landing .mysls-hero-art__board-line {
-  display: block;
-  margin-top: 13px;
-  width: 80%;
-  height: 5px;
-  border-radius: 10px;
-  background: #ffffff43;
-}
-.lms-landing .mysls-hero-art__board-line--short { width: 54%; margin-top: 9px; }
-.lms-landing .mysls-hero-art__tutor-avatar {
-  width: 126px;
-  height: 126px;
-  border-radius: 46% 46% 24% 24%;
-  display: grid;
-  place-items: center;
-  font-size: 82px;
-  color: #ee535c;
+  border: 9px solid #fff;
+  border-radius: 24px;
   background: #fff;
-  border: 7px solid #ffd4d3;
-  box-shadow: 0 16px 25px #d44d5530;
-  margin-left: -47px;
-  margin-top: 67px;
-  transform: rotate(8deg);
+  box-shadow: 0 29px 62px rgba(108, 34, 46, .20);
+  transform: rotate(-2.3deg);
 }
-.lms-landing .mysls-hero-art__panel-caption {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 15px 19px 19px;
-  background: white;
-}
-.lms-landing .mysls-hero-art__panel-caption strong {
+.lms-landing .mysls-hero-art__photo {
   display: block;
-  color: #18243c;
-  font-size: 15px;
-  font-weight: 830;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
-.lms-landing .mysls-hero-art__panel-caption span:not(.mysls-hero-art__caption-icon) {
-  display: block;
-  margin-top: 3px;
-  color: #748095;
-  font-size: 11px;
-}
-.lms-landing .mysls-hero-art__caption-icon {
-  margin-left: auto;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #fff0ef;
-  color: var(--hero-accent-deep);
-}
+
 .lms-landing .mysls-hero-art__badge {
   position: absolute;
   display: flex;
@@ -453,11 +353,7 @@
   .lms-landing .mysls-hero__benefits { margin-top: 22px; padding-top: 19px; }
   .lms-landing .mysls-hero-art { min-height: 345px; }
   .lms-landing .mysls-hero-art__halo { top: 9%; width: 96%; }
-  .lms-landing .mysls-hero-art__tutor-panel { width: 85%; }
-  .lms-landing .mysls-hero-art__lesson-illustration { min-height: 160px; }
-  .lms-landing .mysls-hero-art__lesson-board { width: 175px; height: 130px; padding: 19px 14px; margin-left: -25px; }
-  .lms-landing .mysls-hero-art__lesson-board strong { font-size: 18px; }
-  .lms-landing .mysls-hero-art__tutor-avatar { width: 92px; height: 92px; font-size: 57px; margin-left: -24px; margin-top: 43px; }
+  .lms-landing .mysls-hero-art__photo-frame { width: 93%; border-width: 6px; border-radius: 17px; }
   .lms-landing .mysls-hero-art__badge { padding: 8px; gap: 6px; }
   .lms-landing .mysls-hero-art__badge-icon { width: 30px; height: 30px; font-size: 14px; }
   .lms-landing .mysls-hero-art__badge strong { font-size: 9px; }
