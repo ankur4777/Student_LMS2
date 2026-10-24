@@ -42,7 +42,7 @@ function TutoringArtwork() {
       <span className="mysls-hero-art__spark mysls-hero-art__spark--two" aria-hidden="true">✦</span>
       <div className="mysls-hero-art__photo-frame">
         <Image
-          src="/online-tutoring-hero.avif"
+          src="/online-tutoring-hero.jpg"
           alt="Student writing study notes while joining an online class on her laptop"
           width={480}
           height={270}
