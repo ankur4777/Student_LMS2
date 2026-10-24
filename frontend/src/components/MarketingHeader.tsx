@@ -51,7 +51,8 @@ export function MarketingFooter() {
             <span><strong>{siteBrand.shortName}</strong></span>
           </Link>
           <p><strong>{siteBrand.name}</strong> offers school and college management software, one-to-one online tutoring and group classes for students.</p>
-          <address className="lms-footer-contact" aria-label={`${siteBrand.shortName} contact details`}>
+          <address className="lms-footer-contact" aria-label={`${siteBrand.shortName} Canada and India contact details`}>
+            <span className="lms-footer-contact-region">Canada</span>
             <a href={publicContact.phoneHref}>
               <i className="bi bi-telephone" aria-hidden="true" />
               <span>{publicContact.phoneDisplay}</span>
@@ -63,6 +64,19 @@ export function MarketingFooter() {
             <div className="lms-footer-contact-address">
               <i className="bi bi-geo-alt" aria-hidden="true" />
               <span>{publicContact.address}</span>
+            </div>
+            <span className="lms-footer-contact-region">India</span>
+            <a href={publicContact.india.phoneHref}>
+              <i className="bi bi-telephone" aria-hidden="true" />
+              <span>{publicContact.india.phoneDisplay}</span>
+            </a>
+            <a href={publicContact.india.emailHref}>
+              <i className="bi bi-envelope" aria-hidden="true" />
+              <span>{publicContact.india.email}</span>
+            </a>
+            <div className="lms-footer-contact-address">
+              <i className="bi bi-geo-alt" aria-hidden="true" />
+              <span>{publicContact.india.address}</span>
             </div>
           </address>
         </div>
