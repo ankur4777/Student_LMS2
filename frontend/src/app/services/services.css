@@ -141,3 +141,56 @@
 @media(prefers-reduced-motion:reduce){
   .lms-service-page * {scroll-behavior:auto!important}
 }
+
+
+/* Online Tutoring hero: the supplied desk photo is the actual background.
+   Keep the left side clear for copy and reveal stationery on the right. */
+.lms-landing .lms-service-tutor-hero {
+  background-color: #faf8f7;
+  background-image:
+    linear-gradient(90deg,
+      rgba(255,255,255,.95) 0%,
+      rgba(255,255,255,.87) 30%,
+      rgba(255,255,255,.54) 51%,
+      rgba(255,255,255,.04) 78%),
+    url("/online-tutoring-desk-bg.webp");
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+.lms-landing .lms-service-tutor-hero .lms-service-hero-grid {
+  grid-template-columns: minmax(0, 650px) minmax(0, 1fr);
+  min-height: 515px;
+}
+.lms-landing .lms-service-tutor-hero .lms-service-hero-content {
+  max-width: 650px;
+}
+.lms-landing .lms-service-tutor-hero .lms-service-hero-content > p {
+  color: #384963;
+}
+.lms-landing .lms-service-tutor-hero .lms-service-highlights > span {
+  color: #3f516b;
+}
+@media (max-width: 850px) {
+  .lms-landing .lms-service-tutor-hero {
+    background-image:
+      linear-gradient(90deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.88) 57%, rgba(255,255,255,.46) 100%),
+      url("/online-tutoring-desk-bg.webp");
+    background-position: 60% center;
+  }
+  .lms-landing .lms-service-tutor-hero .lms-service-hero-grid {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+}
+@media (max-width: 640px) {
+  .lms-landing .lms-service-tutor-hero {
+    background-image:
+      linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.84)),
+      url("/online-tutoring-desk-bg.webp");
+    background-position: 67% center;
+  }
+  .lms-landing .lms-service-tutor-hero .lms-service-hero-content {
+    max-width: 100%;
+  }
+}
