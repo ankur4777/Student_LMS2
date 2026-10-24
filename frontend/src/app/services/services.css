@@ -146,6 +146,7 @@
 /* Online Tutoring hero: the supplied desk photo is the actual background.
    Keep the left side clear for copy and reveal stationery on the right. */
 .lms-landing .lms-service-tutor-hero {
+  padding-block: 38px 44px;
   background-color: #faf8f7;
   background-image:
     linear-gradient(90deg,
@@ -160,7 +161,12 @@
 }
 .lms-landing .lms-service-tutor-hero .lms-service-hero-grid {
   grid-template-columns: minmax(0, 650px) minmax(0, 1fr);
-  min-height: 515px;
+  min-height: 385px;
+}
+.lms-landing .lms-service-tutor-hero .lms-service-hero-content h1 {
+  font-size: clamp(2.25rem, 3.6vw, 3.25rem);
+  line-height: 1.14;
+  margin: 17px 0 18px;
 }
 .lms-landing .lms-service-tutor-hero .lms-service-hero-content {
   max-width: 650px;
@@ -173,6 +179,7 @@
 }
 @media (max-width: 850px) {
   .lms-landing .lms-service-tutor-hero {
+    padding-block: 34px 38px;
     background-image:
       linear-gradient(90deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.88) 57%, rgba(255,255,255,.46) 100%),
       url("/online-tutoring-desk-bg.webp");
@@ -185,6 +192,7 @@
 }
 @media (max-width: 640px) {
   .lms-landing .lms-service-tutor-hero {
+    padding-block: 28px 34px;
     background-image:
       linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.84)),
       url("/online-tutoring-desk-bg.webp");
@@ -192,5 +200,10 @@
   }
   .lms-landing .lms-service-tutor-hero .lms-service-hero-content {
     max-width: 100%;
+  }
+  .lms-landing .lms-service-tutor-hero .lms-service-hero-content h1 {
+    font-size: clamp(2rem, 7.8vw, 2.5rem);
+    line-height: 1.16;
+    margin: 14px 0 16px;
   }
 }
