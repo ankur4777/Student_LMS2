@@ -154,7 +154,7 @@
       rgba(255,255,255,.87) 30%,
       rgba(255,255,255,.54) 51%,
       rgba(255,255,255,.04) 78%),
-    url("/online-tutoring-desk-bg.webp");
+    url("/online-tutoring-desk-bg.jpg");
   background-size: cover;
   background-position: center center;
   background-repeat: no-repeat;
@@ -182,7 +182,7 @@
     padding-block: 34px 38px;
     background-image:
       linear-gradient(90deg, rgba(255,255,255,.96) 0%, rgba(255,255,255,.88) 57%, rgba(255,255,255,.46) 100%),
-      url("/online-tutoring-desk-bg.webp");
+      url("/online-tutoring-desk-bg.jpg");
     background-position: 60% center;
   }
   .lms-landing .lms-service-tutor-hero .lms-service-hero-grid {
@@ -195,7 +195,7 @@
     padding-block: 28px 34px;
     background-image:
       linear-gradient(90deg, rgba(255,255,255,.96), rgba(255,255,255,.84)),
-      url("/online-tutoring-desk-bg.webp");
+      url("/online-tutoring-desk-bg.jpg");
     background-position: 67% center;
   }
   .lms-landing .lms-service-tutor-hero .lms-service-hero-content {
