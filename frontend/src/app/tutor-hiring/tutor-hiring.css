@@ -71,7 +71,10 @@
   box-shadow:0 24px 52px #24334b27;
   transform:rotate(-1.2deg);
 }
-.lms-hiring-hero-image img {object-fit:cover;object-position:center}
+.lms-hiring-hero-image img {
+  object-fit: cover;
+  object-position: 50% 39%;
+}
 .lms-hiring-float {position:absolute;z-index:2;display:flex;align-items:center;gap:11px;padding:13px 15px;background:#fff;border-radius:13px;box-shadow:0 18px 35px #24334b21;color:var(--hiring-dark);font-size:12px;font-weight:790;white-space:nowrap}
 .lms-hiring-float-top {top:13%;left:-15px;transform:rotate(-4deg)}
 .lms-hiring-float-bottom {bottom:7%;right:-12px;transform:rotate(3deg)}

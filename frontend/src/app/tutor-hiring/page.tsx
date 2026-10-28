@@ -167,8 +167,8 @@ export default function TutorHiringPage() {
           <div className="lms-hiring-hero-art">
             <div className="lms-hiring-hero-image">
               <Image
-                src="/student-lms-hero.webp"
-                alt="Learning environment with books and a laptop"
+                src="/tutor-hiring-hero.avif"
+                alt="Smiling tutor writing notes at a desk with textbooks and a laptop"
                 fill
                 priority
                 sizes="(max-width: 860px) 90vw, 45vw"
