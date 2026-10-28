@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentTopbar from "@/components/student/studentTopbar";
-import "../../dashboard/dashboard.css";
-import "../learning.css";
+import "../dashboard/dashboard.css";
+import "./learning.css";
 
 type Course = {
   id: number;
