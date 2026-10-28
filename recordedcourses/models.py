@@ -429,3 +429,10 @@ class RecordedClassAccess(models.Model):
 
     def __str__(self):
         return f"{self.student} - {self.recording}"
+
+
+# Phase 1: models for organization learning, modules and teacher resources.
+from .learning_models import (  # noqa: E402,F401
+    OrganizationLearningSettings, CourseModule,
+    TeacherCourseAssignment, ModuleResource,
+)

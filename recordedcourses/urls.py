@@ -1,5 +1,11 @@
 from django.urls import path
 
+from .learning_access import (
+    CurrentOrganizationLearningSettingsAPIView,
+    PlatformAdminOrganizationLearningSettingsAPIView,
+)
+
+
 from .views import (
     CollegeAdminRecordedCourseDetailAPIView,
     CollegeAdminRecordedCourseLessonsAPIView,
@@ -21,6 +27,10 @@ from .views import (
 )
 
 urlpatterns = [
+    # Learning & Certification is distinct from existing recorded-course purchases.
+    path("learning-access/", CurrentOrganizationLearningSettingsAPIView.as_view(), name="organization-learning-status"),
+    path("platform-admin/organizations/<int:organization_id>/learning-access/", PlatformAdminOrganizationLearningSettingsAPIView.as_view(), name="platform-learning-access"),
+
     path("college-admin/courses/", CollegeAdminRecordedCoursesAPIView.as_view(), name="college-admin-recorded-courses"),
     path("college-admin/courses/<int:course_id>/", CollegeAdminRecordedCourseDetailAPIView.as_view(), name="college-admin-recorded-course-detail"),
     path("college-admin/courses/<int:course_id>/lessons/", CollegeAdminRecordedCourseLessonsAPIView.as_view(), name="college-admin-recorded-course-lessons"),
