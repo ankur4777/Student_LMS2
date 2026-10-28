@@ -5,7 +5,7 @@ from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.files.storage import FileSystemStorage
-from rest_framework.test import APITestCase
+from rest_framework.test import APITransactionTestCase
 
 from accounts.models import TeacherProfile, User
 from institutions.models import Organization
@@ -15,7 +15,14 @@ from recordedcourses.models import (
 )
 
 
-class LearningModuleAPITests(APITestCase):
+class LearningModuleAPITests(APITransactionTestCase):
+    """Use database flush isolation for streaming FileResponse tests.
+
+    Closing a streamed response sends request_finished, which can close a
+    connection while APITestCase's enclosing atomic transaction is active.
+    A subsequent SQL query then raises TransactionManagementError. This is a
+    test harness issue, not a reason to weaken resource authorization.
+    """
     def setUp(self):
         self.org_a = Organization.objects.create(name="Learning College A", code="P3-A")
         self.org_b = Organization.objects.create(name="Learning College B", code="P3-B")
