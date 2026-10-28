@@ -1,5 +1,12 @@
 from django.urls import path
 
+from .student_learning import (
+    StudentLearningCoursesAPIView,
+    StudentLearningCourseDetailAPIView,
+    StudentLearningResourceDownloadAPIView,
+    StudentLearningLessonCompleteAPIView,
+)
+
 from .learning_content import (
     ManagedLearningCoursesAPIView,
     ManagedCourseModulesAPIView,
@@ -38,6 +45,12 @@ from .views import (
 )
 
 urlpatterns = [
+    # Student Learning Center (existing paid-course playback stays intact).
+    path("learning/student/courses/", StudentLearningCoursesAPIView.as_view(), name="student-learning-courses"),
+    path("learning/student/courses/<int:course_id>/", StudentLearningCourseDetailAPIView.as_view(), name="student-learning-course-detail"),
+    path("learning/student/resources/<int:resource_id>/download/", StudentLearningResourceDownloadAPIView.as_view(), name="student-learning-resource-download"),
+    path("learning/student/lessons/<int:lesson_id>/complete/", StudentLearningLessonCompleteAPIView.as_view(), name="student-learning-lesson-complete"),
+
     # Organization-entitled, tenant-scoped authoring APIs.
     path("learning/manage/courses/", ManagedLearningCoursesAPIView.as_view()),
     path("learning/manage/courses/<int:course_id>/modules/", ManagedCourseModulesAPIView.as_view()),

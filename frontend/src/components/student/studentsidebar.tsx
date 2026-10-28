@@ -44,6 +44,7 @@ const navSections: StudentNavSection[] = [
       { label: "My Classes", href: "/student/classes", icon: "classes", featureKey: "classes" },
       { label: "Recorded Classes", href: "/student/recorded-classes", icon: "recordings", featureKey: "recorded_classes" },
       { label: "Buy Recorded Courses", href: "/student/recorded-courses", icon: "courses", featureKey: "recorded_courses" },
+      { label: "My Learning", href: "/student/learning", icon: "courses", featureKey: "recorded_courses" },
     ],
   },
   {
@@ -79,6 +80,7 @@ const navSections: StudentNavSection[] = [
 export default function StudentSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [learningEnabled, setLearningEnabled] = useState(false);
   const [featureAccess, setFeatureAccess] = useState<
     Partial<Record<StudentFeatureKey, boolean>> | null
   >(null);
@@ -125,6 +127,19 @@ export default function StudentSidebar() {
     };
   }, []);
 
+  // Fail closed until the organization-wide switch and class setting are confirmed.
+  useEffect(() => {
+    const token = localStorage.getItem("student_access_token");
+    if (!token) return;
+    const controller = new AbortController();
+    fetch(`${(process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "")}/api/recorded-courses/learning-access/`, {
+      headers: {Authorization: `Bearer ${token}`}, cache: "no-store", signal: controller.signal,
+    }).then(async response => response.ok ? response.json() : null)
+      .then(result => { if (!controller.signal.aborted) setLearningEnabled(result?.can_use_learning_center === true); })
+      .catch(() => { /* Do not show the optional menu if the request fails. */ });
+    return () => controller.abort();
+  }, []);
+
   const visibleNavSections = useMemo(
     () =>
       navSections
@@ -132,13 +147,14 @@ export default function StudentSidebar() {
           ...section,
           items: section.items.filter(
             (item) =>
-              !item.featureKey ||
-              featureAccess === null ||
-              featureAccess[item.featureKey] !== false
+              (item.href !== "/student/learning" || learningEnabled) &&
+              (!item.featureKey ||
+                featureAccess === null ||
+                featureAccess[item.featureKey] !== false)
           ),
         }))
         .filter((section) => section.items.length > 0),
-    [featureAccess]
+    [featureAccess, learningEnabled]
   );
 
   const isActive = (href: string) => {

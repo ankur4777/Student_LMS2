@@ -189,3 +189,32 @@ class ModuleResource(models.Model):
 
     def __str__(self):
         return f"{self.module}: {self.title}"
+
+
+class LessonLearningProgress(models.Model):
+    """Learner-reported lesson completion; never sufficient alone for certificates."""
+    student = models.ForeignKey(
+        "accounts.StudentProfile", on_delete=models.CASCADE,
+        related_name="recorded_learning_progress",
+    )
+    lesson = models.ForeignKey(
+        "recordedcourses.RecordedLesson", on_delete=models.CASCADE,
+        related_name="learning_progress",
+    )
+    completed_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["student", "lesson"],
+                                    name="unique_learning_lesson_progress"),
+        ]
+
+    def clean(self):
+        if self.student_id and self.lesson_id:
+            if self.student.user.organization_id != self.lesson.course.organization_id:
+                raise ValidationError({"lesson": "Student and lesson belong to different organizations."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

@@ -1,0 +1,59 @@
+/* MySLS Student Learning Center — isolated from marketing and staff portal CSS. */
+.student-learning { display:grid; gap:24px; color:var(--text-primary,#20314c); }
+.student-learning .learning-heading { display:flex; align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap; }
+.student-learning .learning-kicker { font-size:12px; font-weight:700; letter-spacing:.08em; color:#ca334b; }
+.student-learning h1 { margin:7px 0 4px; font-size:clamp(26px,2.8vw,34px); font-weight:700;letter-spacing:-.025em; }
+.student-learning .learning-heading p { font-size:14px; color:var(--text-muted,#657286);margin:0;max-width:650px;line-height:1.7; }
+.student-learning .learning-empty { padding:40px 28px; background:var(--card-bg,#fff);border:1px solid var(--border-color,#e4e9f1);border-radius:16px; }
+.student-learning .learning-empty h2 { font-size:22px;font-weight:700; }
+.student-learning .learning-empty p { color:var(--text-muted,#657286); }
+.student-learning .learning-cards { display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:20px; }
+.student-learning .learning-card {background:var(--card-bg,#fff);border:1px solid var(--border-color,#e1e5ed);border-radius:16px;overflow:hidden;box-shadow:0 10px 25px #18243b0b; }
+.student-learning .learning-card-icon { min-height:110px;display:grid;place-items:center;background:linear-gradient(125deg,#ffe5e5,#ebf1fc);color:#be3049;font-size:44px; }
+.student-learning .learning-card-body {padding:23px;}
+.student-learning .learning-card-label {font-size:11px;letter-spacing:.09em;color:#bc3648;font-weight:700;}
+.student-learning .learning-card h2 {font-size:20px;font-weight:700;line-height:1.4;margin:7px 0;}
+.student-learning .learning-card p {font-size:14px;line-height:1.65;color:var(--text-muted,#657286);min-height:40px;}
+.student-learning .learning-card-meta {display:flex;gap:8px 14px;flex-wrap:wrap;font-size:12px;color:var(--text-muted,#657286);margin:14px 0;}
+.student-learning .learning-meter {height:7px;border-radius:20px;background:#e8ecf3;overflow:hidden;margin:11px 0 8px;}
+.student-learning .learning-meter>span {display:block;height:100%;background:#2c956a;border-radius:20px;}
+.student-learning .learning-card-bottom {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.student-learning .learning-card-bottom>span {font-size:12px;color:var(--text-muted,#657286);}
+.student-learning .learning-disclaimer,.student-learning .learning-fineprint {font-size:12px!important;color:var(--text-muted,#657286)!important;line-height:1.6;}
+.student-learning .learning-summary {padding:20px;background:var(--card-bg,#fff);border:1px solid var(--border-color,#e2e7f0);border-radius:14px;display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:14px;}
+.student-learning .learning-summary>div {display:grid;align-content:center;gap:2px;}
+.student-learning .learning-summary strong {font-size:23px;font-weight:700;}
+.student-learning .learning-summary span {color:var(--text-muted,#657286);font-size:12px;}
+.student-learning .learning-workspace {display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);align-items:start;gap:20px;}
+.student-learning .learning-viewer,.student-learning .learning-modules {min-width:0;overflow:hidden;background:var(--card-bg,#fff);border:1px solid var(--border-color,#e2e7f0);border-radius:15px;}
+.student-learning .learning-viewer-header {padding:18px 22px;}
+.student-learning .learning-viewer-header small {color:#c63148;font-size:11px;font-weight:700;letter-spacing:.08em;}
+.student-learning .learning-viewer-header h2 {font-size:20px;margin:7px 0 0;font-weight:700;}
+.student-learning .learning-video-wrap {aspect-ratio:16/9;background:#101b2c;display:grid;place-items:center;color:#eee;text-align:center;overflow:hidden;}
+.student-learning .learning-video-wrap video {width:100%;height:100%;max-height:480px;object-fit:contain;}
+.student-learning .learning-viewer-info {padding:18px 22px;}
+.student-learning .learning-viewer-info>p {color:var(--text-muted,#657286);font-size:14px;line-height:1.65;}
+.student-learning .learning-done {color:#18855d;font-weight:600;font-size:13px;}
+.student-learning .learning-prev-next {display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:20px 0;}
+.student-learning .learning-modules>h2 {padding:20px;margin:0;border-bottom:1px solid var(--border-color,#e2e7f0);font-size:20px;font-weight:700;}
+.student-learning .learning-modules>p {padding:20px;color:var(--text-muted,#657286);}
+.student-learning .learning-module {border-bottom:1px solid var(--border-color,#e4e9f1);}
+.student-learning .learning-module:last-child {border-bottom:0;}
+.student-learning .learning-module summary {cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px;list-style:none;}
+.student-learning .learning-module summary::-webkit-details-marker {display:none;}
+.student-learning .learning-module summary>span:nth-child(2) {flex:1;min-width:0;}
+.student-learning .learning-module summary strong {display:block;font-size:14px;line-height:1.4;}
+.student-learning .learning-module summary small {font-size:12px;color:var(--text-muted,#657286);}
+.student-learning .learning-module-index {display:grid;place-items:center;flex:none;width:34px;height:34px;border-radius:10px;background:#fff1f1;color:#c5354b;font-size:12px;font-weight:700;}
+.student-learning .learning-module-description {padding:0 17px;color:var(--text-muted,#657286);font-size:13px;}
+.student-learning .learning-lesson-items {display:grid;gap:3px;padding:0 12px 14px;}
+.student-learning .learning-lesson-button {display:flex;gap:10px;align-items:center;text-align:left;width:100%;border:0;border-radius:9px;padding:11px;background:transparent;color:var(--text-primary,#22324e);font-size:13px;}
+.student-learning .learning-lesson-button i {color:#7b8ba1;}
+.student-learning .learning-lesson-button.is-selected {background:#fff0f1;color:#b92b43;font-weight:600;}
+.student-learning .learning-resource-list {margin:0 16px 16px;padding-top:13px;border-top:1px solid var(--border-color,#e2e7f0);}
+.student-learning .learning-resource-list h3 {font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted,#657286);}
+.student-learning .learning-resource-list button {width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:transparent;border:0;padding:10px 4px;color:#bc3648;font-size:13px;}
+.student-learning .learning-resource-list button span {flex:1;}
+.student-learning .learning-resource-list button:disabled {opacity:.5;}
+@media(max-width:1000px) {.student-learning .learning-workspace {grid-template-columns:minmax(0,1fr);} }
+@media(max-width:640px) {.student-learning .learning-summary {grid-template-columns:repeat(2,minmax(0,1fr));}.student-learning .learning-summary-progress{grid-column:1/-1;} .student-learning .learning-prev-next>button {flex:1;} }

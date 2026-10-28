@@ -438,5 +438,5 @@ class RecordedClassAccess(models.Model):
 # Phase 1: models for organization learning, modules and teacher resources.
 from .learning_models import (  # noqa: E402,F401
     OrganizationLearningSettings, CourseModule,
-    TeacherCourseAssignment, ModuleResource,
+    TeacherCourseAssignment, ModuleResource, LessonLearningProgress,
 )
