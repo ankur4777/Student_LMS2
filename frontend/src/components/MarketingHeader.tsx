@@ -7,7 +7,7 @@ import Script from "next/script";
 
 const ROOT = "/";
 
-export function MarketingHeader({ home = false }: { home?: boolean }) {
+export function MarketingHeader({ home = false, active }: { home?: boolean; active?: "contact" }) {
   const href = (anchor: string) => home ? "#" + anchor : "/#" + anchor;
 
   return (
@@ -24,6 +24,7 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
           <Link href={home ? "#top" : ROOT}>Home</Link>
           <ServicesDropdown />
           <TutorHiringNavLink />
+          <Link href="/contact-us" className={active === "contact" ? "is-active" : undefined} aria-current={active === "contact" ? "page" : undefined}>Contact Us</Link>
         </nav>
         <Link href={href("portals")} className="lms-landing-button lms-landing-button-small">
           Login <i className="bi bi-arrow-right" aria-hidden="true" />
@@ -92,7 +93,7 @@ export function MarketingFooter() {
           <Link href="/#testimonials">Community Feedback</Link>
           <Link href="/#faq">FAQs</Link>
           <Link href="/tutor-hiring">Tutor Hiring</Link>
-          <Link href="/#contact">Contact Us</Link>
+          <Link href="/contact-us">Contact Us</Link>
         </nav>
       </div>
       <div className="lms-landing-container lms-landing-footer-bottom">
