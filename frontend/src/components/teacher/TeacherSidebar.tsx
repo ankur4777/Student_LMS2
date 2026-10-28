@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -31,6 +31,7 @@ const navSections: TeacherNavSection[] = [
     items: [
       { label: "My Classes", href: "/teacher/classes", icon: "classes" },
       { label: "Recordings", href: "/teacher/recordings", icon: "recordings" },
+      { label: "Learning Courses", href: "/teacher/recorded-courses", icon: "recordings" },
       { label: "Attendance", href: "/teacher/attendance", icon: "attendance" },
       { label: "Leave Requests", href: "/teacher/leave-requests", icon: "calendar" },
       { label: "Assignments", href: "/teacher/assignments", icon: "assignments" },
@@ -66,6 +67,20 @@ const navSections: TeacherNavSection[] = [
 export default function TeacherSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [learningEnabled, setLearningEnabled] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("teacher_access_token");
+    if (!token) return;
+    const controller = new AbortController();
+    fetch(`${(process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "")}/api/recorded-courses/learning-access/`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    }).then(async response => response.ok ? response.json() : null)
+      .then(result => { if (result) setLearningEnabled(result.can_use_learning_center === true); })
+      .catch(() => { /* Fail closed: learning menu is only visible when enabled. */ });
+    return () => controller.abort();
+  }, []);
 
   const isActive = (href: string) => {
     if (pathname === href) return true;
@@ -106,7 +121,9 @@ export default function TeacherSidebar() {
               <div className="teacher-nav-section-title">{section.label}</div>
 
               <div className="teacher-nav-section-items">
-                {section.items.map((item) => (
+                {section.items.filter(item =>
+                item.href !== "/teacher/recorded-courses" || learningEnabled
+              ).map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}

@@ -46,6 +46,10 @@ class RecordedCourse(models.Model):
 
 class RecordedLesson(models.Model):
     course = models.ForeignKey(RecordedCourse, on_delete=models.CASCADE, related_name="lessons")
+    module = models.ForeignKey(
+        "recordedcourses.CourseModule", on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="lessons",
+    )
     title = models.CharField(max_length=180)
     description = models.TextField(blank=True)
     position = models.PositiveIntegerField(default=1)

@@ -1,5 +1,16 @@
 from django.urls import path
 
+from .learning_content import (
+    ManagedLearningCoursesAPIView,
+    ManagedCourseModulesAPIView,
+    ManagedModuleDetailAPIView,
+    ManagedModuleResourcesAPIView,
+    ManagedResourceDownloadAPIView,
+    ManagedCourseTeachersAPIView,
+    ManagedModuleLessonsAPIView,
+    ManagedLessonModuleAPIView,
+)
+
 from .learning_access import (
     CurrentOrganizationLearningSettingsAPIView,
     PlatformAdminOrganizationLearningSettingsAPIView,
@@ -27,6 +38,16 @@ from .views import (
 )
 
 urlpatterns = [
+    # Organization-entitled, tenant-scoped authoring APIs.
+    path("learning/manage/courses/", ManagedLearningCoursesAPIView.as_view()),
+    path("learning/manage/courses/<int:course_id>/modules/", ManagedCourseModulesAPIView.as_view()),
+    path("learning/manage/courses/<int:course_id>/teachers/", ManagedCourseTeachersAPIView.as_view()),
+    path("learning/manage/modules/<int:module_id>/", ManagedModuleDetailAPIView.as_view()),
+    path("learning/manage/modules/<int:module_id>/lessons/", ManagedModuleLessonsAPIView.as_view()),
+    path("learning/manage/modules/<int:module_id>/resources/", ManagedModuleResourcesAPIView.as_view()),
+    path("learning/manage/resources/<int:resource_id>/download/", ManagedResourceDownloadAPIView.as_view()),
+    path("learning/manage/lessons/<int:lesson_id>/module/", ManagedLessonModuleAPIView.as_view()),
+
     # Learning & Certification is distinct from existing recorded-course purchases.
     path("learning-access/", CurrentOrganizationLearningSettingsAPIView.as_view(), name="organization-learning-status"),
     path("platform-admin/organizations/<int:organization_id>/learning-access/", PlatformAdminOrganizationLearningSettingsAPIView.as_view(), name="platform-learning-access"),
