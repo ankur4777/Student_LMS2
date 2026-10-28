@@ -18,21 +18,6 @@ export default function FeeStructureSelector() {
 
   return (
     <div className="lms-fees">
-      <header className="lms-fees-header">
-        <div className="lms-fees-container lms-fees-header-inner">
-          <Link href="/" className="lms-fees-brand" aria-label={`${siteBrand.fullName} homepage`}>
-            <span className="lms-fees-brand-icon" aria-hidden="true">🎓</span>
-            <span><strong>{siteBrand.shortName}</strong></span>
-          </Link>
-          <nav aria-label="Fee page navigation" className="lms-fees-header-links">
-            <Link href="/">Home</Link>
-            <Link href="/#portals" className="lms-fees-header-action">
-              Find your portal <span aria-hidden="true">↗</span>
-            </Link>
-          </nav>
-        </div>
-      </header>
-
       <main id="fees-main">
         <section className="lms-fees-hero">
           <div className="lms-fees-container lms-fees-hero-grid">

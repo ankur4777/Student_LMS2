@@ -20,41 +20,13 @@
 .lms-fees select:focus-visible { outline: 3px solid #f4a1a7; outline-offset: 3px; }
 .lms-fees-container { width: min(1190px, calc(100% - 64px)); margin: 0 auto; }
 
-.lms-fees-header {
-  background: #fff;
-  border-bottom: 1px solid #eef0f4;
+/* Shared public header above the standalone pricing layout.
+   Allow Services dropdown to open over the pricing content without clipping. */
+.lms-fees-marketing-header {
   position: relative;
-  z-index: 2;
+  z-index: 20;
+  overflow: visible;
 }
-.lms-fees-header-inner {
-  min-height: 83px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 22px;
-}
-.lms-fees-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  white-space: nowrap;
-  color: var(--fees-navy);
-  font-size: 21px;
-  font-weight: 800;
-  letter-spacing: -.055em;
-}
-.lms-fees-brand:hover { color: var(--fees-navy); }
-.lms-fees-brand strong { color: var(--fees-red-deep); }
-.lms-fees-brand-icon { display: grid; place-items: center; font-size: 26px; width: 42px; height: 42px; }
-.lms-fees-header-links { display: flex; align-items: center; gap: 25px; }
-.lms-fees-header-links a { color: #536078; font-size: 13px; font-weight: 750; }
-.lms-fees-header-links a:hover { color: var(--fees-red-deep); }
-.lms-fees-header-links .lms-fees-header-action {
-  min-height: 42px; display: inline-flex; align-items: center; gap: 11px;
-  color: #fff; border-radius: 9px; background: var(--fees-red);
-  padding: 10px 17px;
-}
-.lms-fees-header-links .lms-fees-header-action:hover { color: #fff; background: var(--fees-red-deep); }
 
 .lms-fees-hero {
   padding: 38px 0 44px;
@@ -214,12 +186,6 @@
 }
 @media (max-width: 430px) {
   .lms-fees-container { width: calc(100% - 30px); }
-  .lms-fees-header-inner { min-height: 69px; }
-  .lms-fees-brand { font-size: 18px; }
-  .lms-fees-brand-icon { width: 33px; height: 33px; font-size: 22px; }
-  .lms-fees-header-links { gap: 10px; }
-  .lms-fees-header-links .lms-fees-header-action { padding: 8px 10px; font-size: 11px; }
-  .lms-fees-header-links > a:first-child { display: none; }
   .lms-fees-hero { padding: 28px 0 34px; }
   .lms-fees-hero-copy h1 { font-size: 39px; }
   .lms-fees-hero-side { min-height: 170px; }

@@ -24,7 +24,6 @@ export function MarketingHeader({ home = false }: { home?: boolean }) {
           <Link href={home ? "#top" : ROOT}>Home</Link>
           <ServicesDropdown />
           <TutorHiringNavLink />
-          <Link href="/fee-structure">Fee Structure</Link>
         </nav>
         <Link href={href("portals")} className="lms-landing-button lms-landing-button-small">
           Login <i className="bi bi-arrow-right" aria-hidden="true" />

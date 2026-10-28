@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import FeeStructureSelector from "./FeeStructureSelector";
+import { MarketingHeader } from "@/components/MarketingHeader";
 
+import "../home.css";
+import "../home-updates.css";
 import "./fee-structure.css";
 import "../marketing-typography.css";
 
@@ -16,5 +19,12 @@ export const metadata: Metadata = {
 };
 
 export default function FeeStructurePage() {
-  return <FeeStructureSelector />;
+  return (
+    <>
+      <div className="lms-landing lms-fees-marketing-header">
+        <MarketingHeader />
+      </div>
+      <FeeStructureSelector />
+    </>
+  );
 }
