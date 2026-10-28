@@ -155,9 +155,6 @@
 .lms-fees-button:hover { background: var(--fees-red-deep); color: #fff; }
 .lms-fees-button-outline { border: 1px solid #dae0ec; background: #fff; color: var(--fees-navy); }
 .lms-fees-button-outline:hover { background: #fff1f1; color: var(--fees-red-deep); }
-.lms-fees-footer { padding: 24px 0; background: #17243d; color: #c5cfdf; font-size: 12px; }
-.lms-fees-footer .lms-fees-container { display: flex; justify-content: space-between; gap: 22px; }
-
 @media (max-width: 950px) {
   .lms-fees-hero-grid { gap: 28px; }
   .lms-fees-hero-copy h1 { font-size: clamp(39px, 4.6vw, 55px); }
@@ -182,7 +179,6 @@
   .lms-fees-currency-tag { margin-left: 0; }
   .lms-fees-bottom-grid { grid-template-columns: 1fr; gap: 26px; }
   .lms-fees-bottom-actions { flex-direction: row; flex-wrap: wrap; }
-  .lms-fees-footer .lms-fees-container { flex-direction: column; gap: 5px; }
 }
 @media (max-width: 430px) {
   .lms-fees-container { width: calc(100% - 30px); }
@@ -213,24 +209,3 @@
 .lms-fees-regular {font-size:16px;color:#243651;font-weight:820}
 .lms-fees-offer-note {font-size:11px;font-weight:740;color:#187e55;background:#eaf8ef;padding:5px 9px;border-radius:999px;line-height:1.5}
 @media(max-width:760px){.lms-fees-cards {grid-template-columns:1fr}}
-
-
-/* Contact information on the standalone Fee Structure footer. */
-.lms-fees .lms-fees-footer-content {flex-wrap:wrap;align-items:flex-start;gap:20px 30px}
-.lms-fees .lms-fees-footer-contacts {
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:18px 28px;
-  flex:1 1 580px;
-  min-width:0;
-}
-.lms-fees .lms-fees-footer-office {display:grid;align-content:start;gap:6px;min-width:0}
-.lms-fees .lms-fees-footer-office > strong {color:#fff;font-size:14px;font-weight:700}
-.lms-fees .lms-fees-footer-office > a {color:#f4dae0;text-decoration:none;font-weight:600;overflow-wrap:anywhere}
-.lms-fees .lms-fees-footer-office > a:hover {text-decoration:underline;color:#fff}
-.lms-fees .lms-fees-footer-office > span {color:#c5cfdf;overflow-wrap:anywhere;line-height:1.55}
-.lms-fees .lms-fees-footer-disclaimer {color:#aebad0;font-size:11px}
-@media(max-width:760px) {
-  .lms-fees .lms-fees-footer-contacts {grid-template-columns:1fr;width:100%}
-  .lms-fees .lms-fees-footer-content {flex-direction:column;align-items:flex-start}
-}

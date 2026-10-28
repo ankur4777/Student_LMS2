@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import FeeStructureSelector from "./FeeStructureSelector";
-import { MarketingHeader } from "@/components/MarketingHeader";
+import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
 
 import "../home.css";
 import "../home-updates.css";
@@ -25,6 +25,9 @@ export default function FeeStructurePage() {
         <MarketingHeader />
       </div>
       <FeeStructureSelector />
+      <div className="lms-landing lms-fees-marketing-footer">
+        <MarketingFooter />
+      </div>
     </>
   );
 }

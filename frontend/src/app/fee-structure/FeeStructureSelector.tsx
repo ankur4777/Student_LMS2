@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { countryFees, formatFee, type FeeCountry } from "./fee-data";
-import { publicContact } from "@/lib/publicContact";
-import { siteBrand } from "@/lib/siteBrand";
 
 const countryOptions: { value: FeeCountry; label: string }[] = [
   { value: "CA", label: "Canada (CAD)" },
@@ -151,26 +149,6 @@ export default function FeeStructureSelector() {
         </section>
       </main>
 
-      <footer className="lms-fees-footer">
-        <div className="lms-fees-container lms-fees-footer-content">
-          <span>© {new Date().getFullYear()} {siteBrand.fullName}.</span>
-          <div className="lms-fees-footer-contacts" aria-label="Canada and India contact information">
-            <div className="lms-fees-footer-office">
-              <strong>Canada</strong>
-              <a href={publicContact.phoneHref}>{publicContact.phoneDisplay}</a>
-              <a href={publicContact.emailHref}>{publicContact.email}</a>
-              <span>{publicContact.address}</span>
-            </div>
-            <div className="lms-fees-footer-office">
-              <strong>India</strong>
-              <a href={publicContact.india.phoneHref}>{publicContact.india.phoneDisplay}</a>
-              <a href={publicContact.india.emailHref}>{publicContact.india.email}</a>
-              <span>{publicContact.india.address}</span>
-            </div>
-          </div>
-          <span className="lms-fees-footer-disclaimer">Tutoring fees are billed separately from school or college LMS fees.</span>
-        </div>
-      </footer>
     </div>
   );
 }
