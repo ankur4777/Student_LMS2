@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import TutorApplicationForm from "@/components/TutorApplicationForm";
 import { MarketingHeader, MarketingFooter } from "@/components/MarketingHeader";
@@ -166,12 +165,10 @@ export default function TutorHiringPage() {
 
           <div className="lms-hiring-hero-art">
             <div className="lms-hiring-hero-image">
-              <Image
-                src="/tutor-hiring-hero.avif"
-                alt="Smiling tutor writing notes at a desk with textbooks and a laptop"
-                fill
-                priority
-                sizes="(max-width: 860px) 90vw, 45vw"
+              <div
+                className="lms-hiring-hero-photo"
+                role="img"
+                aria-label="Smiling tutor writing in a notebook beside books, laptop and desk lamp"
               />
             </div>
             <div className="lms-hiring-float lms-hiring-float-top">

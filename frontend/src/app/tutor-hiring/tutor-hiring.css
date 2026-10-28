@@ -71,9 +71,16 @@
   box-shadow:0 24px 52px #24334b27;
   transform:rotate(-1.2deg);
 }
-.lms-hiring-hero-image img {
-  object-fit: cover;
-  object-position: 50% 39%;
+/* New user-supplied tutoring desk photograph; the previous hero photo is
+   the safety fallback until the optimized file is present in /public. */
+.lms-hiring-hero-photo {
+  position: absolute;
+  inset: 0;
+  background-color: #ded89a;
+  background-image: url("/tutor-hiring-hero-for-site.webp"), url("/tutor-hiring-hero.avif");
+  background-position: center 43%;
+  background-repeat: no-repeat;
+  background-size: cover;
 }
 .lms-hiring-float {position:absolute;z-index:2;display:flex;align-items:center;gap:11px;padding:13px 15px;background:#fff;border-radius:13px;box-shadow:0 18px 35px #24334b21;color:var(--hiring-dark);font-size:12px;font-weight:790;white-space:nowrap}
 .lms-hiring-float-top {top:13%;left:-15px;transform:rotate(-4deg)}
