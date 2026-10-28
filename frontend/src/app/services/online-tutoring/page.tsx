@@ -149,7 +149,7 @@ export default function OnlineTutoringPage() {
                     <li key={point}><i className="bi bi-check-circle" aria-hidden="true" />{point}</li>
                   ))}
                 </ul>
-                <Link href="/#contact" className="lms-landing-inline-link">
+                <Link href="/contact-us" className="lms-landing-inline-link">
                   Enquire about {item.kind === "ONE-TO-ONE" ? "one-to-one" : "group"} classes
                   <i className="bi bi-arrow-right" aria-hidden="true" />
                 </Link>
@@ -198,7 +198,7 @@ export default function OnlineTutoringPage() {
               </article>
             </div>
             <div className="lms-service-actions">
-              <Link className="lms-landing-button" href="/#contact">
+              <Link className="lms-landing-button" href="/contact-us">
                 Ask about your subject <i className="bi bi-arrow-right" aria-hidden="true" />
               </Link>
               <Link className="lms-landing-button lms-landing-button-outline" href="/fee-structure">
@@ -259,7 +259,7 @@ export default function OnlineTutoringPage() {
             <span className="lms-landing-eyebrow">QUESTIONS &amp; ANSWERS</span>
             <h2>Have a question about online tutoring?</h2>
             <p>Here are the basics. Our team can discuss class options and confirmed rates directly with you.</p>
-            <Link className="lms-landing-inline-link" href="/#contact">Send an enquiry <i className="bi bi-arrow-right" aria-hidden="true" /></Link>
+            <Link className="lms-landing-inline-link" href="/contact-us">Send an enquiry <i className="bi bi-arrow-right" aria-hidden="true" /></Link>
           </div>
           <div className="lms-landing-faq-list">
             {faqs.map(item => (
@@ -278,7 +278,7 @@ export default function OnlineTutoringPage() {
           <h2>Ready to explore online tuition with MySLS?</h2>
           <p>Contact our Surrey-based team about one-to-one sessions, group classes, subjects and tutoring options for Canada or Australia.</p>
         </div>
-        <Link className="lms-landing-button" href="/#contact">
+        <Link className="lms-landing-button" href="/contact-us">
           Contact our team <i className="bi bi-arrow-right" aria-hidden="true" />
         </Link>
       </section>

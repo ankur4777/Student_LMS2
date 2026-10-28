@@ -133,7 +133,7 @@ export default function SchoolCollegeLMSPage() {
             <h1>School &amp; college management software <span>built for everyday education.</span></h1>
             <p>MySLS is a learning management system for schools and colleges. Manage student records, teachers, attendance, fees, classes, online exams and learning resources with secure role-based access.</p>
             <div className="lms-service-actions">
-              <Link className="lms-landing-button" href="/#contact">
+              <Link className="lms-landing-button" href="/contact-us">
                 Enquire about MySLS <i className="bi bi-arrow-right" aria-hidden="true" />
               </Link>
               <a href="#lms-modules" className="lms-landing-button lms-landing-button-outline">
@@ -236,7 +236,7 @@ export default function SchoolCollegeLMSPage() {
               <li><i className="bi bi-check-circle" aria-hidden="true" /> Manage feature availability for different student classes.</li>
               <li><i className="bi bi-check-circle" aria-hidden="true" /> Help families see relevant updates through the Parent Portal.</li>
             </ul>
-            <Link href="/#contact" className="lms-landing-button">
+            <Link href="/contact-us" className="lms-landing-button">
               Discuss your institution's needs <i className="bi bi-arrow-right" aria-hidden="true" />
             </Link>
           </div>
@@ -276,7 +276,7 @@ export default function SchoolCollegeLMSPage() {
             <span className="lms-landing-eyebrow">COMMON QUESTIONS</span>
             <h2>Considering an LMS for your institution?</h2>
             <p>Learn how MySLS supports institutional workflows, teachers, students and families.</p>
-            <Link href="/#contact" className="lms-landing-inline-link">
+            <Link href="/contact-us" className="lms-landing-inline-link">
               Ask our team <i className="bi bi-arrow-right" aria-hidden="true" />
             </Link>
           </div>
@@ -297,7 +297,7 @@ export default function SchoolCollegeLMSPage() {
           <h2>Let's talk about how your campus works.</h2>
           <p>Tell us about your school or college, current challenges and the tools you need. Our team can discuss a suitable MySLS setup.</p>
         </div>
-        <Link href="/#contact" className="lms-landing-button">
+        <Link href="/contact-us" className="lms-landing-button">
           Enquire about the LMS <i className="bi bi-arrow-right" aria-hidden="true" />
         </Link>
       </section>

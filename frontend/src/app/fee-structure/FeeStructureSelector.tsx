@@ -140,7 +140,7 @@ export default function FeeStructureSelector() {
               </p>
             </div>
             <div className="lms-fees-bottom-actions">
-              <Link href="/#contact" className="lms-fees-button">
+              <Link href="/contact-us" className="lms-fees-button">
                 Enquire about classes <span aria-hidden="true">↗</span>
               </Link>
               <Link href="/#portals" className="lms-fees-button lms-fees-button-outline">
