@@ -59,9 +59,12 @@ export default function OrganizationBrand({
   portalLabel,
   fallbackName = "MySLS",
 }: OrganizationBrandProps) {
-  const [branding, setBranding] = useState<OrganizationBranding>(() =>
-    readSavedBranding(userStorageKey, fallbackName)
-  );
+  // Server and first client render must use identical markup. Cached browser
+  // branding is restored only after hydration, inside the effect below.
+  const [branding, setBranding] = useState<OrganizationBranding>({
+    name: fallbackName,
+    logo: "",
+  });
 
   const loadBranding = useCallback(async () => {
     const token = localStorage.getItem(tokenKey);
@@ -118,6 +121,9 @@ export default function OrganizationBrand({
   }, [fallbackName, tokenKey, userStorageKey]);
 
   useEffect(() => {
+    // Reading localStorage during the initial render causes an SSR/client
+    // mismatch when a saved organization logo exists.
+    setBranding(readSavedBranding(userStorageKey, fallbackName));
     void loadBranding();
 
     const handleOrganizationUpdated = () => {
@@ -135,7 +141,7 @@ export default function OrganizationBrand({
         handleOrganizationUpdated
       );
     };
-  }, [loadBranding]);
+  }, [loadBranding, userStorageKey, fallbackName]);
 
   return (
     <div
