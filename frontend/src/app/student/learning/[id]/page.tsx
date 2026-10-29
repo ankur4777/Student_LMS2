@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentModuleQuiz, {type QuizSummary} from "@/components/learning/StudentModuleQuiz";
+import StudentModuleAssignment, {type AssignmentSummary} from "@/components/learning/StudentModuleAssignment";
 import StudentTopbar from "@/components/student/studentTopbar";
 import "../../dashboard/dashboard.css";
 import "../learning.css";
@@ -12,7 +13,7 @@ import "../learning.css";
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 type Resource = {id:number;title:string;kind:string;extension:string};
 type Lesson = {id:number;title:string;description:string;position:number;completed:boolean};
-type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number;quiz:QuizSummary|null};
+type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number;quiz:QuizSummary|null;assignment:AssignmentSummary|null;locked:boolean;completed:boolean};
 type Course = {id:number;title:string;description:string;modules:Module[];completed_lessons:number;total_lessons:number};
 
 export default function StudentLearningCourseDetailPage() {
@@ -44,7 +45,7 @@ export default function StudentLearningCourseDetailPage() {
         if (!response.ok) throw new Error(data.detail || "Cannot open this course.");
         const next: Course = data.course;
         setCourse(next);
-        setSelectedId(current => current && next.modules.some(m => m.lessons.some(l => l.id === current))
+        setSelectedId(current => current && next.modules.some(m => !m.locked && m.lessons.some(l => l.id === current))
           ? current : next.modules.flatMap(m => m.lessons)[0]?.id ?? null);
       } catch(e) {if(!controller.signal.aborted) setError(e instanceof Error?e.message:"Cannot open this course.");}
       finally {if(!controller.signal.aborted)setLoading(false);}
@@ -60,7 +61,7 @@ export default function StudentLearningCourseDetailPage() {
     const loadVideo = async () => {
       setVideoLoading(true);
       try {
-        const response = await fetch(`${BASE}/api/recorded-courses/student/lessons/${selectedId}/play/`, {
+        const response = await fetch(`${BASE}/api/recorded-courses/learning/student/lessons/${selectedId}/play/`, {
           headers:{Authorization:`Bearer ${token}`}, signal:controller.signal, cache:"no-store",
         });
         if (!response.ok) { const errorJson = await response.json().catch(() => ({}));throw new Error(errorJson.detail || "Cannot play this lecture."); }
@@ -81,7 +82,15 @@ export default function StudentLearningCourseDetailPage() {
     };
   }, [selectedId]);
 
-  const lessons = course?.modules.flatMap(module => module.lessons) || [];
+  async function refreshCourse() {
+    const token=currentToken();if(!token)return;
+    const response=await fetch(`${BASE}/api/recorded-courses/learning/student/courses/${id}/`,{
+      headers:{Authorization:`Bearer ${token}`},cache:"no-store",
+    });
+    if(response.ok){const data=await response.json();setCourse(data.course);}
+  }
+
+  const lessons = course?.modules.filter(m=>!m.locked).flatMap(module => module.lessons) || [];
   const selected = lessons.find(lesson => lesson.id === selectedId);
   const selectedIndex = lessons.findIndex(lesson => lesson.id === selectedId);
   const percent = course?.total_lessons ? Math.round(course.completed_lessons/course.total_lessons*100):0;
@@ -106,6 +115,7 @@ export default function StudentLearningCourseDetailPage() {
           } : null,
         }):module),
       }):previous);
+      await refreshCourse();
     }catch(e){setError(e instanceof Error?e.message:"Unable to save progress.");}
   }
 
@@ -153,22 +163,25 @@ export default function StudentLearningCourseDetailPage() {
               {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" /> Viewed</span>}
               <div className="learning-prev-next"><button className="btn btn-outline-secondary" disabled={selectedIndex<=0} onClick={()=>setSelectedId(lessons[selectedIndex-1].id)}>Previous</button>
               <button className="btn btn-primary" disabled={selectedIndex<0||selectedIndex>=lessons.length-1} onClick={()=>setSelectedId(lessons[selectedIndex+1].id)}>Next lecture</button></div>
-              <p className="learning-fineprint">A video reaching its end is recorded as learner-reported viewing. Module quizzes and final certification requirements will be added separately.</p>
+              <p className="learning-fineprint">A video reaching its end is recorded as learner-reported viewing. Passing required module quizzes and graded assignments unlocks the next module. Final certification will be added separately.</p>
             </div>
           </section>
           <aside className="learning-modules" aria-label="Published course modules">
             <h2>Course content</h2>
             {course.modules.length === 0 ? <p>No published modules yet. Please check back later.</p> :
-              course.modules.map(module=><details key={module.id} className="learning-module" defaultOpen={module.lessons.some(l=>l.id===selectedId)}>
-                <summary><span className="learning-module-index">{String(module.position).padStart(2,"0")}</span><span><strong>{module.title}</strong><small>{module.completed_lessons}/{module.total_lessons} viewed</small></span><i className="bi bi-chevron-down" /></summary>
+              course.modules.map(module=><details key={module.id} className="learning-module" defaultOpen={!module.locked && module.lessons.some(l=>l.id===selectedId)}>
+                <summary><span className="learning-module-index">{String(module.position).padStart(2,"0")}</span><span><strong>{module.title}</strong><small>{module.locked?"Locked — complete previous module":module.completed?"Completed":`${module.completed_lessons}/${module.total_lessons} viewed`}</small></span><i className="bi bi-chevron-down" /></summary>
                 {module.description && <p className="learning-module-description">{module.description}</p>}
+                {module.locked && <p className="learning-module-description"><i className="bi bi-lock" aria-hidden="true" /> Complete the previous module before accessing these lessons.</p>}
                 <div className="learning-lesson-items">{module.lessons.map(lesson=><button type="button" key={lesson.id} className={"learning-lesson-button"+(selectedId===lesson.id?" is-selected":"")}
                   onClick={()=>setSelectedId(lesson.id)} aria-current={selectedId===lesson.id?"true":undefined}>
                   <i className={`bi ${lesson.completed?"bi-check-circle-fill":"bi-play-circle"}`} aria-hidden="true" /><span>{lesson.title}</span></button>)}</div>
                 {module.resources.length>0 && <div className="learning-resource-list"><h3>Notes & resources</h3>
                   {module.resources.map(resource=><button key={resource.id} type="button" disabled={busyResource===resource.id} onClick={()=>void download(resource)}>
                     <i className="bi bi-file-earmark-arrow-down" /><span>{resource.title} <small>({resource.extension.toUpperCase()})</small></span><i className="bi bi-download" /></button>)}</div>}
-                {module.quiz && <StudentModuleQuiz key={module.id} moduleId={module.id} summary={module.quiz}/>}
+                {module.quiz && <StudentModuleQuiz key={module.id} moduleId={module.id} summary={module.quiz} onUpdated={()=>void refreshCourse()}/>}
+                {module.assignment && <StudentModuleAssignment key={"assignment-"+module.id} moduleId={module.id} summary={module.assignment} onUpdated={()=>void refreshCourse()}/>}
+                {!module.locked && <button type="button" className="btn btn-link btn-sm" onClick={()=>void refreshCourse()}>Refresh module progress</button>}
               </details>)}
           </aside>
         </div>

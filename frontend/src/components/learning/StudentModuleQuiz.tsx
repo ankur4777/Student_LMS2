@@ -6,7 +6,7 @@ export type QuizSummary={id:number;title:string;passing_percent:number;max_attem
 type Question={id:number;prompt:string;choices:{index:number;text:string}[]};
 const BASE=(process.env.NEXT_PUBLIC_API_BASE_URL||"").replace(/\/$/,"");
 
-export default function StudentModuleQuiz({moduleId,summary}:{moduleId:number;summary:QuizSummary}) {
+export default function StudentModuleQuiz({moduleId,summary,onUpdated}:{moduleId:number;summary:QuizSummary;onUpdated?:()=>void}) {
   const url=BASE+"/api/recorded-courses/learning/student/modules/"+moduleId+"/quiz/";
   const [status,setStatus]=useState<QuizSummary>(summary);
   const [questions,setQuestions]=useState<Question[]>([]);
@@ -39,7 +39,7 @@ export default function StudentModuleQuiz({moduleId,summary}:{moduleId:number;su
       const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+token},body:JSON.stringify({answers})});
       const body=await response.json().catch(()=>({}));
       if(!response.ok)throw Error(body.detail||"Quiz submission failed.");
-      setStatus(body.quiz);setResult(body.attempt);setAnswers({});
+      setStatus(body.quiz);setResult(body.attempt);setAnswers({});onUpdated?.();
       const latest=await refresh();setQuestions(latest.questions||[]);
     }catch(err){setError(err instanceof Error?err.message:"Quiz submission failed.");}
     finally{setBusy(false);}
