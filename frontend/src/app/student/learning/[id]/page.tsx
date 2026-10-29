@@ -101,6 +101,9 @@ export default function StudentLearningCourseDetailPage() {
         modules:previous.modules.map(module => module.lessons.some(l=>l.id===lessonId) ? ({...module,
           completed_lessons: module.completed_lessons+1,
           lessons:module.lessons.map(l=>l.id===lessonId?{...l,completed:true}:l),
+          quiz:module.quiz ? {...module.quiz,
+            unlocked:module.total_lessons>0 && module.completed_lessons+1>=module.total_lessons,
+          } : null,
         }):module),
       }):previous);
     }catch(e){setError(e instanceof Error?e.message:"Unable to save progress.");}
