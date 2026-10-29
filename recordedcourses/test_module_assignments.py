@@ -1,6 +1,10 @@
 """Tests for learning module assignments and sequential access rules."""
 from decimal import Decimal
 from unittest.mock import patch
+from tempfile import TemporaryDirectory
+
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from django.utils import timezone
 from rest_framework.test import APITransactionTestCase
@@ -217,3 +221,54 @@ class ModuleAssignmentFlowTests(APITransactionTestCase):
         self.assertEqual(self.client.patch(
             self.staff_url, {"is_published": False}, format="json",
         ).status_code, 200)
+
+
+    def test_private_assignment_attachment_is_tenant_scoped(self):
+        from recordedcourses.models import ModuleAssignmentSubmission
+        assignment = self.assignment()
+        self.watched()
+        field = ModuleAssignmentSubmission._meta.get_field("file")
+        original_storage = field.storage
+        with TemporaryDirectory() as temp:
+            field.storage = FileSystemStorage(location=temp)
+            try:
+                self.login(self.student_user)
+                upload = SimpleUploadedFile(
+                    "homework.pdf", b"%PDF-1.4\nlocal test attachment",
+                    content_type="application/pdf",
+                )
+                submitted = self.client.post(
+                    self.student_url, {"file": upload}, format="multipart",
+                )
+                self.assertEqual(submitted.status_code, 201, submitted.data)
+                sid = submitted.data["submission"]["id"]
+                url = f"/api/recorded-courses/learning/manage/submissions/{sid}/download/"
+                self.login(self.outsider)
+                self.assertEqual(self.client.get(url).status_code, 404)
+                self.login(self.teacher_user)
+                self.assertEqual(self.client.get(url).status_code, 404)
+                self.login(self.admin)
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                self.assertIn("attachment", response["Content-Disposition"])
+                self.assertNotIn("recorded_course_submissions/", response["Content-Disposition"])
+                response.close()
+            finally:
+                field.storage = original_storage
+
+    def test_graded_submission_cannot_be_graded_twice(self):
+        self.assignment()
+        self.watched()
+        self.login(self.student_user)
+        submitted = self.client.post(
+            self.student_url, {"answer_text": "Submitted"}, format="json",
+        )
+        self.assertEqual(submitted.status_code, 201, submitted.data)
+        url = f"/api/recorded-courses/learning/manage/submissions/{submitted.data['submission']['id']}/grade/"
+        self.login(self.admin)
+        self.assertEqual(
+            self.client.patch(url, {"score_percent": 100}, format="json").status_code, 200,
+        )
+        self.assertEqual(
+            self.client.patch(url, {"score_percent": 0}, format="json").status_code, 409,
+        )
