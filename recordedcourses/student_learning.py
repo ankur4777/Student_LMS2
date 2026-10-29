@@ -157,8 +157,10 @@ class StudentLearningCourseDetailAPIView(APIView):
                 "description": access.course.description,
                 "access_expires_at": access.expires_at,
                 "modules": data,
-                "completed_lessons": len(completed_ids),
-                "total_lessons": sum(len(m["lessons"]) for m in data),
+                # Include locked module lessons in aggregate progress totals
+                # without exposing their content or private identifiers.
+                "completed_lessons": sum(s["completed_lessons"] for s in access_map.values()),
+                "total_lessons": sum(s["total_lessons"] for s in access_map.values()),
             }
         })
 
