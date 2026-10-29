@@ -7,6 +7,10 @@ from .student_learning import (
     StudentLearningLessonCompleteAPIView,
 )
 
+from .learning_quizzes import (
+    ManagedModuleQuizAPIView, ManagedModuleQuizQuestionsAPIView,
+    StudentModuleQuizAPIView,
+)
 from .learning_content import (
     ManagedLearningCoursesAPIView,
     ManagedCourseModulesAPIView,
@@ -45,6 +49,11 @@ from .views import (
 )
 
 urlpatterns = [
+    # Module MCQ assessments; organization switch and course permissions enforced.
+    path("learning/manage/modules/<int:module_id>/quiz/", ManagedModuleQuizAPIView.as_view()),
+    path("learning/manage/modules/<int:module_id>/quiz/questions/", ManagedModuleQuizQuestionsAPIView.as_view()),
+    path("learning/student/modules/<int:module_id>/quiz/", StudentModuleQuizAPIView.as_view()),
+
     # Student Learning Center (existing paid-course playback stays intact).
     path("learning/student/courses/", StudentLearningCoursesAPIView.as_view(), name="student-learning-courses"),
     path("learning/student/courses/<int:course_id>/", StudentLearningCourseDetailAPIView.as_view(), name="student-learning-course-detail"),

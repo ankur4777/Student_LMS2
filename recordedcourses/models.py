@@ -440,3 +440,6 @@ from .learning_models import (  # noqa: E402,F401
     OrganizationLearningSettings, CourseModule,
     TeacherCourseAssignment, ModuleResource, LessonLearningProgress,
 )
+
+# Phase 5: module quiz tables (isolated from existing academic exams).
+from .quiz_models import ModuleQuiz, ModuleQuizQuestion, ModuleQuizAttempt  # noqa: E402,F401

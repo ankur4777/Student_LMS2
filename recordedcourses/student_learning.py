@@ -129,12 +129,15 @@ class StudentLearningCourseDetailAPIView(APIView):
             lesson__is_active=True,
             completed_at__isnull=False,
         ).values_list("lesson_id", flat=True))
+        # Imported inside the view to keep the student-access helper reusable.
+        from .learning_quizzes import student_quiz_status
         data = []
         for module in modules:
             lessons = [lesson for lesson in module.lessons.all() if lesson.is_active]
             data.append({
                 "id": module.pk, "title": module.title,
                 "description": module.description, "position": module.position,
+                "quiz": student_quiz_status(module, student),
                 "lessons": [_lesson_data(lesson, completed_ids) for lesson in lessons],
                 "resources": [_resource_data(resource) for resource in module.resources.all()],
                 "completed_lessons": sum(lesson.pk in completed_ids for lesson in lessons),
