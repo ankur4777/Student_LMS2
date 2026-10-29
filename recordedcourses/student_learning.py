@@ -16,6 +16,7 @@ from rest_framework.views import APIView
 
 from accounts.models import StudentProfile
 from .learning_access import OrganizationLearningEnabled
+from .learning_progression import module_access_map, is_module_unlocked
 from .models import (
     CourseModule, LessonLearningProgress, ModuleResource, RecordedCourse,
     RecordedCourseAccess, RecordedLesson,
@@ -129,19 +130,25 @@ class StudentLearningCourseDetailAPIView(APIView):
             lesson__is_active=True,
             completed_at__isnull=False,
         ).values_list("lesson_id", flat=True))
-        # Imported inside the view to keep the student-access helper reusable.
+        # Local imports avoid circular dependencies between authoring and student APIs.
         from .learning_quizzes import student_quiz_status
+        from .learning_assignments import student_assignment_status
+        access_map = module_access_map(access.course, student)
         data = []
         for module in modules:
-            lessons = [lesson for lesson in module.lessons.all() if lesson.is_active]
+            state = access_map[module.pk]
+            unlocked = state["unlocked"]
+            lessons = [lesson for lesson in module.lessons.all() if lesson.is_active] if unlocked else []
             data.append({
                 "id": module.pk, "title": module.title,
                 "description": module.description, "position": module.position,
-                "quiz": student_quiz_status(module, student),
+                "locked": not unlocked, "completed": state["completed"],
+                "quiz": student_quiz_status(module, student) if unlocked else None,
+                "assignment": student_assignment_status(module, student) if unlocked else None,
                 "lessons": [_lesson_data(lesson, completed_ids) for lesson in lessons],
-                "resources": [_resource_data(resource) for resource in module.resources.all()],
-                "completed_lessons": sum(lesson.pk in completed_ids for lesson in lessons),
-                "total_lessons": len(lessons),
+                "resources": [_resource_data(resource) for resource in module.resources.all()] if unlocked else [],
+                "completed_lessons": state["completed_lessons"] if unlocked else 0,
+                "total_lessons": state["total_lessons"] if unlocked else 0,
             })
         return Response({
             "course": {
@@ -174,6 +181,8 @@ class StudentLearningResourceDownloadAPIView(APIView):
         _, access = _student_access(request.user, resource.module.course_id)
         if not access:
             return Response({"detail": "No active course access."}, status=403)
+        if not is_module_unlocked(resource.module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
         extension = _file_extension(resource)
         if extension == "bin":
             return Response({"detail": "Unsupported file."}, status=404)
@@ -211,6 +220,8 @@ class StudentLearningLessonCompleteAPIView(APIView):
         _, access = _student_access(request.user, lesson.course_id)
         if not access:
             return Response({"detail": "No active course access."}, status=403)
+        if not is_module_unlocked(lesson.module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
         progress, created = LessonLearningProgress.objects.get_or_create(
             student=student, lesson=lesson,
             defaults={"completed_at": timezone.now()},
@@ -220,3 +231,40 @@ class StudentLearningLessonCompleteAPIView(APIView):
             progress.save(update_fields=["completed_at", "updated_at"])
         return Response({"lesson_id": lesson.pk, "completed": True,
                          "completion_type": "learner_reported"})
+
+
+
+class StudentLearningLessonPlaybackAPIView(APIView):
+    """Protected module video route; the legacy paid-video endpoint is unchanged."""
+    permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
+
+    def get(self, request, lesson_id):
+        student = _student(request.user)
+        if student is None:
+            return Response({"detail": "Student account required."}, status=403)
+        lesson = get_object_or_404(
+            RecordedLesson.objects.select_related("module", "course").filter(
+                pk=lesson_id, is_active=True,
+                course__organization=request.user.organization,
+                course__is_active=True,
+                module__isnull=False, module__is_published=True,
+            ),
+        )
+        _, access = _student_access(request.user, lesson.course_id)
+        if not access:
+            return Response({"detail": "Active course access required."}, status=403)
+        if not is_module_unlocked(lesson.module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
+        if not lesson.video:
+            return Response({"detail": "Recorded video unavailable."}, status=404)
+        try:
+            handle = lesson.video.open("rb")
+        except (OSError, FileNotFoundError):
+            return Response({"detail": "Recorded video unavailable."}, status=404)
+        response = FileResponse(
+            handle, content_type=mimetypes.guess_type(lesson.video.name)[0] or "application/octet-stream",
+        )
+        response["Content-Disposition"] = 'inline; filename="recorded-lesson"'
+        response["Cache-Control"] = "private, no-store"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response

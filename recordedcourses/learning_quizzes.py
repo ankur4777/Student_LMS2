@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .learning_access import OrganizationLearningEnabled
+from .learning_progression import is_module_unlocked
 from .learning_content import _module
 from .student_learning import _student_access
 from .models import (
@@ -145,6 +146,8 @@ class StudentModuleQuizAPIView(APIView):
         module, student, access = self._context(request, module_id)
         if student is None or access is None:
             return Response({"detail": "Active course access is required."}, status=403)
+        if not is_module_unlocked(module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
         quiz = get_object_or_404(ModuleQuiz, module=module, is_published=True)
         status = student_quiz_status(module, student)
         body = {"quiz": status}
@@ -160,6 +163,8 @@ class StudentModuleQuizAPIView(APIView):
         module, student, access = self._context(request, module_id)
         if student is None or access is None:
             return Response({"detail": "Active course access is required."}, status=403)
+        if not is_module_unlocked(module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
         quiz = get_object_or_404(ModuleQuiz, module=module, is_published=True)
         data = request.data
         answers = data.get("answers") if isinstance(data, dict) else None

@@ -5,6 +5,7 @@ from .student_learning import (
     StudentLearningCourseDetailAPIView,
     StudentLearningResourceDownloadAPIView,
     StudentLearningLessonCompleteAPIView,
+    StudentLearningLessonPlaybackAPIView,
 )
 
 from .learning_assignments import (
@@ -70,6 +71,7 @@ urlpatterns = [
     path("learning/student/modules/<int:module_id>/quiz/", StudentModuleQuizAPIView.as_view()),
 
     # Student Learning Center (existing paid-course playback stays intact).
+    path("learning/student/lessons/<int:lesson_id>/play/", StudentLearningLessonPlaybackAPIView.as_view()),
     path("learning/student/courses/", StudentLearningCoursesAPIView.as_view(), name="student-learning-courses"),
     path("learning/student/courses/<int:course_id>/", StudentLearningCourseDetailAPIView.as_view(), name="student-learning-course-detail"),
     path("learning/student/resources/<int:resource_id>/download/", StudentLearningResourceDownloadAPIView.as_view(), name="student-learning-resource-download"),
