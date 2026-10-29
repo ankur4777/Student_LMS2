@@ -8,6 +8,7 @@ from .student_learning import (
     StudentLearningLessonPlaybackAPIView,
 )
 
+from .learning_certificates import StudentCertificatePDFAPIView, StudentCertificatesAPIView
 from .learning_finals import (
     ManagedCourseFinalExamAPIView, ManagedCourseFinalQuestionsAPIView,
     StudentCourseFinalExamAPIView, ManagedCertificateAPIView,
@@ -63,6 +64,9 @@ from .views import (
 )
 
 urlpatterns = [
+    # Certificate library/download are student-owned, even when course access expires.
+    path("learning/student/certificates/", StudentCertificatesAPIView.as_view()),
+    path("learning/student/certificates/<uuid:public_id>/pdf/", StudentCertificatePDFAPIView.as_view()),
     # Final course exam and certificate verification endpoints.
     path("learning/manage/courses/<int:course_id>/final-exam/", ManagedCourseFinalExamAPIView.as_view()),
     path("learning/manage/courses/<int:course_id>/final-exam/questions/", ManagedCourseFinalQuestionsAPIView.as_view()),
