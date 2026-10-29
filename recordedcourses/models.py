@@ -445,3 +445,7 @@ from .learning_models import (  # noqa: E402,F401
 from .quiz_models import ModuleQuiz, ModuleQuizQuestion, ModuleQuizAttempt  # noqa: E402,F401
 
 from .assignment_models import ModuleAssignment, ModuleAssignmentSubmission  # noqa: E402,F401
+
+from .final_models import (  # noqa: E402,F401
+    CourseFinalExam, CourseFinalQuestion, CourseFinalAttempt, CourseCertificate,
+)
