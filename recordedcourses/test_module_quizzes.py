@@ -63,6 +63,10 @@ class ModuleQuizAPITests(APITransactionTestCase):
         self.auth(self.admin)
         self.assertEqual(self.client.put(self.staff_url, {"title": "Draft"}, format="json").status_code, 200)
         self.assertEqual(self.client.patch(self.staff_url, {"is_published": True}, format="json").status_code, 400)
+        # A college admin cannot use a student-only quiz endpoint.
+        self.assertEqual(self.client.get(self.student_url).status_code, 403)
+        # With a genuine enrolled student, the unpublished quiz is hidden.
+        self.auth(self.student_user)
         self.assertEqual(self.client.get(self.student_url).status_code, 404)
 
     def test_unassigned_teacher_cannot_write_and_assigned_teacher_cannot_publish(self):
