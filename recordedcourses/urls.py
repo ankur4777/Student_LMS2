@@ -8,6 +8,11 @@ from .student_learning import (
     StudentLearningLessonPlaybackAPIView,
 )
 
+from .learning_finals import (
+    ManagedCourseFinalExamAPIView, ManagedCourseFinalQuestionsAPIView,
+    StudentCourseFinalExamAPIView, ManagedCertificateAPIView,
+    PublicCourseCertificateVerificationAPIView,
+)
 from .learning_assignments import (
     ManagedModuleAssignmentAPIView,
     ManagedAssignmentSubmissionsAPIView,
@@ -58,6 +63,12 @@ from .views import (
 )
 
 urlpatterns = [
+    # Final course exam and certificate verification endpoints.
+    path("learning/manage/courses/<int:course_id>/final-exam/", ManagedCourseFinalExamAPIView.as_view()),
+    path("learning/manage/courses/<int:course_id>/final-exam/questions/", ManagedCourseFinalQuestionsAPIView.as_view()),
+    path("learning/manage/courses/<int:course_id>/certificates/", ManagedCertificateAPIView.as_view()),
+    path("learning/student/courses/<int:course_id>/final-exam/", StudentCourseFinalExamAPIView.as_view()),
+    path("learning/certificates/verify/<uuid:public_id>/", PublicCourseCertificateVerificationAPIView.as_view()),
     # Module assignments and manually graded work.
     path("learning/manage/modules/<int:module_id>/assignment/", ManagedModuleAssignmentAPIView.as_view()),
     path("learning/manage/modules/<int:module_id>/assignment/submissions/", ManagedAssignmentSubmissionsAPIView.as_view()),
