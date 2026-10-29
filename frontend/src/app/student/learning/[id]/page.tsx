@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
 import StudentModuleQuiz, {type QuizSummary} from "@/components/learning/StudentModuleQuiz";
 import StudentModuleAssignment, {type AssignmentSummary} from "@/components/learning/StudentModuleAssignment";
+import StudentFinalExam, {type FinalExamSummary} from "@/components/learning/StudentFinalExam";
 import StudentTopbar from "@/components/student/studentTopbar";
 import "../../dashboard/dashboard.css";
 import "../learning.css";
@@ -14,7 +15,7 @@ const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 type Resource = {id:number;title:string;kind:string;extension:string};
 type Lesson = {id:number;title:string;description:string;position:number;completed:boolean};
 type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number;quiz:QuizSummary|null;assignment:AssignmentSummary|null;locked:boolean;completed:boolean};
-type Course = {id:number;title:string;description:string;modules:Module[];completed_lessons:number;total_lessons:number};
+type Course = {id:number;title:string;description:string;modules:Module[];completed_lessons:number;total_lessons:number;final_exam:FinalExamSummary|null};
 
 export default function StudentLearningCourseDetailPage() {
   const {id} = useParams<{id:string}>();
@@ -163,7 +164,7 @@ export default function StudentLearningCourseDetailPage() {
               {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" /> Viewed</span>}
               <div className="learning-prev-next"><button className="btn btn-outline-secondary" disabled={selectedIndex<=0} onClick={()=>setSelectedId(lessons[selectedIndex-1].id)}>Previous</button>
               <button className="btn btn-primary" disabled={selectedIndex<0||selectedIndex>=lessons.length-1} onClick={()=>setSelectedId(lessons[selectedIndex+1].id)}>Next lecture</button></div>
-              <p className="learning-fineprint">A video reaching its end is recorded as learner-reported viewing. Passing required module quizzes and graded assignments unlocks the next module. Final certification will be added separately.</p>
+              <p className="learning-fineprint">Viewing progress is learner-reported. Complete all modules and pass the final exam to qualify for a course certificate.</p>
             </div>
           </section>
           <aside className="learning-modules" aria-label="Published course modules">
@@ -185,6 +186,7 @@ export default function StudentLearningCourseDetailPage() {
               </details>)}
           </aside>
         </div>
+        {course.final_exam&&<StudentFinalExam courseId={course.id} summary={course.final_exam} onUpdated={()=>void refreshCourse()}/>}
       </>}
     </div></div>
   </main></div>;

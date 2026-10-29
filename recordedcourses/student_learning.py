@@ -150,8 +150,10 @@ class StudentLearningCourseDetailAPIView(APIView):
                 "completed_lessons": state["completed_lessons"] if unlocked else 0,
                 "total_lessons": state["total_lessons"] if unlocked else 0,
             })
+        from .learning_finals import student_final_status
         return Response({
             "course": {
+                "final_exam": student_final_status(access.course, student),
                 "id": access.course_id,
                 "title": access.course.title,
                 "description": access.course.description,
