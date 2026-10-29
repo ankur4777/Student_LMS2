@@ -7,6 +7,14 @@ from .student_learning import (
     StudentLearningLessonCompleteAPIView,
 )
 
+from .learning_assignments import (
+    ManagedModuleAssignmentAPIView,
+    ManagedAssignmentSubmissionsAPIView,
+    ManagedAssignmentGradeAPIView,
+    ManagedSubmissionDownloadAPIView,
+    StudentModuleAssignmentAPIView,
+)
+
 from .learning_quizzes import (
     ManagedModuleQuizAPIView, ManagedModuleQuizQuestionsAPIView,
     StudentModuleQuizAPIView,
@@ -49,6 +57,13 @@ from .views import (
 )
 
 urlpatterns = [
+    # Module assignments and manually graded work.
+    path("learning/manage/modules/<int:module_id>/assignment/", ManagedModuleAssignmentAPIView.as_view()),
+    path("learning/manage/modules/<int:module_id>/assignment/submissions/", ManagedAssignmentSubmissionsAPIView.as_view()),
+    path("learning/manage/submissions/<int:submission_id>/grade/", ManagedAssignmentGradeAPIView.as_view()),
+    path("learning/manage/submissions/<int:submission_id>/download/", ManagedSubmissionDownloadAPIView.as_view()),
+    path("learning/student/modules/<int:module_id>/assignment/", StudentModuleAssignmentAPIView.as_view()),
+
     # Module MCQ assessments; organization switch and course permissions enforced.
     path("learning/manage/modules/<int:module_id>/quiz/", ManagedModuleQuizAPIView.as_view()),
     path("learning/manage/modules/<int:module_id>/quiz/questions/", ManagedModuleQuizQuestionsAPIView.as_view()),
