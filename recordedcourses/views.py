@@ -1049,7 +1049,7 @@ class StudentRecordedLessonPlaybackAPIView(APIView):
         student = student_profile_for_user(request.user)
         if not student:
             return Response({"detail": "Only students can play purchased recorded lessons."}, status=403)
-        lesson = RecordedLesson.objects.select_related("course").filter(
+        lesson = RecordedLesson.objects.select_related("course", "module").filter(
             id=lesson_id,
             is_active=True,
             course__organization=request.user.organization,
@@ -1067,6 +1067,16 @@ class StudentRecordedLessonPlaybackAPIView(APIView):
         ).first()
         if not access or not access.has_access:
             return Response({"detail": "You do not have active access to this recorded lesson."}, status=403)
+        # Keep unassigned legacy recordings unchanged. When a lesson belongs
+        # to the enabled Learning Center, no legacy playback URL may bypass
+        # publication or sequential module rules.
+        if lesson.module_id:
+            from .learning_access import learning_enabled_for_org
+            from .learning_progression import is_module_unlocked
+            if learning_enabled_for_org(request.user.organization) and (
+                not lesson.module.is_published or not is_module_unlocked(lesson.module, student)
+            ):
+                return Response({"detail": "Complete the previous module first."}, status=403)
         if not lesson.video:
             return Response({"detail": "Recorded lesson video is unavailable."}, status=404)
         try:
