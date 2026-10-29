@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import StudentSidebar from "@/components/student/studentsidebar";
+import StudentModuleQuiz, {type QuizSummary} from "@/components/learning/StudentModuleQuiz";
 import StudentTopbar from "@/components/student/studentTopbar";
 import "../../dashboard/dashboard.css";
 import "../learning.css";
@@ -11,7 +12,7 @@ import "../learning.css";
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 type Resource = {id:number;title:string;kind:string;extension:string};
 type Lesson = {id:number;title:string;description:string;position:number;completed:boolean};
-type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number};
+type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number;quiz:QuizSummary|null};
 type Course = {id:number;title:string;description:string;modules:Module[];completed_lessons:number;total_lessons:number};
 
 export default function StudentLearningCourseDetailPage() {
@@ -164,6 +165,7 @@ export default function StudentLearningCourseDetailPage() {
                 {module.resources.length>0 && <div className="learning-resource-list"><h3>Notes & resources</h3>
                   {module.resources.map(resource=><button key={resource.id} type="button" disabled={busyResource===resource.id} onClick={()=>void download(resource)}>
                     <i className="bi bi-file-earmark-arrow-down" /><span>{resource.title} <small>({resource.extension.toUpperCase()})</small></span><i className="bi bi-download" /></button>)}</div>}
+                {module.quiz && <StudentModuleQuiz key={module.id} moduleId={module.id} summary={module.quiz}/>}
               </details>)}
           </aside>
         </div>

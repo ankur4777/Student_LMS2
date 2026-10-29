@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
+import ModuleQuizBuilder from "@/components/learning/ModuleQuizBuilder";
 
 const API = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 const ROOT = `${API}/api/recorded-courses/learning/manage`;
@@ -231,6 +232,7 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
               </div>
             </div>
           </div>}
+          {selected && <ModuleQuizBuilder key={selected.id} moduleId={selected.id} role={role} />}
           {role === "college_admin" && <div className="border-top pt-4">
             <h4 className="h6 fw-bold">Course teachers</h4>
             <p className="text-muted small">Only teachers assigned here can edit modules or upload learning content.</p>
