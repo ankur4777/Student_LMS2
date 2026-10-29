@@ -115,8 +115,12 @@ class StudentCertificatePDFAPIView(APIView):
         )
         if certificate.revoked_at:
             return HttpResponse("Certificate was revoked.", status=410, content_type="text/plain")
-        verification_url = request.build_absolute_uri(
-            f"/api/recorded-courses/learning/certificates/verify/{certificate.public_id}/"
+        # QR opens the friendly public verification page on the configured frontend.
+        # LMS_FRONTEND_URL defaults to http://localhost:3000 for local development.
+        from django.conf import settings
+        verification_url = (
+            settings.LMS_FRONTEND_URL.rstrip("/")
+            + f"/verify/certificate/{certificate.public_id}"
         )
         output = render_certificate(certificate, verification_url)
         response = HttpResponse(output, content_type="application/pdf")
