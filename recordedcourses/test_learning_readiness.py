@@ -57,6 +57,7 @@ class CourseReadinessAPITests(APITransactionTestCase):
         )
         RecordedLesson.objects.create(
             course=self.course, module=module, title="Video", position=1,
+            verified_duration_seconds=60.0, duration_verified_at=timezone.now(),
         )
         exam = CourseFinalExam.objects.create(
             course=self.course, title="Final", is_published=True,

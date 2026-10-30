@@ -15,7 +15,7 @@ type Module = {
   position: number; is_published: boolean; lesson_count: number; resource_count: number;
 };
 type Resource = { id: number; title: string; kind: string; created_at: string };
-type Lesson = { id: number; title: string; position: number; description: string };
+type Lesson = { id: number; title: string; position: number; description: string; verified_duration_seconds: number | null; duration_verified_at: string | null };
 type Teacher = { teacher_id: number; teacher_name: string; is_active?: boolean };
 
 async function json(response: Response): Promise<Record<string, any>> {
@@ -158,6 +158,17 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
     });
   }
 
+  async function verifyDuration(lesson: Lesson) {
+    if (!selected) return;
+    await run(async () => {
+      const result = await json(await request(
+        `/lessons/${lesson.id}/verify-duration/`, { method: "POST" },
+      ));
+      setNotice(`Video duration verified: ${result.lesson.verified_duration_seconds.toFixed(1)} seconds.`);
+      await loadModule(selected.id);
+    });
+  }
+
   async function assignTeacher(event: FormEvent) {
     event.preventDefault(); if (!teacherId) return;
     await run(async () => {
@@ -217,7 +228,16 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
             <div className="row g-4">
               <div className="col-lg-6">
                 <h5 className="h6 fw-semibold">Recorded video lessons</h5>
-                <ul className="small">{(lessons[selected.id] || []).map(lesson => <li key={lesson.id}>{lesson.title}</li>)}</ul>
+                <ul className="small">{(lessons[selected.id] || []).map(lesson => <li key={lesson.id} className="mb-2">
+                  <strong>{lesson.title}</strong>{" "}
+                  {lesson.verified_duration_seconds !== null
+                    ? <span className="text-success">Verified: {lesson.verified_duration_seconds.toFixed(1)} sec</span>
+                    : <span className="text-warning">Duration unverified</span>}
+                  {lesson.verified_duration_seconds === null &&
+                    <button type="button" className="btn btn-link btn-sm p-0 ms-2" disabled={busy}
+                      onClick={() => void verifyDuration(lesson)}>Verify duration</button>}
+                </li>)}</ul>
+                <p className="small text-muted">New videos are checked on the backend. FFmpeg/ffprobe must be installed for upload verification.</p>
                 <form onSubmit={uploadVideo} className="d-grid gap-2">
                   <label>Lesson title<input className="form-control" required maxLength={180} value={videoTitle} onChange={e => setVideoTitle(e.target.value)} /></label>
                   <label>Video file (MP4, WebM, MOV)<input id="learning-lesson-video" className="form-control" required type="file" accept=".mp4,.webm,.mov" onChange={e => setVideo(e.target.files?.[0] || null)} /></label>

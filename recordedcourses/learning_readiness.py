@@ -33,6 +33,12 @@ class ManagedCourseReadinessAPIView(APIView):
                 active_lessons=Count(
                     "lessons", filter=Q(lessons__is_active=True), distinct=True,
                 ),
+                verified_lessons=Count(
+                    "lessons", filter=Q(
+                        lessons__is_active=True,
+                        lessons__verified_duration_seconds__isnull=False,
+                    ), distinct=True,
+                ),
             ).order_by("position", "pk")
         )
         quizzes = {q.module_id: q for q in ModuleQuiz.objects.filter(
@@ -57,6 +63,14 @@ class ManagedCourseReadinessAPIView(APIView):
                 "Every published module contains an active recorded lesson.",
             ),
             _check(
+                "video_durations_verified",
+                bool(published) and all(
+                    m.active_lessons > 0 and m.verified_lessons == m.active_lessons
+                    for m in published
+                ),
+                "Every published active video has a server-verified duration.",
+            ),
+            _check(
                 "final_exam_published", bool(exam and exam.is_published),
                 "The final course examination is published.",
             ),
@@ -73,6 +87,12 @@ class ManagedCourseReadinessAPIView(APIView):
             assignment = assignments.get(module.pk)
             if not module.is_published:
                 warnings.append("Module " + str(module.position) + " remains a draft and does not count toward completion.")
+            if module.is_published and module.verified_lessons < module.active_lessons:
+                warnings.append(
+                    "Module " + str(module.position) + " has " +
+                    str(module.active_lessons - module.verified_lessons) +
+                    " video(s) awaiting server-side duration verification."
+                )
             if module.is_published and quiz and not quiz.is_published:
                 warnings.append("Draft quiz in module " + str(module.position) + " does not gate progression.")
             if module.is_published and assignment and not assignment.is_published:
@@ -81,6 +101,7 @@ class ManagedCourseReadinessAPIView(APIView):
                 "id": module.pk, "position": module.position, "title": module.title,
                 "published": module.is_published,
                 "active_lessons": module.active_lessons,
+                "verified_lessons": module.verified_lessons,
                 "quiz_status": "not_configured" if not quiz else
                     ("published" if quiz.is_published else "draft"),
                 "quiz_questions": quiz.question_count if quiz else 0,

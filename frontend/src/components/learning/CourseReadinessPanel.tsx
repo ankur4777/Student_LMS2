@@ -2,7 +2,7 @@
 import {useEffect,useState} from "react";
 type Role="teacher"|"college_admin";
 type Check={code:string;passed:boolean;message:string};
-type Module={id:number;position:number;title:string;published:boolean;active_lessons:number;quiz_status:string;quiz_questions:number;assignment_status:string};
+type Module={id:number;position:number;title:string;published:boolean;active_lessons:number;verified_lessons:number;quiz_status:string;quiz_questions:number;assignment_status:string};
 type Metrics={active:number;manual_active:number;purchased_active:number;expired:number;revoked:number;pending_grading:number;issued_certificates:number};
 type Report={ready_for_final_exam:boolean;checks:Check[];warnings:string[];modules:Module[];enrollments:Metrics};
 const API=(process.env.NEXT_PUBLIC_API_BASE_URL||"").replace(/\/$/,"");
@@ -52,7 +52,7 @@ export default function CourseReadinessPanel({courseId,role}:{courseId:number;ro
     <div className="table-responsive"><table className="table table-sm">
      <thead><tr><th>Module</th><th>Published</th><th>Videos</th><th>Quiz</th><th>Assignment</th></tr></thead>
      <tbody>{data.modules.map(m=><tr key={m.id}><td>{m.position}. {m.title}</td><td>{m.published?"Yes":"No"}</td>
-      <td>{m.active_lessons}</td><td>{m.quiz_status} ({m.quiz_questions})</td><td>{m.assignment_status}</td></tr>)}</tbody>
+      <td>{m.verified_lessons}/{m.active_lessons} verified</td><td>{m.quiz_status} ({m.quiz_questions})</td><td>{m.assignment_status}</td></tr>)}</tbody>
     </table></div>
     {data.warnings.length>0&&<div className="mt-2"><strong>Drafts to review</strong><ul>{data.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></div>}
    </>}
