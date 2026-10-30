@@ -192,7 +192,15 @@ class ModuleResource(models.Model):
 
 
 class LessonLearningProgress(models.Model):
-    """Learner-reported lesson completion; never sufficient alone for certificates."""
+    """Learner-reported completion with recorded playback-session evidence."""
+    class CompletionMethod(models.TextChoices):
+        LEGACY = "learner_reported", "Learner reported (legacy)"
+        SESSION = "signed_session", "Signed viewing session"
+
+    completion_method = models.CharField(
+        max_length=24, choices=CompletionMethod.choices,
+        default=CompletionMethod.LEGACY,
+    )
     student = models.ForeignKey(
         "accounts.StudentProfile", on_delete=models.CASCADE,
         related_name="recorded_learning_progress",
