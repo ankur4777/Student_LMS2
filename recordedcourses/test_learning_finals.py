@@ -236,3 +236,30 @@ class CourseFinalExamAPITests(APITransactionTestCase):
         self.assertEqual(self.client.get(
             f"/api/recorded-courses/learning/student/certificates/{cert_id}/pdf/",
         ).status_code, 200)
+
+
+    def test_malformed_certificate_id_is_validation_error(self):
+        self.auth(self.admin)
+        endpoint = (
+            f"/api/recorded-courses/learning/manage/courses/"
+            f"{self.course.pk}/certificates/"
+        )
+        result = self.client.patch(
+            endpoint, {"certificate_id": "not-a-uuid", "reason": "Incorrect"},
+            format="json",
+        )
+        self.assertEqual(result.status_code, 400, result.data)
+        self.assertIn("UUID", result.data["detail"])
+
+    def test_unknown_certificate_id_is_not_found(self):
+        from uuid import uuid4
+        self.auth(self.admin)
+        endpoint = (
+            f"/api/recorded-courses/learning/manage/courses/"
+            f"{self.course.pk}/certificates/"
+        )
+        result = self.client.patch(
+            endpoint, {"certificate_id": str(uuid4()), "reason": "Incorrect"},
+            format="json",
+        )
+        self.assertEqual(result.status_code, 404, result.data)
