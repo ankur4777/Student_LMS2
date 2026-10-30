@@ -1,13 +1,13 @@
 # MySLS Recorded Learning – Local QA (Phase 11)
 
-This checklist applies **only** to branch \`feature/recorded-learning-certificates\`.
-Do not apply unfinished changes to \`main\` or a production VPS.
+This checklist applies **only** to branch `feature/recorded-learning-certificates`.
+Do not apply unfinished changes to `main` or a production VPS.
 
 ## Setup
 
 In VS Code PowerShell:
 
-\`\`\`powershell
+```powershell
 cd C:\student_LMS
 git status
 git pull --ff-only origin feature/recorded-learning-certificates
@@ -16,17 +16,25 @@ python manage.py makemigrations --check --dry-run
 python manage.py test recordedcourses.test_student_learning recordedcourses.test_module_assignments recordedcourses.test_learning_enrollments recordedcourses.test_learning_finals recordedcourses.test_learning_readiness
 cd frontend
 npm run build
-\`\`\`
+```
 
-No migration is needed for Phase 11. Previous migrations through
-\`0010_final_exam_certificates\` must already be applied to the **local**
-database before end-to-end UI testing.
+Phase 11 requires migration `0011_lesson_completion_method`. Review the
+local database connection and migration plan before applying it:
+
+```powershell
+cd C:\student_LMS
+python manage.py migrate recordedcourses --plan
+python manage.py migrate recordedcourses
+```
+
+Older progress records remain `learner_reported`; new ticket-backed completions
+record `signed_session` for reporting. Neither proves attentive watching.
 
 ## Local portal smoke test
 
 1. Enable the organization's **Learning & Certification** setting in the
    local Platform Admin / Django admin. Enable the class feature
-   \`recorded_courses\` for the test student. Do **not** enable production.
+   `recorded_courses` for the test student. Do **not** enable production.
 2. Sign in as College Admin and create a course/module with an actual
    uploaded video. Publish module and any required module quiz/assignment,
    then configure the final exam.
@@ -41,7 +49,7 @@ database before end-to-end UI testing.
    endpoint. An immediate completion POST using that ticket must return
    400 until at least 10 seconds have passed on the server.
 7. After the playback event ends, submit the ticket; completion should
-   return 200 with \`completion_type=learner_reported_with_session\`.
+   return 200 with `completion_type=learner_reported_with_session`.
    Repeated completion of the *same completed lesson* remains idempotent.
 8. Confirm a ticket is rejected when modified, used for a different lesson,
    or used by another student. Revoked/expired course access must block

@@ -237,6 +237,8 @@ class LearningModuleAPITests(APITransactionTestCase):
         self.assertTrue(row["final_exam_passed"])
         self.assertEqual(row["final_exam_best_percent"], 95)
         self.assertEqual(row["certificate_status"], "issued")
+        self.assertEqual(row["session_backed_lectures"], 0)
+        self.assertEqual(row["modules"][0]["session_backed_lectures"], 0)
         self.assertEqual(row["modules"][0]["quiz_status"], "passed")
         self.assertEqual(row["modules"][0]["assignment_status"], "passed")
         self.assertEqual(row["modules"][0]["assignment_best_percent"], 85)

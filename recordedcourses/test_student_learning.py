@@ -92,7 +92,11 @@ class StudentLearningTests(APITransactionTestCase):
         self.assertEqual(self.client.post(self.complete_url).status_code, 200)
         self.assertEqual(LessonLearningProgress.objects.count(), 1)
         self.assertEqual(self.client.get(self.detail_url).data["course"]["completed_lessons"], 1)
-        self.assertIsNotNone(LessonLearningProgress.objects.get(student=self.student, lesson=self.lesson).completed_at)
+        saved_progress = LessonLearningProgress.objects.get(student=self.student, lesson=self.lesson)
+        self.assertIsNotNone(saved_progress.completed_at)
+        self.assertEqual(saved_progress.completion_method, "signed_session")
+        lesson_record = self.client.get(self.detail_url).data["course"]["modules"][0]["lessons"][0]
+        self.assertEqual(lesson_record["completion_method"], "signed_session")
         self.client.force_authenticate(user=self.other_user)
         self.assertEqual(self.client.get(self.list_url).data["courses"], [])
 
@@ -195,3 +199,16 @@ class StudentLearningTests(APITransactionTestCase):
         result = self.client.post(self.session_url)
         self.assertEqual(result.status_code, 404)
         self.assertFalse(LessonLearningProgress.objects.exists())
+
+
+    def test_preexisting_learner_reported_completion_remains_legacy(self):
+        saved = LessonLearningProgress.objects.create(
+            student=self.student, lesson=self.lesson,
+            completed_at=timezone.now(),
+        )
+        self.assertEqual(saved.completion_method, "learner_reported")
+        lesson = self.client.get(self.detail_url).data["course"]["modules"][0]["lessons"][0]
+        self.assertEqual(lesson["completion_method"], "learner_reported")
+        repeat = self.client.post(self.complete_url)
+        self.assertEqual(repeat.status_code, 200, repeat.data)
+        self.assertEqual(repeat.data["completion_type"], "learner_reported")
