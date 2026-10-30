@@ -378,12 +378,16 @@ class ManagedCourseProgressAPIView(APIView):
             module_id__in=module_ids, is_published=True,
         )}
         watched = {
-            (r["student_id"], r["lesson__module_id"]): r["total"]
+            (r["student_id"], r["lesson__module_id"]): r
             for r in LessonLearningProgress.objects.filter(
                 student_id__in=student_ids, lesson__module_id__in=module_ids,
                 lesson__is_active=True, completed_at__isnull=False,
             ).values("student_id", "lesson__module_id").annotate(
                 total=Count("lesson_id", distinct=True),
+                session_backed=Count(
+                    "lesson_id",
+                    filter=Q(completion_method="signed_session"), distinct=True,
+                ),
             )
         }
         quiz_results = {
@@ -424,10 +428,13 @@ class ManagedCourseProgressAPIView(APIView):
         for enrollment in enrolled:
             student = enrollment.student
             details = []
-            completed = viewed = all_videos = 0
+            completed = viewed = all_videos = session_backed_total = 0
             for module in modules:
-                watched_count = watched.get((student.pk, module.pk), 0)
+                watch_record = watched.get((student.pk, module.pk), {})
+                watched_count = watch_record.get("total", 0)
+                session_backed_count = watch_record.get("session_backed", 0)
                 viewed += watched_count
+                session_backed_total += session_backed_count
                 all_videos += module.lesson_count
                 quiz = quizzes.get(module.pk)
                 quiz_result = quiz_results.get((student.pk, quiz.pk)) if quiz else None
@@ -447,6 +454,7 @@ class ManagedCourseProgressAPIView(APIView):
                 details.append({
                     "id": module.pk, "position": module.position, "title": module.title,
                     "lectures_viewed": watched_count, "lectures_total": module.lesson_count,
+                    "session_backed_lectures": session_backed_count,
                     "completed": done,
                     "quiz_status": (
                         "not_required" if not quiz else
@@ -470,6 +478,7 @@ class ManagedCourseProgressAPIView(APIView):
                 "access_active": enrollment.has_access,
                 "modules_completed": completed, "modules_total": len(modules),
                 "lectures_viewed": viewed, "lectures_total": all_videos,
+                "session_backed_lectures": session_backed_total,
                 "progress_percent": round(100 * completed / len(modules)) if modules else 0,
                 "final_exam_best_percent": final["best_score"] if final else None,
                 "final_exam_passed": bool(final and final["passed_count"]),
