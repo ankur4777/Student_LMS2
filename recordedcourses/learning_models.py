@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 # Imported only after recordedcourses.models has defined RecordedCourse/storage.
 # recordedcourses.models imports this module at its end.
@@ -226,3 +227,25 @@ class LessonLearningProgress(models.Model):
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
+
+
+
+class LessonPlaybackSession(models.Model):
+    """Server-bounded session data; client timestamps are not trusted."""
+    session_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    student = models.ForeignKey("accounts.StudentProfile", on_delete=models.CASCADE,
+                                related_name="learning_playback_sessions")
+    lesson = models.ForeignKey("recordedcourses.RecordedLesson", on_delete=models.CASCADE,
+                               related_name="learning_playback_sessions")
+    started_at = models.DateTimeField(default=timezone.now)
+    last_heartbeat_at = models.DateTimeField(default=timezone.now)
+    last_position_seconds = models.FloatField(default=0)
+    duration_seconds = models.FloatField(null=True, blank=True)
+    credited_seconds = models.FloatField(default=0)
+    heartbeat_count = models.PositiveIntegerField(default=0)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(
+            fields=["student", "lesson"], name="unique_active_learning_playback_session",
+        )]
