@@ -23,6 +23,7 @@ export default function StudentLearningCourseDetailPage() {
   const [student, setStudent] = useState<{name?:string;username?:string;organization?:string}>({});
   const [course, setCourse] = useState<Course|null>(null);
   const [selectedId, setSelectedId] = useState<number|null>(null);
+  const [expandedModuleId, setExpandedModuleId] = useState<number|null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [videoLoading, setVideoLoading] = useState(false);
@@ -46,6 +47,10 @@ export default function StudentLearningCourseDetailPage() {
         if (!response.ok) throw new Error(data.detail || "Cannot open this course.");
         const next: Course = data.course;
         setCourse(next);
+        setExpandedModuleId(current =>
+          current !== null && next.modules.some(m => m.id === current && !m.locked)
+            ? current : (next.modules.find(m => !m.locked)?.id ?? null)
+        );
         setSelectedId(current => current && next.modules.some(m => !m.locked && m.lessons.some(l => l.id === current))
           ? current : next.modules.flatMap(m => m.lessons)[0]?.id ?? null);
       } catch(e) {if(!controller.signal.aborted) setError(e instanceof Error?e.message:"Cannot open this course.");}
@@ -170,8 +175,11 @@ export default function StudentLearningCourseDetailPage() {
           <aside className="learning-modules" aria-label="Published course modules">
             <h2>Course content</h2>
             {course.modules.length === 0 ? <p>No published modules yet. Please check back later.</p> :
-              course.modules.map(module=><details key={module.id} className="learning-module" defaultOpen={!module.locked && module.lessons.some(l=>l.id===selectedId)}>
-                <summary><span className="learning-module-index">{String(module.position).padStart(2,"0")}</span><span><strong>{module.title}</strong><small>{module.locked?"Locked — complete previous module":module.completed?"Completed":`${module.completed_lessons}/${module.total_lessons} viewed`}</small></span><i className="bi bi-chevron-down" /></summary>
+              course.modules.map(module=><details key={module.id} className="learning-module" open={expandedModuleId === module.id}>
+                <summary onClick={event => {
+                  event.preventDefault();
+                  setExpandedModuleId(current => current === module.id ? null : module.id);
+                }}><span className="learning-module-index">{String(module.position).padStart(2,"0")}</span><span><strong>{module.title}</strong><small>{module.locked?"Locked — complete previous module":module.completed?"Completed":`${module.completed_lessons}/${module.total_lessons} viewed`}</small></span><i className="bi bi-chevron-down" /></summary>
                 {module.description && <p className="learning-module-description">{module.description}</p>}
                 {module.locked && <p className="learning-module-description"><i className="bi bi-lock" aria-hidden="true" /> Complete the previous module before accessing these lessons.</p>}
                 <div className="learning-lesson-items">{module.lessons.map(lesson=><button type="button" key={lesson.id} className={"learning-lesson-button"+(selectedId===lesson.id?" is-selected":"")}
