@@ -110,7 +110,9 @@ def record_playback_milestone(ticket, student, lesson, position, duration):
             raise PlaybackTicketError("Video duration changed; start playback again.")
         now = timezone.now()
         elapsed = max(0, (now - current.last_heartbeat_at).total_seconds())
-        if elapsed < HEARTBEAT_MIN_INTERVAL:
+        # A very short clip may only provide one reporting event before end.
+        interval = min(HEARTBEAT_MIN_INTERVAL, duration * .75)
+        if elapsed < interval:
             raise PlaybackTicketError("Playback updates are too frequent.")
         # A pause, hidden tab or lost connection cannot credit a long idle gap.
         proposed = position - current.last_position_seconds
@@ -143,13 +145,21 @@ def record_playback_milestone(ticket, student, lesson, position, duration):
 
 
 def require_playback_completion(ticket, student, lesson):
-    session = verify_playback_ticket(ticket, student, lesson)
+    session = verify_playback_ticket(
+        ticket, student, lesson, require_minimum=False,
+    )
     duration = session.duration_seconds
-    if not duration or session.heartbeat_count < MIN_HEARTBEATS:
+    needed_heartbeats = MIN_HEARTBEATS if duration and duration >= MIN_VIEW_SECONDS else 1
+    if not duration or session.heartbeat_count < needed_heartbeats:
         raise PlaybackTicketError("Watch the lesson with progress tracking enabled.")
-    # The browser reports duration; this is progress evidence, not trusted
-    # media duration or proof of attention. Never credit idle time.
-    required = max(MIN_VIEW_SECONDS, duration * .8)
+    # Allow short clips to count after their reported near-complete playback;
+    # normal clips still require >=10 server seconds and multiple heartbeats.
+    elapsed = (timezone.now() - session.started_at).total_seconds()
+    required_elapsed = min(MIN_VIEW_SECONDS, duration * .8)
+    if elapsed < required_elapsed:
+        raise PlaybackTicketError("Keep playing before marking this lesson complete.")
+    # Duration is reported by the browser, not independently verified.
+    required = duration * .8 if duration < MIN_VIEW_SECONDS else max(MIN_VIEW_SECONDS, duration * .8)
     if session.credited_seconds + .2 < required:
         raise PlaybackTicketError(
             "Watch more of the lesson before marking it complete."
