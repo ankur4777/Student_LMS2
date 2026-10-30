@@ -319,3 +319,168 @@ class ManagedLessonModuleAPIView(APIView):
         lesson.module = module
         lesson.save(update_fields=["module", "updated_at"])
         return Response({"lesson": _lesson_data(lesson)})
+
+
+class ManagedCourseProgressAPIView(APIView):
+    """Paginated, tenant-scoped course reporting for assigned teachers and admins.
+
+    Aggregate results in batches so an institution with many students does
+    not generate a database query for every student and every module.
+    """
+    permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
+    PAGE_SIZE = 25
+
+    def get(self, request, course_id):
+        from django.db.models import Count, Max, Q
+        from .models import (
+            RecordedCourseAccess, LessonLearningProgress, ModuleQuiz,
+            ModuleQuizAttempt, ModuleAssignment, ModuleAssignmentSubmission,
+            CourseFinalAttempt, CourseCertificate,
+        )
+
+        course = _course(request.user, course_id)
+        raw_page = request.query_params.get("page", "1")
+        if not raw_page.isascii() or not raw_page.isdecimal() or len(raw_page) > 6:
+            return Response({"detail": "page must be a positive integer."}, status=400)
+        page = int(raw_page)
+        if page < 1 or page > 100000:
+            return Response({"detail": "page must be a positive integer."}, status=400)
+
+        search = request.query_params.get("search", "").strip()
+        if len(search) > 80:
+            return Response({"detail": "Search is limited to 80 characters."}, status=400)
+        accesses = RecordedCourseAccess.objects.filter(
+            course=course, organization=course.organization,
+            student__user__organization=course.organization,
+        ).select_related("student__user").order_by("student__user__username", "student_id")
+        if search:
+            accesses = accesses.filter(
+                Q(student__user__username__icontains=search) |
+                Q(student__user__first_name__icontains=search) |
+                Q(student__user__last_name__icontains=search) |
+                Q(student__admission_number__icontains=search)
+            )
+        total = accesses.count()
+        start = (page - 1) * self.PAGE_SIZE
+        enrolled = list(accesses[start:start + self.PAGE_SIZE])
+        student_ids = [item.student_id for item in enrolled]
+
+        modules = list(CourseModule.objects.filter(
+            course=course, is_published=True,
+        ).annotate(
+            lesson_count=Count("lessons", filter=Q(lessons__is_active=True), distinct=True),
+        ).order_by("position", "pk"))
+        module_ids = [m.pk for m in modules]
+        quizzes = {q.module_id: q for q in ModuleQuiz.objects.filter(
+            module_id__in=module_ids, is_published=True,
+        )}
+        assignments = {a.module_id: a for a in ModuleAssignment.objects.filter(
+            module_id__in=module_ids, is_published=True,
+        )}
+        watched = {
+            (r["student_id"], r["lesson__module_id"]): r["total"]
+            for r in LessonLearningProgress.objects.filter(
+                student_id__in=student_ids, lesson__module_id__in=module_ids,
+                lesson__is_active=True, completed_at__isnull=False,
+            ).values("student_id", "lesson__module_id").annotate(
+                total=Count("lesson_id", distinct=True),
+            )
+        }
+        quiz_results = {
+            (r["student_id"], r["quiz_id"]): r
+            for r in ModuleQuizAttempt.objects.filter(
+                student_id__in=student_ids, quiz__in=list(quizzes.values()),
+            ).values("student_id", "quiz_id").annotate(
+                passed_count=Count("pk", filter=Q(passed=True)),
+                best_score=Max("score_percent"),
+            )
+        }
+        assignment_results = {
+            (r["student_id"], r["assignment_id"]): r
+            for r in ModuleAssignmentSubmission.objects.filter(
+                student_id__in=student_ids, assignment__in=list(assignments.values()),
+            ).values("student_id", "assignment_id").annotate(
+                best_score=Max("score_percent", filter=Q(graded_at__isnull=False)),
+                pending_count=Count("pk", filter=Q(graded_at__isnull=True)),
+            )
+        }
+        final_results = {
+            r["student_id"]: r
+            for r in CourseFinalAttempt.objects.filter(
+                student_id__in=student_ids, exam__course=course,
+            ).values("student_id").annotate(
+                passed_count=Count("pk", filter=Q(passed=True)),
+                best_score=Max("score_percent"),
+            )
+        }
+        certificates = {
+            c.student_id: c
+            for c in CourseCertificate.objects.filter(
+                course=course, student_id__in=student_ids,
+            )
+        }
+
+        rows = []
+        for enrollment in enrolled:
+            student = enrollment.student
+            details = []
+            completed = viewed = all_videos = 0
+            for module in modules:
+                watched_count = watched.get((student.pk, module.pk), 0)
+                viewed += watched_count
+                all_videos += module.lesson_count
+                quiz = quizzes.get(module.pk)
+                quiz_result = quiz_results.get((student.pk, quiz.pk)) if quiz else None
+                quiz_passed = not quiz or bool(quiz_result and quiz_result["passed_count"])
+                assignment = assignments.get(module.pk)
+                assignment_result = (
+                    assignment_results.get((student.pk, assignment.pk)) if assignment else None
+                )
+                best_assignment = assignment_result["best_score"] if assignment_result else None
+                assignment_passed = (
+                    not assignment or best_assignment is not None
+                    and best_assignment >= assignment.passing_percent
+                )
+                done = (module.lesson_count > 0 and watched_count == module.lesson_count
+                        and quiz_passed and assignment_passed)
+                completed += int(done)
+                details.append({
+                    "id": module.pk, "position": module.position, "title": module.title,
+                    "lectures_viewed": watched_count, "lectures_total": module.lesson_count,
+                    "completed": done,
+                    "quiz_status": (
+                        "not_required" if not quiz else
+                        "passed" if quiz_passed else "not_passed"
+                    ),
+                    "quiz_best_percent": quiz_result["best_score"] if quiz_result else None,
+                    "assignment_status": (
+                        "not_required" if not assignment else
+                        "passed" if assignment_passed else
+                        "awaiting_review" if assignment_result and assignment_result["pending_count"]
+                        else "not_passed"
+                    ),
+                    "assignment_best_percent": best_assignment,
+                })
+            final = final_results.get(student.pk)
+            certificate = certificates.get(student.pk)
+            rows.append({
+                "student_id": student.pk,
+                "student_name": student.user.get_full_name() or student.user.username,
+                "admission_number": student.admission_number,
+                "access_active": enrollment.has_access,
+                "modules_completed": completed, "modules_total": len(modules),
+                "lectures_viewed": viewed, "lectures_total": all_videos,
+                "progress_percent": round(100 * completed / len(modules)) if modules else 0,
+                "final_exam_best_percent": final["best_score"] if final else None,
+                "final_exam_passed": bool(final and final["passed_count"]),
+                "certificate_status": (
+                    "revoked" if certificate.revoked_at else "issued"
+                ) if certificate else "not_issued",
+                "modules": details,
+            })
+        return Response({
+            "course_id": course.pk, "course_title": course.title,
+            "students_total": total, "page": page, "page_size": self.PAGE_SIZE,
+            "has_next": start + self.PAGE_SIZE < total,
+            "students": rows,
+        })
