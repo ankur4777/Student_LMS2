@@ -307,3 +307,25 @@ class StudentLearningTests(APITransactionTestCase):
             "duration_seconds": 12,
         }, format="json")
         self.assertEqual(denied.status_code, 400, denied.data)
+
+
+    def test_short_lesson_can_complete_with_one_credible_heartbeat(self):
+        started = self.client.post(self.session_url)
+        self.assertEqual(started.status_code, 200, started.data)
+        LessonPlaybackSession.objects.filter(
+            student=self.student, lesson=self.lesson,
+        ).update(
+            started_at=timezone.now() - timedelta(seconds=4),
+            last_heartbeat_at=timezone.now() - timedelta(seconds=4),
+        )
+        heartbeat = self.client.post(self.heartbeat_url, {
+            "playback_ticket": started.data["ticket"],
+            "position_seconds": 4, "duration_seconds": 4,
+        }, format="json")
+        self.assertEqual(heartbeat.status_code, 200, heartbeat.data)
+        self.assertEqual(heartbeat.data["heartbeats"], 1)
+        done = self.client.post(self.complete_url, {
+            "playback_ticket": started.data["ticket"],
+        }, format="json")
+        self.assertEqual(done.status_code, 200, done.data)
+        self.assertEqual(done.data["completion_type"], "learner_reported_with_session")
