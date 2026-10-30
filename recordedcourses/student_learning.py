@@ -18,7 +18,8 @@ from accounts.models import StudentProfile
 from .learning_access import OrganizationLearningEnabled
 from .learning_progression import module_access_map, is_module_unlocked
 from .learning_playback import (
-    create_playback_ticket, verify_playback_ticket, PlaybackTicketError,
+    create_playback_ticket, require_playback_completion,
+    record_playback_milestone, PlaybackTicketError,
 )
 from .models import (
     CourseModule, LessonLearningProgress, ModuleResource, RecordedCourse,
@@ -234,6 +235,38 @@ class StudentLearningPlaybackSessionAPIView(APIView):
         return Response(create_playback_ticket(student, lesson))
 
 
+class StudentLearningPlaybackHeartbeatAPIView(APIView):
+    """Store server-time-bounded watch milestones for an entitled student."""
+    permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
+
+    def post(self, request, lesson_id):
+        student = _student(request.user)
+        if not student:
+            return Response({"detail": "Student account required."}, status=403)
+        lesson = get_object_or_404(
+            RecordedLesson.objects.select_related("module", "course").filter(
+                pk=lesson_id, is_active=True,
+                course__organization=request.user.organization,
+                course__is_active=True,
+                module__isnull=False, module__is_published=True,
+            ),
+        )
+        _, access = _student_access(request.user, lesson.course_id)
+        if not access:
+            return Response({"detail": "Active course access required."}, status=403)
+        if not is_module_unlocked(lesson.module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
+        data = request.data if hasattr(request.data, "get") else {}
+        try:
+            milestone = record_playback_milestone(
+                data.get("playback_ticket"), student, lesson,
+                data.get("position_seconds"), data.get("duration_seconds"),
+            )
+        except PlaybackTicketError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        return Response(milestone)
+
+
 class StudentLearningLessonCompleteAPIView(APIView):
     """Record learner-reported viewing after a signed playback session.
 
@@ -276,7 +309,7 @@ class StudentLearningLessonCompleteAPIView(APIView):
             })
         ticket = request.data.get("playback_ticket") if hasattr(request.data, "get") else None
         try:
-            verify_playback_ticket(ticket, student, lesson)
+            session = require_playback_completion(ticket, student, lesson)
         except PlaybackTicketError as exc:
             return Response({"detail": str(exc)}, status=400)
         progress, created = LessonLearningProgress.objects.get_or_create(
@@ -290,6 +323,8 @@ class StudentLearningLessonCompleteAPIView(APIView):
             progress.completed_at = timezone.now()
             progress.completion_method = LessonLearningProgress.CompletionMethod.SESSION
             progress.save(update_fields=["completed_at", "completion_method", "updated_at"])
+        session.completed_at = timezone.now()
+        session.save(update_fields=["completed_at"])
         return Response({"lesson_id": lesson.pk, "completed": True,
                          "completion_type": "learner_reported_with_session"})
 
