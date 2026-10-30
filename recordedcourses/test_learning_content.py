@@ -1,6 +1,7 @@
 """Local integration tests for new course authoring routes and isolation."""
 import tempfile
 from decimal import Decimal
+from unittest.mock import patch
 from pathlib import Path
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -311,3 +312,84 @@ class LearningModuleAPITests(APITransactionTestCase):
         for bad in ("0", "-1", "abc", "1000001"):
             self.assertEqual(self.client.get(url, {"page": bad}).status_code, 400)
         self.assertEqual(self.client.get(url, {"search": "x" * 81}).status_code, 400)
+
+
+    def test_new_lesson_upload_stores_verified_duration(self):
+        self.enable()
+        self.auth(self.admin_a)
+        module = CourseModule.objects.create(
+            course=self.course_a, title="Video duration", position=1,
+        )
+        url = f"/api/recorded-courses/learning/manage/modules/{module.pk}/lessons/"
+        video = SimpleUploadedFile("lesson.mp4", b"mocked video", content_type="video/mp4")
+        with patch("recordedcourses.learning_content.probe_video_duration", return_value=12.52) as probe:
+            response = self.client.post(
+                url, {"title": "Verified lesson", "video": video}, format="multipart",
+            )
+        self.assertEqual(response.status_code, 201, response.data)
+        probe.assert_called_once()
+        lesson = RecordedLesson.objects.get(pk=response.data["lesson"]["id"])
+        self.assertEqual(lesson.verified_duration_seconds, 12.52)
+        self.assertIsNotNone(lesson.duration_verified_at)
+        self.assertEqual(response.data["lesson"]["verified_duration_seconds"], 12.52)
+
+    def test_video_probe_failure_does_not_create_lesson(self):
+        from recordedcourses.learning_media import MediaProbeError
+        self.enable()
+        self.auth(self.admin_a)
+        module = CourseModule.objects.create(
+            course=self.course_a, title="Upload rejected", position=1,
+        )
+        url = f"/api/recorded-courses/learning/manage/modules/{module.pk}/lessons/"
+        with patch(
+            "recordedcourses.learning_content.probe_video_duration",
+            side_effect=MediaProbeError("Invalid video stream."),
+        ):
+            invalid = self.client.post(url, {
+                "title": "Bad media", "video": SimpleUploadedFile("bad.mp4", b"fake"),
+            }, format="multipart")
+        self.assertEqual(invalid.status_code, 400, invalid.data)
+        with patch(
+            "recordedcourses.learning_content.probe_video_duration",
+            side_effect=MediaProbeError("ffprobe unavailable", unavailable=True),
+        ):
+            missing = self.client.post(url, {
+                "title": "Missing dependency",
+                "video": SimpleUploadedFile("sample.mp4", b"fake"),
+            }, format="multipart")
+        self.assertEqual(missing.status_code, 503, missing.data)
+        self.assertFalse(RecordedLesson.objects.filter(module=module).exists())
+
+    def test_existing_module_video_can_be_verified_by_correct_staff_only(self):
+        self.enable()
+        module = CourseModule.objects.create(
+            course=self.course_a, title="Old video", position=1,
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            field = RecordedLesson._meta.get_field("video")
+            previous = field.storage
+            field.storage = FileSystemStorage(location=tmp)
+            try:
+                lesson = RecordedLesson.objects.create(
+                    course=self.course_a, module=module,
+                    title="Old lecture", position=1,
+                    video=SimpleUploadedFile("old.mp4", b"stored video"),
+                )
+                url = f"/api/recorded-courses/learning/manage/lessons/{lesson.pk}/verify-duration/"
+                self.auth(self.admin_b)
+                OrganizationLearningSettings.objects.create(
+                    organization=self.org_b, is_enabled=True,
+                )
+                self.assertEqual(self.client.post(url).status_code, 404)
+                self.auth(self.admin_a)
+                with patch(
+                    "recordedcourses.learning_content.probe_video_duration",
+                    return_value=21.5,
+                ):
+                    response = self.client.post(url)
+                self.assertEqual(response.status_code, 200, response.data)
+                lesson.refresh_from_db()
+                self.assertEqual(lesson.verified_duration_seconds, 21.5)
+                self.assertIsNotNone(lesson.duration_verified_at)
+            finally:
+                field.storage = previous
