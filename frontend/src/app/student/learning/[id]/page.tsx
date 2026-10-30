@@ -146,8 +146,11 @@ export default function StudentLearningCourseDetailPage() {
     if (!selectedLesson || !token || !ticket || heartbeatInFlight.current ||
         !Number.isFinite(position) || !Number.isFinite(duration) ||
         duration<1 || position<0 || selected?.completed) return;
-    const now=Date.now(), minInterval=force?3000:4800;
-    if(now-viewingSessionStartedAt.current<4800 ||
+    const now=Date.now();
+    // Scale report intervals for genuinely short recordings.
+    const initialDelay=Math.min(4800,duration*800);
+    const minInterval=force?Math.min(3000,duration*750):Math.min(4800,duration*800);
+    if(now-viewingSessionStartedAt.current<initialDelay ||
        now-lastHeartbeatSentAt.current<minInterval)return;
     // Sending during the timeupdate event means the player is active; this
     // client-side signal remains untrusted, so the backend caps all credit.
