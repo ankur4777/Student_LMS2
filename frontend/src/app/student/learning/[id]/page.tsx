@@ -13,7 +13,7 @@ import "../learning.css";
 
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 type Resource = {id:number;title:string;kind:string;extension:string};
-type Lesson = {id:number;title:string;description:string;position:number;completed:boolean;completion_method:string|null};
+type Lesson = {id:number;title:string;description:string;position:number;completed:boolean;completion_method:string|null;verified_duration_seconds:number|null};
 type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number;quiz:QuizSummary|null;assignment:AssignmentSummary|null;locked:boolean;completed:boolean};
 type Course = {id:number;title:string;description:string;modules:Module[];completed_lessons:number;total_lessons:number;final_exam:FinalExamSummary|null};
 
@@ -255,7 +255,10 @@ export default function StudentLearningCourseDetailPage() {
             </div>
             <div className="learning-viewer-info"><p>{selected?.description || "Play a lecture to learn at your own pace."}</p>
               {!selected?.completed&&selected&&<p className="small text-muted" role="status">
-                Session-tracked playback: {reportedWatchPercent}% (reported media duration).
+                Session-tracked playback: {reportedWatchPercent}%.
+                {selected.verified_duration_seconds!==null
+                  ? ` Server-verified length: ${selected.verified_duration_seconds.toFixed(1)}s.`
+                  : " Length not yet verified by the server."}
                 Complete the video to submit progress. Long pauses and skipped segments are not credited.
               </p>}
               {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" />

@@ -104,7 +104,7 @@ def record_playback_milestone(ticket, student, lesson, position, duration):
         raise PlaybackTicketError("Provide valid video position and duration.")
     verified = lesson.verified_duration_seconds
     if verified is not None:
-        tolerance = max(1.5, verified * 0.03)
+        tolerance = max(0.5, verified * 0.03)
         if abs(duration - verified) > tolerance or position > verified + 2:
             raise PlaybackTicketError(
                 "Playback duration does not match this server-verified video."

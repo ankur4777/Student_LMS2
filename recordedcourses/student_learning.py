@@ -62,6 +62,7 @@ def _lesson_data(lesson, completion_methods):
         "position": lesson.position,
         "completed": lesson.pk in completion_methods,
         "completion_method": completion_methods.get(lesson.pk),
+        "verified_duration_seconds": lesson.verified_duration_seconds,
     }
 
 
