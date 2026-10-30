@@ -12,7 +12,7 @@ from rest_framework.test import APITransactionTestCase
 from accounts.models import StudentProfile, User
 from institutions.models import Organization
 from recordedcourses.models import (
-    CourseModule, LessonLearningProgress, ModuleResource,
+    CourseModule, LessonLearningProgress, LessonPlaybackSession, ModuleResource,
     OrganizationLearningSettings, RecordedCourse, RecordedCourseAccess,
     RecordedLesson,
 )
@@ -40,11 +40,26 @@ class StudentLearningTests(APITransactionTestCase):
         self.detail_url = f"/api/recorded-courses/learning/student/courses/{self.course.pk}/"
         self.complete_url = f"/api/recorded-courses/learning/student/lessons/{self.lesson.pk}/complete/"
         self.session_url = f"/api/recorded-courses/learning/student/lessons/{self.lesson.pk}/viewing-session/"
+        self.heartbeat_url = f"/api/recorded-courses/learning/student/lessons/{self.lesson.pk}/heartbeat/"
         # Class-feature behavior is separately covered by existing academics tests.
         self.feature_patch = patch("recordedcourses.learning_access.student_feature_is_enabled", return_value=True)
         self.feature_patch.start()
         self.addCleanup(self.feature_patch.stop)
         self.client.force_authenticate(user=self.user)
+
+    def report_watch_milestones(self, ticket):
+        # Simulate elapsed server time without waiting in unit tests.
+        for position in (5, 11):
+            LessonPlaybackSession.objects.filter(
+                student=self.student, lesson=self.lesson,
+            ).update(last_heartbeat_at=timezone.now() - timedelta(seconds=6))
+            result = self.client.post(self.heartbeat_url, {
+                "playback_ticket": ticket,
+                "position_seconds": position, "duration_seconds": 12,
+            }, format="json")
+            self.assertEqual(result.status_code, 200, result.data)
+            self.assertTrue(result.data["accepted"])
+        return LessonPlaybackSession.objects.get(student=self.student, lesson=self.lesson)
 
     def test_purchased_course_lists_published_modules_only(self):
         result = self.client.get(self.detail_url)
@@ -84,6 +99,8 @@ class StudentLearningTests(APITransactionTestCase):
         # wait, never signature, student, lesson or entitlement checks.
         started = self.client.post(self.session_url)
         self.assertEqual(started.status_code, 200, started.data)
+        session = self.report_watch_milestones(started.data["ticket"])
+        self.assertEqual(session.heartbeat_count, 2)
         with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
             saved = self.client.post(
                 self.complete_url, {"playback_ticket": started.data["ticket"]}, format="json",
@@ -212,3 +229,81 @@ class StudentLearningTests(APITransactionTestCase):
         repeat = self.client.post(self.complete_url)
         self.assertEqual(repeat.status_code, 200, repeat.data)
         self.assertEqual(repeat.data["completion_type"], "learner_reported")
+
+
+    def test_missing_milestones_block_completion_even_with_signed_ticket(self):
+        started = self.client.post(self.session_url)
+        with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
+            denied = self.client.post(self.complete_url, {
+                "playback_ticket": started.data["ticket"],
+            }, format="json")
+        self.assertEqual(denied.status_code, 400, denied.data)
+        self.assertFalse(LessonLearningProgress.objects.exists())
+
+    def test_impossible_seek_jump_earns_no_credit(self):
+        started = self.client.post(self.session_url)
+        LessonPlaybackSession.objects.filter(student=self.student, lesson=self.lesson).update(
+            last_heartbeat_at=timezone.now() - timedelta(seconds=5),
+        )
+        response = self.client.post(self.heartbeat_url, {
+            "playback_ticket": started.data["ticket"],
+            "position_seconds": 500, "duration_seconds": 600,
+        }, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertFalse(response.data["accepted"])
+        self.assertEqual(response.data["credited_seconds"], 0)
+        self.assertEqual(response.data["heartbeats"], 0)
+
+    def test_rapid_heartbeat_rejected(self):
+        started = self.client.post(self.session_url)
+        response = self.client.post(self.heartbeat_url, {
+            "playback_ticket": started.data["ticket"],
+            "position_seconds": 5, "duration_seconds": 12,
+        }, format="json")
+        self.assertEqual(response.status_code, 400, response.data)
+
+    def test_restart_invalidates_old_ticket(self):
+        first = self.client.post(self.session_url)
+        second = self.client.post(self.session_url)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertNotEqual(first.data["ticket"], second.data["ticket"])
+        LessonPlaybackSession.objects.filter(student=self.student, lesson=self.lesson).update(
+            last_heartbeat_at=timezone.now() - timedelta(seconds=6),
+        )
+        denied = self.client.post(self.heartbeat_url, {
+            "playback_ticket": first.data["ticket"],
+            "position_seconds": 5, "duration_seconds": 12,
+        }, format="json")
+        self.assertEqual(denied.status_code, 400, denied.data)
+
+    def test_idle_gap_or_changed_duration_is_not_credited(self):
+        ticket = self.client.post(self.session_url).data["ticket"]
+        session = self.report_watch_milestones(ticket)
+        self.assertGreaterEqual(session.credited_seconds, 10)
+        LessonPlaybackSession.objects.filter(pk=session.pk).update(
+            last_heartbeat_at=timezone.now() - timedelta(seconds=60),
+        )
+        idle = self.client.post(self.heartbeat_url, {
+            "playback_ticket": ticket, "position_seconds": 12,
+            "duration_seconds": 12,
+        }, format="json")
+        self.assertEqual(idle.status_code, 200, idle.data)
+        self.assertFalse(idle.data["accepted"])
+        invalid = self.client.post(self.heartbeat_url, {
+            "playback_ticket": ticket, "position_seconds": 12,
+            "duration_seconds": 20,
+        }, format="json")
+        self.assertEqual(invalid.status_code, 400)
+
+    def test_other_student_cannot_submit_heartbeat(self):
+        ticket = self.client.post(self.session_url).data["ticket"]
+        RecordedCourseAccess.objects.create(
+            organization=self.org, course=self.course, student=self.other_student,
+        )
+        self.client.force_authenticate(user=self.other_user)
+        denied = self.client.post(self.heartbeat_url, {
+            "playback_ticket": ticket, "position_seconds": 5,
+            "duration_seconds": 12,
+        }, format="json")
+        self.assertEqual(denied.status_code, 400, denied.data)
