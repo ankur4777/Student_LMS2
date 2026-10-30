@@ -30,6 +30,8 @@ export default function StudentLearningCourseDetailPage() {
   const [busyResource, setBusyResource] = useState<number|null>(null);
   const [error, setError] = useState("");
   const activeVideoUrl = useRef("");
+  const playbackSession = useRef<{lessonId:number;ticket:string}|null>(null);
+  const sessionInFlight = useRef<number|null>(null);
   const currentToken = () => localStorage.getItem("student_access_token");
 
   useEffect(() => {
@@ -62,6 +64,8 @@ export default function StudentLearningCourseDetailPage() {
 
   useEffect(() => {
     const token = currentToken();
+    playbackSession.current = null;
+    sessionInFlight.current = null;
     if (!selectedId || !token) {setVideoUrl("");return;}
     const controller = new AbortController();
     const loadVideo = async () => {
@@ -101,13 +105,38 @@ export default function StudentLearningCourseDetailPage() {
   const selectedIndex = lessons.findIndex(lesson => lesson.id === selectedId);
   const percent = course?.total_lessons ? Math.round(course.completed_lessons/course.total_lessons*100):0;
 
+  async function startViewingSession() {
+    const token=currentToken();
+    if (!token || !selectedId || selected?.completed) return;
+    const lessonId=selectedId;
+    if (playbackSession.current?.lessonId===lessonId || sessionInFlight.current===lessonId) return;
+    sessionInFlight.current=lessonId;
+    try{
+      const response=await fetch(
+        BASE+"/api/recorded-courses/learning/student/lessons/"+lessonId+"/viewing-session/",{
+          method:"POST",headers:{Authorization:"Bearer "+token},cache:"no-store",
+        }
+      );
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(data.detail||"Unable to start lesson viewing session.");
+      if (selectedId===lessonId) playbackSession.current={lessonId,ticket:data.ticket};
+    }catch(err){setError(err instanceof Error?err.message:"Could not start viewing session.");}
+    finally{if(sessionInFlight.current===lessonId)sessionInFlight.current=null;}
+  }
+
   async function finishedLesson() {
     const token = currentToken();
     if (!token || !selectedId || selected?.completed) return;
     const lessonId=selectedId;
+    const ticket=playbackSession.current?.lessonId===lessonId ? playbackSession.current.ticket : null;
+    if(!ticket){setError("Viewing session has not started. Play the lecture again.");return;}
     try {
       const result = await fetch(`${BASE}/api/recorded-courses/learning/student/lessons/${lessonId}/complete/`,{
-        method:"POST",headers:{Authorization:`Bearer ${token}`},
+        method:"POST",headers:{
+          Authorization:`Bearer ${token}`,
+          "Content-Type":"application/json",
+        },
+        body:JSON.stringify({playback_ticket:ticket}),
       });
       const body = await result.json().catch(() => ({}));
       if (!result.ok) throw new Error(body.detail || "Unable to save lecture progress.");
@@ -162,14 +191,15 @@ export default function StudentLearningCourseDetailPage() {
             <div className="learning-video-wrap">
               {videoLoading ? <span>Loading secure lecture...</span> : videoUrl ?
                 <video key={videoUrl} controls controlsList="nodownload" disablePictureInPicture
-                  src={videoUrl} onContextMenu={event=>event.preventDefault()} onEnded={()=>void finishedLesson()} /> :
+                  src={videoUrl} onContextMenu={event=>event.preventDefault()}
+                  onPlay={()=>void startViewingSession()} onEnded={()=>void finishedLesson()} /> :
                 <span>{selected ? "Video is unavailable." : "Select a lecture from a module."}</span>}
             </div>
             <div className="learning-viewer-info"><p>{selected?.description || "Play a lecture to learn at your own pace."}</p>
               {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" /> Viewed</span>}
               <div className="learning-prev-next"><button className="btn btn-outline-secondary" disabled={selectedIndex<=0} onClick={()=>setSelectedId(lessons[selectedIndex-1].id)}>Previous</button>
               <button className="btn btn-primary" disabled={selectedIndex<0||selectedIndex>=lessons.length-1} onClick={()=>setSelectedId(lessons[selectedIndex+1].id)}>Next lecture</button></div>
-              <p className="learning-fineprint">Viewing progress is learner-reported. Complete all modules and pass the final exam to qualify for a course certificate.</p>
+              <p className="learning-fineprint">Viewing progress requires a signed playback session, but remains learner-reported, not proof of attentive watching. Complete the course assessments and final exam to qualify for a certificate.</p>
             </div>
           </section>
           <aside className="learning-modules" aria-label="Published course modules">
