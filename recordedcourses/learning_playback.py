@@ -5,7 +5,7 @@ session. Client video events cannot prove attentive viewing; keep describing
 completion as learner-reported. Server minimum time blocks immediate
 completion without a session, but it is not anti-cheating evidence.
 """
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.core import signing
 from django.utils import timezone
@@ -60,7 +60,7 @@ def verify_playback_ticket(ticket, student, lesson):
     ):
         raise PlaybackTicketError("This playback session belongs to another student or lesson.")
     try:
-        started_at = timezone.datetime.fromisoformat(payload["issued_at"])
+        started_at = datetime.fromisoformat(payload["issued_at"])
     except (KeyError, TypeError, ValueError) as exc:
         raise PlaybackTicketError("Invalid session timestamp.") from exc
     now = timezone.now()
