@@ -6,7 +6,7 @@ from pathlib import Path
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.files.storage import FileSystemStorage
-from django.core.validators import FileExtensionValidator, MinValueValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator, MaxValueValidator
 from django.utils.deconstruct import deconstructible
 from django.db import models
 from django.utils import timezone
@@ -59,6 +59,16 @@ class RecordedLesson(models.Model):
         storage=private_recorded_course_storage,
         validators=[FileExtensionValidator(allowed_extensions=["mp4", "webm", "mov"])],
     )
+    # Extracted by server-side ffprobe for new Learning Center uploads.
+    # Null preserves older videos until a staff member verifies them.
+    verified_duration_seconds = models.FloatField(
+        null=True, blank=True,
+        validators=[
+            MinValueValidator(0.1),
+            MaxValueValidator(28800),
+        ],
+    )
+    duration_verified_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
