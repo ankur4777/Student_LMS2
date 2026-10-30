@@ -39,6 +39,7 @@ class StudentLearningTests(APITransactionTestCase):
         self.list_url = "/api/recorded-courses/learning/student/courses/"
         self.detail_url = f"/api/recorded-courses/learning/student/courses/{self.course.pk}/"
         self.complete_url = f"/api/recorded-courses/learning/student/lessons/{self.lesson.pk}/complete/"
+        self.session_url = f"/api/recorded-courses/learning/student/lessons/{self.lesson.pk}/viewing-session/"
         # Class-feature behavior is separately covered by existing academics tests.
         self.feature_patch = patch("recordedcourses.learning_access.student_feature_is_enabled", return_value=True)
         self.feature_patch.start()
@@ -79,7 +80,15 @@ class StudentLearningTests(APITransactionTestCase):
         self.assertEqual(self.client.post(legacy_url).status_code, 404)
 
     def test_reported_completion_is_idempotent_and_student_specific(self):
-        self.assertEqual(self.client.post(self.complete_url).status_code, 200)
+        # A signed ticket must be issued first; tests bypass only the elapsed
+        # wait, never signature, student, lesson or entitlement checks.
+        started = self.client.post(self.session_url)
+        self.assertEqual(started.status_code, 200, started.data)
+        with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
+            saved = self.client.post(
+                self.complete_url, {"playback_ticket": started.data["ticket"]}, format="json",
+            )
+        self.assertEqual(saved.status_code, 200, saved.data)
         self.assertEqual(self.client.post(self.complete_url).status_code, 200)
         self.assertEqual(LessonLearningProgress.objects.count(), 1)
         self.assertEqual(self.client.get(self.detail_url).data["course"]["completed_lessons"], 1)
@@ -117,3 +126,64 @@ class StudentLearningTests(APITransactionTestCase):
                 self.assertEqual(self.client.get(url).status_code, 403)
             finally:
                 field.storage = original
+
+
+    def test_completion_requires_signed_playback_ticket(self):
+        attempt = self.client.post(self.complete_url)
+        self.assertEqual(attempt.status_code, 400, attempt.data)
+        self.assertFalse(LessonLearningProgress.objects.exists())
+        started = self.client.post(self.session_url)
+        self.assertEqual(started.status_code, 200, started.data)
+        self.assertEqual(started.data["minimum_seconds"], 10)
+        # A signed ticket is issued, but the server rejects immediate completion.
+        early = self.client.post(
+            self.complete_url, {"playback_ticket": started.data["ticket"]}, format="json",
+        )
+        self.assertEqual(early.status_code, 400, early.data)
+        self.assertFalse(LessonLearningProgress.objects.exists())
+
+    def test_tampered_or_wrong_lesson_ticket_does_not_complete(self):
+        started = self.client.post(self.session_url)
+        self.assertEqual(started.status_code, 200, started.data)
+        ticket = started.data["ticket"]
+        with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
+            tampered = self.client.post(
+                self.complete_url, {"playback_ticket": ticket + "-changed"}, format="json",
+            )
+            self.assertEqual(tampered.status_code, 400)
+            another_lesson = RecordedLesson.objects.create(
+                course=self.course, module=self.module, title="Second Lecture", position=4,
+            )
+            wrong = self.client.post(
+                f"/api/recorded-courses/learning/student/lessons/{another_lesson.pk}/complete/",
+                {"playback_ticket": ticket}, format="json",
+            )
+            self.assertEqual(wrong.status_code, 400)
+        self.assertFalse(LessonLearningProgress.objects.exists())
+
+    def test_playback_session_is_student_and_course_access_scoped(self):
+        ticket = self.client.post(self.session_url)
+        self.assertEqual(ticket.status_code, 200, ticket.data)
+        # Another user of the same organization with no course access cannot
+        # start a session or reuse a signed ticket.
+        self.client.force_authenticate(user=self.other_user)
+        self.assertEqual(self.client.post(self.session_url).status_code, 403)
+        self.assertEqual(self.client.post(
+            self.complete_url, {"playback_ticket": ticket.data["ticket"]}, format="json",
+        ).status_code, 403)
+        RecordedCourseAccess.objects.create(
+            organization=self.org, course=self.course, student=self.other_student,
+        )
+        with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
+            self.assertEqual(self.client.post(
+                self.complete_url, {"playback_ticket": ticket.data["ticket"]}, format="json",
+            ).status_code, 400)
+        self.assertFalse(LessonLearningProgress.objects.exists())
+
+    def test_playback_sessions_respect_unpublished_lessons_and_toggle(self):
+        draft_url = f"/api/recorded-courses/learning/student/lessons/{self.draft_lesson.pk}/viewing-session/"
+        legacy_url = f"/api/recorded-courses/learning/student/lessons/{self.unassigned.pk}/viewing-session/"
+        self.assertEqual(self.client.post(draft_url).status_code, 404)
+        self.assertEqual(self.client.post(legacy_url).status_code, 404)
+        OrganizationLearningSettings.objects.filter(organization=self.org).update(is_enabled=False)
+        self.assertEqual(self.client.post(self.session_url).status_code, 403)
