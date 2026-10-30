@@ -50,6 +50,7 @@ def create_playback_ticket(student, lesson):
     return {
         "ticket": ticket,
         "minimum_seconds": MIN_VIEW_SECONDS,
+        "verified_duration_seconds": lesson.verified_duration_seconds,
         "heartbeat_interval_seconds": 5,
         "expires_in_seconds": PLAYBACK_TICKET_MAX_AGE,
     }
@@ -101,17 +102,25 @@ def record_playback_milestone(ticket, student, lesson, position, duration):
             or not math.isfinite(position) or not math.isfinite(duration)
             or not 1 <= duration <= 86400 or not 0 <= position <= duration + 2):
         raise PlaybackTicketError("Provide valid video position and duration.")
+    verified = lesson.verified_duration_seconds
+    if verified is not None:
+        tolerance = max(1.5, verified * 0.03)
+        if abs(duration - verified) > tolerance or position > verified + 2:
+            raise PlaybackTicketError(
+                "Playback duration does not match this server-verified video."
+            )
+    effective_duration = verified if verified is not None else duration
     session = verify_playback_ticket(ticket, student, lesson, require_minimum=False)
     with transaction.atomic():
         current = LessonPlaybackSession.objects.select_for_update().get(pk=session.pk)
         if current.session_id != session.session_id or current.completed_at is not None:
             raise PlaybackTicketError("This playback session is no longer active.")
-        if current.duration_seconds is not None and abs(current.duration_seconds - duration) > 2:
+        if current.duration_seconds is not None and abs(current.duration_seconds - effective_duration) > 0.5:
             raise PlaybackTicketError("Video duration changed; start playback again.")
         now = timezone.now()
         elapsed = max(0, (now - current.last_heartbeat_at).total_seconds())
         # A very short clip may only provide one reporting event before end.
-        interval = min(HEARTBEAT_MIN_INTERVAL, duration * .75)
+        interval = min(HEARTBEAT_MIN_INTERVAL, effective_duration * .75)
         if elapsed < interval:
             raise PlaybackTicketError("Playback updates are too frequent.")
         # A pause, hidden tab or lost connection cannot credit a long idle gap.
@@ -123,7 +132,7 @@ def record_playback_milestone(ticket, student, lesson, position, duration):
         credited = min(proposed, elapsed * 1.1, 12) if plausible else 0
         current.last_position_seconds = position
         current.last_heartbeat_at = now
-        current.duration_seconds = duration if current.duration_seconds is None else current.duration_seconds
+        current.duration_seconds = effective_duration if current.duration_seconds is None else current.duration_seconds
         if credited > 0:
             current.heartbeat_count += 1
             current.credited_seconds = min(
@@ -149,6 +158,9 @@ def require_playback_completion(ticket, student, lesson):
         ticket, student, lesson, require_minimum=False,
     )
     duration = session.duration_seconds
+    verified = lesson.verified_duration_seconds
+    if verified is not None and duration is not None and abs(duration - verified) > 0.5:
+        raise PlaybackTicketError("Video duration was updated. Restart playback.")
     needed_heartbeats = MIN_HEARTBEATS if duration and duration >= MIN_VIEW_SECONDS else 1
     if not duration or session.heartbeat_count < needed_heartbeats:
         raise PlaybackTicketError("Watch the lesson with progress tracking enabled.")
