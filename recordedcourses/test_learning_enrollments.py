@@ -238,3 +238,135 @@ class ManualCourseEnrollmentTests(APITransactionTestCase):
             self.url, {"student_id": self.student.pk}, format="json",
         ).status_code, 403)
         self.assertFalse(RecordedCourseAccess.objects.exists())
+
+
+    def test_end_to_end_manual_enrollment_to_certificate(self):
+        """Manual grant -> lessons -> quiz -> graded work -> final -> certificate."""
+        from recordedcourses.models import (
+            RecordedLesson, ModuleQuiz, ModuleQuizQuestion,
+            ModuleAssignment, ModuleAssignmentSubmission,
+            CourseFinalExam, CourseFinalQuestion, CourseCertificate,
+        )
+        lesson = RecordedLesson.objects.create(
+            course=self.course, module=self.module, title="Introduction video", position=1,
+        )
+        module_quiz_url = (
+            f"/api/recorded-courses/learning/manage/modules/{self.module.pk}/quiz/"
+        )
+        module_assignment_url = (
+            f"/api/recorded-courses/learning/manage/modules/{self.module.pk}/assignment/"
+        )
+        final_url = (
+            f"/api/recorded-courses/learning/manage/courses/{self.course.pk}/final-exam/"
+        )
+        # College Admin configures and publishes required assessments.
+        self.auth(self.admin)
+        quiz = self.client.put(module_quiz_url, {
+            "title": "Module Check", "passing_percent": 70, "max_attempts": 2,
+        }, format="json")
+        self.assertEqual(quiz.status_code, 200, quiz.data)
+        question = self.client.post(module_quiz_url + "questions/", {
+            "prompt": "Which answer is correct?", "choices": ["Wrong", "Correct"],
+            "correct_index": 1,
+        }, format="json")
+        self.assertEqual(question.status_code, 201, question.data)
+        module_question = ModuleQuizQuestion.objects.get(quiz__module=self.module)
+        self.assertEqual(self.client.patch(
+            module_quiz_url, {"is_published": True}, format="json",
+        ).status_code, 200)
+
+        assignment = self.client.put(module_assignment_url, {
+            "title": "Module Homework", "instructions": "Explain the topic.",
+            "passing_percent": 60, "max_attempts": 2,
+        }, format="json")
+        self.assertEqual(assignment.status_code, 200, assignment.data)
+        self.assertEqual(self.client.patch(
+            module_assignment_url, {"is_published": True}, format="json",
+        ).status_code, 200)
+
+        exam = self.client.put(final_url, {
+            "title": "Course Final", "passing_percent": 70, "max_attempts": 2,
+        }, format="json")
+        self.assertEqual(exam.status_code, 200, exam.data)
+        final_question = self.client.post(final_url + "questions/", {
+            "prompt": "Final question?", "choices": ["No", "Yes"], "correct_index": 1,
+        }, format="json")
+        self.assertEqual(final_question.status_code, 201, final_question.data)
+        final_q = CourseFinalQuestion.objects.get(exam__course=self.course)
+        self.assertEqual(self.client.patch(
+            final_url, {"is_published": True}, format="json",
+        ).status_code, 200)
+
+        granted = self.grant(45)
+        self.assertEqual(granted.status_code, 201, granted.data)
+
+        # The student can see the directly assigned course, without paying.
+        self.auth(self.student_user)
+        catalog = self.client.get(self.student_url)
+        self.assertEqual(catalog.status_code, 200, catalog.data)
+        self.assertIn(self.course.pk, [course["id"] for course in catalog.data["courses"]])
+        locked = self.client.post(
+            f"/api/recorded-courses/learning/student/courses/{self.course.pk}/final-exam/",
+            {"answers": {str(final_q.pk): 1}}, format="json",
+        )
+        self.assertEqual(locked.status_code, 403)
+
+        watched = self.client.post(
+            f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/complete/",
+        )
+        self.assertEqual(watched.status_code, 200, watched.data)
+        quiz_result = self.client.post(
+            f"/api/recorded-courses/learning/student/modules/{self.module.pk}/quiz/",
+            {"answers": {str(module_question.pk): 1}}, format="json",
+        )
+        self.assertEqual(quiz_result.status_code, 201, quiz_result.data)
+        self.assertTrue(quiz_result.data["attempt"]["passed"])
+        submitted = self.client.post(
+            f"/api/recorded-courses/learning/student/modules/{self.module.pk}/assignment/",
+            {"answer_text": "My completed homework."}, format="json",
+        )
+        self.assertEqual(submitted.status_code, 201, submitted.data)
+
+        # Pending grading prevents final examination access.
+        still_locked = self.client.post(
+            f"/api/recorded-courses/learning/student/courses/{self.course.pk}/final-exam/",
+            {"answers": {str(final_q.pk): 1}}, format="json",
+        )
+        self.assertEqual(still_locked.status_code, 403)
+
+        # College Admin grades the submitted work.
+        self.auth(self.admin)
+        graded = self.client.patch(
+            f"/api/recorded-courses/learning/manage/submissions/{submitted.data['submission']['id']}/grade/",
+            {"score_percent": 90, "feedback": "Well done"}, format="json",
+        )
+        self.assertEqual(graded.status_code, 200, graded.data)
+        self.auth(self.student_user)
+        finished = self.client.post(
+            f"/api/recorded-courses/learning/student/courses/{self.course.pk}/final-exam/",
+            {"answers": {str(final_q.pk): 1}}, format="json",
+        )
+        self.assertEqual(finished.status_code, 201, finished.data)
+        self.assertTrue(finished.data["attempt"]["passed"])
+        certificate_id = finished.data["certificate_id"]
+        self.assertTrue(certificate_id)
+        self.assertEqual(CourseCertificate.objects.filter(course=self.course).count(), 1)
+
+        # Verification remains valid even after manual enrollment expires/revokes.
+        self.auth(self.admin)
+        revoked = self.client.patch(
+            self.url, {"student_id": self.student.pk, "reason": "Course access period ended"},
+            format="json",
+        )
+        self.assertEqual(revoked.status_code, 200, revoked.data)
+        self.auth(self.student_user)
+        pdf = self.client.get(
+            f"/api/recorded-courses/learning/student/certificates/{certificate_id}/pdf/",
+        )
+        self.assertEqual(pdf.status_code, 200)
+        self.assertTrue(pdf.content.startswith(b"%PDF"))
+        verified = self.client.get(
+            f"/api/recorded-courses/learning/certificates/verify/{certificate_id}/",
+        )
+        self.assertEqual(verified.status_code, 200, verified.data)
+        self.assertTrue(verified.data["valid"])
