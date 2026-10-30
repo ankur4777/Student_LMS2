@@ -31,7 +31,7 @@ class StudentLearningTests(APITransactionTestCase):
         self.course = RecordedCourse.objects.create(organization=self.org, title="Physics Part One", price=Decimal("0"))
         self.module = CourseModule.objects.create(course=self.course, title="First Chapter", position=1, is_published=True)
         self.draft = CourseModule.objects.create(course=self.course, title="Not Ready", position=2, is_published=False)
-        self.lesson = RecordedLesson.objects.create(course=self.course, module=self.module, title="Lesson One", position=1)
+        self.lesson = RecordedLesson.objects.create(course=self.course, module=self.module, title="Lesson One", position=1, video="tests/lesson-one.mp4")
         self.draft_lesson = RecordedLesson.objects.create(course=self.course, module=self.draft, title="Draft lesson", position=2)
         self.unassigned = RecordedLesson.objects.create(course=self.course, title="Legacy lecture", position=3)
         self.access = RecordedCourseAccess.objects.create(organization=self.org, course=self.course, student=self.student)
@@ -187,3 +187,11 @@ class StudentLearningTests(APITransactionTestCase):
         self.assertEqual(self.client.post(legacy_url).status_code, 404)
         OrganizationLearningSettings.objects.filter(organization=self.org).update(is_enabled=False)
         self.assertEqual(self.client.post(self.session_url).status_code, 403)
+
+
+    def test_viewing_session_requires_uploaded_video_reference(self):
+        self.lesson.video = ""
+        self.lesson.save(update_fields=["video"])
+        result = self.client.post(self.session_url)
+        self.assertEqual(result.status_code, 404)
+        self.assertFalse(LessonLearningProgress.objects.exists())

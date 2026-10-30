@@ -228,6 +228,8 @@ class StudentLearningPlaybackSessionAPIView(APIView):
             return Response({"detail": "Active course access required."}, status=403)
         if not is_module_unlocked(lesson.module, student):
             return Response({"detail": "Complete the previous module first."}, status=403)
+        if not lesson.video:
+            return Response({"detail": "No recorded video has been uploaded for this lesson."}, status=404)
         return Response(create_playback_ticket(student, lesson))
 
 

@@ -249,6 +249,7 @@ class ManualCourseEnrollmentTests(APITransactionTestCase):
         )
         lesson = RecordedLesson.objects.create(
             course=self.course, module=self.module, title="Introduction video", position=1,
+            video="tests/enrollment-intro.mp4",
         )
         module_quiz_url = (
             f"/api/recorded-courses/learning/manage/modules/{self.module.pk}/quiz/"
