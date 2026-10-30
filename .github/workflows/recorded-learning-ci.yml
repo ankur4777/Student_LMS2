@@ -1,0 +1,93 @@
+name: MySLS Recorded Learning feature validation
+
+on:
+  push:
+    branches: [feature/recorded-learning-certificates]
+  pull_request:
+    branches: [main]
+    paths:
+      - "recordedcourses/**"
+      - "frontend/**"
+      - "config/**"
+      - "requirements.txt"
+      - ".github/workflows/recorded-learning-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recorded-learning-backend:
+    name: Django model, migration and workflow tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: learning-ci-local-only
+          MYSQL_DATABASE: student_lms
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -plearning-ci-local-only"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    env:
+      DB_ENGINE: django.db.backends.mysql
+      DB_NAME: student_lms
+      DB_USER: root
+      DB_PASSWORD: learning-ci-local-only
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DJANGO_SECRET_KEY: github-actions-recorded-learning-only
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: 127.0.0.1,localhost,testserver
+      LMS_FRONTEND_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install project dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Verify FFprobe
+        run: ffprobe -version
+      - name: Django configuration checks
+        run: python manage.py check
+      - name: Verify no uncommitted model migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Run Recorded Learning unit and integration tests
+        run: |
+          python -u manage.py test \
+            recordedcourses.test_learning_foundation \
+            recordedcourses.test_learning_access \
+            recordedcourses.test_learning_content \
+            recordedcourses.test_learning_media \
+            recordedcourses.test_student_learning \
+            recordedcourses.test_module_quizzes \
+            recordedcourses.test_module_assignments \
+            recordedcourses.test_learning_finals \
+            recordedcourses.test_learning_enrollments \
+            recordedcourses.test_learning_readiness \
+            --noinput --verbosity 2
+
+  recorded-learning-frontend:
+    name: Next.js production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build Next.js
+        working-directory: frontend
+        run: npm run build
