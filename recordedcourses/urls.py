@@ -27,6 +27,7 @@ from .learning_quizzes import (
     StudentModuleQuizAPIView,
 )
 from .learning_content import (
+    ManagedCourseProgressAPIView,
     ManagedLearningCoursesAPIView,
     ManagedCourseModulesAPIView,
     ManagedModuleDetailAPIView,
@@ -91,6 +92,9 @@ urlpatterns = [
     path("learning/student/courses/<int:course_id>/", StudentLearningCourseDetailAPIView.as_view(), name="student-learning-course-detail"),
     path("learning/student/resources/<int:resource_id>/download/", StudentLearningResourceDownloadAPIView.as_view(), name="student-learning-resource-download"),
     path("learning/student/lessons/<int:lesson_id>/complete/", StudentLearningLessonCompleteAPIView.as_view(), name="student-learning-lesson-complete"),
+
+    # Paginated learner progress, restricted to authorized course staff.
+    path("learning/manage/courses/<int:course_id>/progress/", ManagedCourseProgressAPIView.as_view()),
 
     # Organization-entitled, tenant-scoped authoring APIs.
     path("learning/manage/courses/", ManagedLearningCoursesAPIView.as_view()),
