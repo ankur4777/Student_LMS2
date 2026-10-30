@@ -265,8 +265,14 @@ class StudentLearningLessonCompleteAPIView(APIView):
             student=student, lesson=lesson, completed_at__isnull=False,
         ).first()
         if progress:
-            return Response({"lesson_id": lesson.pk, "completed": True,
-                             "completion_type": "learner_reported"})
+            return Response({
+                "lesson_id": lesson.pk, "completed": True,
+                "completion_type": (
+                    "learner_reported_with_session"
+                    if progress.completion_method == LessonLearningProgress.CompletionMethod.SESSION
+                    else "learner_reported"
+                ),
+            })
         ticket = request.data.get("playback_ticket") if hasattr(request.data, "get") else None
         try:
             verify_playback_ticket(ticket, student, lesson)
@@ -274,11 +280,15 @@ class StudentLearningLessonCompleteAPIView(APIView):
             return Response({"detail": str(exc)}, status=400)
         progress, created = LessonLearningProgress.objects.get_or_create(
             student=student, lesson=lesson,
-            defaults={"completed_at": timezone.now()},
+            defaults={
+                "completed_at": timezone.now(),
+                "completion_method": LessonLearningProgress.CompletionMethod.SESSION,
+            },
         )
         if not created and progress.completed_at is None:
             progress.completed_at = timezone.now()
-            progress.save(update_fields=["completed_at", "updated_at"])
+            progress.completion_method = LessonLearningProgress.CompletionMethod.SESSION
+            progress.save(update_fields=["completed_at", "completion_method", "updated_at"])
         return Response({"lesson_id": lesson.pk, "completed": True,
                          "completion_type": "learner_reported_with_session"})
 
