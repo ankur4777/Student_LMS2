@@ -262,14 +262,14 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
 
 type StudentModuleReport = {
   id: number; position: number; title: string; completed: boolean;
-  lectures_viewed: number; lectures_total: number;
+  lectures_viewed: number; lectures_total: number; session_backed_lectures: number;
   quiz_status: string; quiz_best_percent: number | null;
   assignment_status: string; assignment_best_percent: number | null;
 };
 type StudentProgressReport = {
   student_id: number; student_name: string; admission_number: string;
   access_active: boolean; modules_completed: number; modules_total: number;
-  lectures_viewed: number; lectures_total: number; progress_percent: number;
+  lectures_viewed: number; lectures_total: number; session_backed_lectures: number; progress_percent: number;
   final_exam_best_percent: number | null; final_exam_passed: boolean;
   certificate_status: string; modules: StudentModuleReport[];
 };
@@ -354,6 +354,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
             </td>
             <td>{student.modules_completed}/{student.modules_total} completed
               <div className="small text-muted">{student.lectures_viewed}/{student.lectures_total} lectures viewed</div>
+              <div className="small text-muted">{student.session_backed_lectures} session-backed</div>
             </td>
             <td style={{minWidth:180}}>
               <div className="progress" role="progressbar" aria-label={"Course progress for "+student.student_name}
@@ -366,7 +367,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
                 <ol className="ps-3 mt-2">
                   {student.modules.map(module=><li key={module.id} className="small mb-2">
                     <strong>{module.position}. {module.title}</strong>
-                    <div>{module.completed?"Completed":"Incomplete"} · {module.lectures_viewed}/{module.lectures_total} lectures</div>
+                    <div>{module.completed?"Completed":"Incomplete"} · {module.lectures_viewed}/{module.lectures_total} lectures · {module.session_backed_lectures} session-backed</div>
                     <div>Quiz: {reportStatus(module.quiz_status)}{module.quiz_best_percent!==null?" ("+module.quiz_best_percent+"%)":""}</div>
                     <div>Assignment: {reportStatus(module.assignment_status)}{module.assignment_best_percent!==null?" ("+module.assignment_best_percent+"%)":""}</div>
                   </li>)}
