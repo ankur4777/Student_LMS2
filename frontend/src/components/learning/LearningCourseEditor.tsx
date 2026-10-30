@@ -5,6 +5,7 @@ import ModuleQuizBuilder from "@/components/learning/ModuleQuizBuilder";
 import ModuleAssignmentBuilder from "@/components/learning/ModuleAssignmentBuilder";
 import CourseFinalExamBuilder from "@/components/learning/CourseFinalExamBuilder";
 import CourseEnrollmentManager from "@/components/learning/CourseEnrollmentManager";
+import CourseReadinessPanel from "@/components/learning/CourseReadinessPanel";
 
 const API = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 const ROOT = `${API}/api/recorded-courses/learning/manage`;
@@ -240,6 +241,7 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
             <ModuleAssignmentBuilder key={"assignment-"+selected.id} moduleId={selected.id} role={role} />
           </>}
           <CourseFinalExamBuilder courseId={courseId} role={role} />
+          <CourseReadinessPanel courseId={courseId} role={role} />
           <CourseProgressDashboard courseId={courseId} role={role} />
           {role === "college_admin" && <CourseEnrollmentManager courseId={courseId} />}
           {role === "college_admin" && <div className="border-top pt-4">
