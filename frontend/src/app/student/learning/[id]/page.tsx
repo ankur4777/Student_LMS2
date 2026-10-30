@@ -13,7 +13,7 @@ import "../learning.css";
 
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 type Resource = {id:number;title:string;kind:string;extension:string};
-type Lesson = {id:number;title:string;description:string;position:number;completed:boolean};
+type Lesson = {id:number;title:string;description:string;position:number;completed:boolean;completion_method:string|null};
 type Module = {id:number;title:string;description:string;position:number;lessons:Lesson[];resources:Resource[];completed_lessons:number;total_lessons:number;quiz:QuizSummary|null;assignment:AssignmentSummary|null;locked:boolean;completed:boolean};
 type Course = {id:number;title:string;description:string;modules:Module[];completed_lessons:number;total_lessons:number;final_exam:FinalExamSummary|null};
 
@@ -144,7 +144,7 @@ export default function StudentLearningCourseDetailPage() {
         completed_lessons:previous.completed_lessons+1,
         modules:previous.modules.map(module => module.lessons.some(l=>l.id===lessonId) ? ({...module,
           completed_lessons: module.completed_lessons+1,
-          lessons:module.lessons.map(l=>l.id===lessonId?{...l,completed:true}:l),
+          lessons:module.lessons.map(l=>l.id===lessonId?{...l,completed:true,completion_method:"signed_session"}:l),
           quiz:module.quiz ? {...module.quiz,
             unlocked:module.total_lessons>0 && module.completed_lessons+1>=module.total_lessons,
           } : null,
@@ -196,7 +196,9 @@ export default function StudentLearningCourseDetailPage() {
                 <span>{selected ? "Video is unavailable." : "Select a lecture from a module."}</span>}
             </div>
             <div className="learning-viewer-info"><p>{selected?.description || "Play a lecture to learn at your own pace."}</p>
-              {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" /> Viewed</span>}
+              {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" />
+                {selected.completion_method === "signed_session" ? "Viewed · Session recorded" : "Viewed · Legacy report"}
+              </span>}
               <div className="learning-prev-next"><button className="btn btn-outline-secondary" disabled={selectedIndex<=0} onClick={()=>setSelectedId(lessons[selectedIndex-1].id)}>Previous</button>
               <button className="btn btn-primary" disabled={selectedIndex<0||selectedIndex>=lessons.length-1} onClick={()=>setSelectedId(lessons[selectedIndex+1].id)}>Next lecture</button></div>
               <p className="learning-fineprint">Viewing progress requires a signed playback session, but remains learner-reported, not proof of attentive watching. Complete the course assessments and final exam to qualify for a certificate.</p>
