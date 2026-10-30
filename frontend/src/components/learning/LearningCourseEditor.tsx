@@ -239,6 +239,7 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
             <ModuleAssignmentBuilder key={"assignment-"+selected.id} moduleId={selected.id} role={role} />
           </>}
           <CourseFinalExamBuilder courseId={courseId} role={role} />
+          <CourseProgressDashboard courseId={courseId} role={role} />
           {role === "college_admin" && <div className="border-top pt-4">
             <h4 className="h6 fw-bold">Course teachers</h4>
             <p className="text-muted small">Only teachers assigned here can edit modules or upload learning content.</p>
@@ -252,4 +253,136 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
       </div>
     </section>
   );
+}
+
+
+type StudentModuleReport = {
+  id: number; position: number; title: string; completed: boolean;
+  lectures_viewed: number; lectures_total: number;
+  quiz_status: string; quiz_best_percent: number | null;
+  assignment_status: string; assignment_best_percent: number | null;
+};
+type StudentProgressReport = {
+  student_id: number; student_name: string; admission_number: string;
+  access_active: boolean; modules_completed: number; modules_total: number;
+  lectures_viewed: number; lectures_total: number; progress_percent: number;
+  final_exam_best_percent: number | null; final_exam_passed: boolean;
+  certificate_status: string; modules: StudentModuleReport[];
+};
+type CourseProgressResponse = {
+  students_total: number; page: number; page_size: number;
+  has_next: boolean; students: StudentProgressReport[];
+};
+function reportStatus(value: string) {
+  const labels: Record<string, string> = {
+    passed: "Passed", not_passed: "Not passed",
+    awaiting_review: "Awaiting review", not_required: "Not required",
+    issued: "Issued", revoked: "Revoked", not_issued: "Not issued",
+  };
+  return labels[value] || value;
+}
+
+function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
+  const [data,setData] = useState<CourseProgressResponse|null>(null);
+  const [page,setPage] = useState(1);
+  const [draftSearch,setDraftSearch] = useState("");
+  const [search,setSearch] = useState("");
+  const [refreshCounter,setRefreshCounter] = useState(0);
+  const [loading,setLoading] = useState(true);
+  const [error,setError] = useState("");
+
+  useEffect(()=>{
+    const controller = new AbortController();
+    const token = localStorage.getItem(role === "teacher" ? "teacher_access_token" : "college_admin_access_token");
+    setLoading(true); setError("");
+    if (!token) {
+      setError("Please sign in again to view learning progress.");
+      setLoading(false);
+      return;
+    }
+    const params = new URLSearchParams({page:String(page)});
+    if(search)params.set("search",search);
+    void fetch(ROOT + "/courses/" + courseId + "/progress/?" + params.toString(),{
+      headers:{Authorization:"Bearer "+token},cache:"no-store",signal:controller.signal,
+    }).then(async response=>{
+      const body=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(body.detail||"Unable to load course progress.");
+      return body as CourseProgressResponse;
+    }).then(body=>{if(!controller.signal.aborted)setData(body);})
+      .catch(err=>{if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Unable to load progress.");})
+      .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+    return ()=>controller.abort();
+  },[courseId,role,page,search,refreshCounter]);
+
+  return <section className="card border-0 shadow-sm my-4" aria-label="Student course progress dashboard">
+    <div className="card-body p-4">
+      <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
+        <div>
+          <h3 className="h5 fw-bold mb-1">Student Learning Progress</h3>
+          <p className="small text-muted mb-0">Module completion, quiz and assignment outcomes, final exams and certificates.</p>
+        </div>
+        <button type="button" className="btn btn-outline-primary btn-sm" disabled={loading}
+          onClick={()=>setRefreshCounter(value=>value+1)}>Refresh</button>
+      </div>
+      <form className="d-flex flex-wrap gap-2 mb-3" onSubmit={event=>{
+        event.preventDefault();setPage(1);setSearch(draftSearch.trim());
+      }}>
+        <input aria-label="Search enrolled students" className="form-control"
+          style={{maxWidth:340}} maxLength={80} placeholder="Search by name or admission number"
+          value={draftSearch} onChange={event=>setDraftSearch(event.target.value)}/>
+        <button type="submit" className="btn btn-primary btn-sm">Search</button>
+        {search&&<button type="button" className="btn btn-outline-secondary btn-sm"
+          onClick={()=>{setDraftSearch("");setSearch("");setPage(1);}}>Clear</button>}
+      </form>
+      {loading&&<p className="small text-muted" role="status">Loading learner progress…</p>}
+      {error&&<p className="alert alert-danger py-2" role="alert">{error}</p>}
+      {!loading&&!error&&data&&<>
+        <p className="small text-muted">{data.students_total} enrolled students{search?" matching your search":""}</p>
+        {data.students.length===0?<p className="text-muted">No students found for this course.</p>:
+        <div className="table-responsive"><table className="table table-hover align-middle">
+          <thead><tr><th scope="col">Student</th><th scope="col">Modules</th>
+          <th scope="col">Progress</th><th scope="col">Final Exam</th><th scope="col">Certificate</th></tr></thead>
+          <tbody>{data.students.map(student=><tr key={student.student_id}>
+            <td>
+              <strong>{student.student_name}</strong>
+              <div className="small text-muted">{student.admission_number}</div>
+              {!student.access_active&&<span className="small text-danger">Access inactive</span>}
+            </td>
+            <td>{student.modules_completed}/{student.modules_total} completed
+              <div className="small text-muted">{student.lectures_viewed}/{student.lectures_total} lectures viewed</div>
+            </td>
+            <td style={{minWidth:180}}>
+              <div className="progress" role="progressbar" aria-label={"Course progress for "+student.student_name}
+                aria-valuenow={student.progress_percent} aria-valuemin={0} aria-valuemax={100}>
+                <div className="progress-bar" style={{width:String(student.progress_percent)+"%"}}/>
+              </div>
+              <small>{student.progress_percent}%</small>
+              <details className="mt-2">
+                <summary className="small" style={{cursor:"pointer"}}>Module results</summary>
+                <ol className="ps-3 mt-2">
+                  {student.modules.map(module=><li key={module.id} className="small mb-2">
+                    <strong>{module.position}. {module.title}</strong>
+                    <div>{module.completed?"Completed":"Incomplete"} · {module.lectures_viewed}/{module.lectures_total} lectures</div>
+                    <div>Quiz: {reportStatus(module.quiz_status)}{module.quiz_best_percent!==null?" ("+module.quiz_best_percent+"%)":""}</div>
+                    <div>Assignment: {reportStatus(module.assignment_status)}{module.assignment_best_percent!==null?" ("+module.assignment_best_percent+"%)":""}</div>
+                  </li>)}
+                </ol>
+              </details>
+            </td>
+            <td>{student.final_exam_passed?"Passed":student.final_exam_best_percent!==null?"Not passed":"Not attempted"}
+              {student.final_exam_best_percent!==null&&<div className="small text-muted">Best: {student.final_exam_best_percent}%</div>}
+            </td>
+            <td>{reportStatus(student.certificate_status)}</td>
+          </tr>)}</tbody>
+        </table></div>}
+        <div className="d-flex align-items-center justify-content-between mt-3">
+          <button type="button" className="btn btn-outline-primary btn-sm" disabled={page<=1}
+            onClick={()=>setPage(v=>Math.max(1,v-1))}>Previous</button>
+          <span className="small text-muted">Page {page}</span>
+          <button type="button" className="btn btn-outline-primary btn-sm" disabled={!data.has_next}
+            onClick={()=>setPage(v=>v+1)}>Next</button>
+        </div>
+      </>}
+    </div>
+  </section>;
 }
