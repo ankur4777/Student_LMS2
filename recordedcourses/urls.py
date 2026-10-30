@@ -38,6 +38,7 @@ from .learning_content import (
     ManagedLessonModuleAPIView,
 )
 
+from .learning_enrollments import ManagedCourseEnrollmentsAPIView
 from .learning_access import (
     CurrentOrganizationLearningSettingsAPIView,
     PlatformAdminOrganizationLearningSettingsAPIView,
@@ -92,6 +93,9 @@ urlpatterns = [
     path("learning/student/courses/<int:course_id>/", StudentLearningCourseDetailAPIView.as_view(), name="student-learning-course-detail"),
     path("learning/student/resources/<int:resource_id>/download/", StudentLearningResourceDownloadAPIView.as_view(), name="student-learning-resource-download"),
     path("learning/student/lessons/<int:lesson_id>/complete/", StudentLearningLessonCompleteAPIView.as_view(), name="student-learning-lesson-complete"),
+
+    # Manual enrollments are College Admin only; paid access is immutable here.
+    path("learning/manage/courses/<int:course_id>/enrollments/", ManagedCourseEnrollmentsAPIView.as_view()),
 
     # Paginated learner progress, restricted to authorized course staff.
     path("learning/manage/courses/<int:course_id>/progress/", ManagedCourseProgressAPIView.as_view()),
