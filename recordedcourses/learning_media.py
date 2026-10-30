@@ -65,7 +65,9 @@ def probe_video_duration(upload):
             if count == 0:
                 raise MediaProbeError("The uploaded video is empty.")
         command = [
-            ffprobe, "-v", "error", "-show_entries",
+            ffprobe, "-v", "error",
+            "-protocol_whitelist", "file,pipe",
+            "-show_entries",
             "format=duration:stream=codec_type,duration",
             "-of", "json", "-i", path,
         ]
