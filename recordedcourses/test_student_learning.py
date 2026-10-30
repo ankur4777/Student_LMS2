@@ -329,3 +329,42 @@ class StudentLearningTests(APITransactionTestCase):
         }, format="json")
         self.assertEqual(done.status_code, 200, done.data)
         self.assertEqual(done.data["completion_type"], "learner_reported_with_session")
+
+
+    def test_verified_server_duration_rejects_browser_duration_spoofing(self):
+        self.lesson.verified_duration_seconds = 60
+        self.lesson.duration_verified_at = timezone.now()
+        self.lesson.save(update_fields=["verified_duration_seconds", "duration_verified_at"])
+        start = self.client.post(self.session_url)
+        self.assertEqual(start.status_code, 200, start.data)
+        self.assertEqual(start.data["verified_duration_seconds"], 60)
+        LessonPlaybackSession.objects.filter(
+            student=self.student, lesson=self.lesson,
+        ).update(last_heartbeat_at=timezone.now()-timedelta(seconds=6))
+        forged = self.client.post(self.heartbeat_url, {
+            "playback_ticket": start.data["ticket"],
+            "position_seconds": 5, "duration_seconds": 12,
+        }, format="json")
+        self.assertEqual(forged.status_code, 400, forged.data)
+        self.assertEqual(
+            LessonPlaybackSession.objects.get(student=self.student, lesson=self.lesson).heartbeat_count,
+            0,
+        )
+        legitimate = self.client.post(self.heartbeat_url, {
+            "playback_ticket": start.data["ticket"],
+            "position_seconds": 5, "duration_seconds": 60,
+        }, format="json")
+        self.assertEqual(legitimate.status_code, 200, legitimate.data)
+        self.assertEqual(legitimate.data["duration_seconds"], 60)
+
+    def test_legacy_lesson_without_verified_duration_remains_compatible(self):
+        self.assertIsNone(self.lesson.verified_duration_seconds)
+        started = self.client.post(self.session_url)
+        self.assertEqual(started.status_code, 200, started.data)
+        self.assertIsNone(started.data["verified_duration_seconds"])
+        self.assertEqual(self.report_watch_milestones(started.data["ticket"]).heartbeat_count, 2)
+        with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
+            completed = self.client.post(self.complete_url, {
+                "playback_ticket": started.data["ticket"],
+            }, format="json")
+        self.assertEqual(completed.status_code, 200, completed.data)
