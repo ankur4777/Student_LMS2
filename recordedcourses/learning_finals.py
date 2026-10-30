@@ -1,4 +1,5 @@
 """Course-wide final exams, issuance rules and privacy-limited verification."""
+from uuid import UUID
 from django.db import transaction
 from django.db.models import Max
 from django.shortcuts import get_object_or_404
@@ -274,10 +275,14 @@ class ManagedCertificateAPIView(APIView):
         reason = data.get("reason")
         if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 500:
             return Response({"detail": "Provide a reason (up to 500 characters)."}, status=400)
+        try:
+            certificate_id = UUID(data["certificate_id"])
+        except (ValueError, TypeError, AttributeError):
+            return Response({"detail": "certificate_id must be a valid UUID."}, status=400)
         with transaction.atomic():
             certificate = get_object_or_404(
                 CourseCertificate.objects.select_for_update(),
-                public_id=data["certificate_id"], course=course,
+                public_id=certificate_id, course=course,
             )
             if certificate.revoked_at:
                 return Response({"detail": "Certificate is already revoked."}, status=409)
