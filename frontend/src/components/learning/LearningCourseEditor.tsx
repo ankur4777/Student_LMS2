@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import ModuleQuizBuilder from "@/components/learning/ModuleQuizBuilder";
 import ModuleAssignmentBuilder from "@/components/learning/ModuleAssignmentBuilder";
 import CourseFinalExamBuilder from "@/components/learning/CourseFinalExamBuilder";
+import CourseEnrollmentManager from "@/components/learning/CourseEnrollmentManager";
 
 const API = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 const ROOT = `${API}/api/recorded-courses/learning/manage`;
@@ -240,6 +241,7 @@ export default function LearningCourseEditor({ courseId, role }: { courseId: num
           </>}
           <CourseFinalExamBuilder courseId={courseId} role={role} />
           <CourseProgressDashboard courseId={courseId} role={role} />
+          {role === "college_admin" && <CourseEnrollmentManager courseId={courseId} />}
           {role === "college_admin" && <div className="border-top pt-4">
             <h4 className="h6 fw-bold">Course teachers</h4>
             <p className="text-muted small">Only teachers assigned here can edit modules or upload learning content.</p>
