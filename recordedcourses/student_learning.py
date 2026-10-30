@@ -53,13 +53,14 @@ def _student_access(user, course_id):
     return student, access
 
 
-def _lesson_data(lesson, completed_ids):
+def _lesson_data(lesson, completion_methods):
     return {
         "id": lesson.pk,
         "title": lesson.title,
         "description": lesson.description,
         "position": lesson.position,
-        "completed": lesson.pk in completed_ids,
+        "completed": lesson.pk in completion_methods,
+        "completion_method": completion_methods.get(lesson.pk),
     }
 
 
@@ -127,12 +128,12 @@ class StudentLearningCourseDetailAPIView(APIView):
         modules = list(CourseModule.objects.filter(
             course=access.course, is_published=True,
         ).prefetch_related("lessons", "resources"))
-        completed_ids = set(LessonLearningProgress.objects.filter(
+        completion_methods = dict(LessonLearningProgress.objects.filter(
             student=student,
             lesson__module__in=modules,
             lesson__is_active=True,
             completed_at__isnull=False,
-        ).values_list("lesson_id", flat=True))
+        ).values_list("lesson_id", "completion_method"))
         # Local imports avoid circular dependencies between authoring and student APIs.
         from .learning_quizzes import student_quiz_status
         from .learning_assignments import student_assignment_status
@@ -148,7 +149,7 @@ class StudentLearningCourseDetailAPIView(APIView):
                 "locked": not unlocked, "completed": state["completed"],
                 "quiz": student_quiz_status(module, student) if unlocked else None,
                 "assignment": student_assignment_status(module, student) if unlocked else None,
-                "lessons": [_lesson_data(lesson, completed_ids) for lesson in lessons],
+                "lessons": [_lesson_data(lesson, completion_methods) for lesson in lessons],
                 "resources": [_resource_data(resource) for resource in module.resources.all()] if unlocked else [],
                 "completed_lessons": state["completed_lessons"] if unlocked else 0,
                 "total_lessons": state["total_lessons"] if unlocked else 0,
