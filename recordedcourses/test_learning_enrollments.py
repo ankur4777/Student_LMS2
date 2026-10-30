@@ -246,6 +246,7 @@ class ManualCourseEnrollmentTests(APITransactionTestCase):
             RecordedLesson, ModuleQuiz, ModuleQuizQuestion,
             ModuleAssignment, ModuleAssignmentSubmission,
             CourseFinalExam, CourseFinalQuestion, CourseCertificate,
+            LessonPlaybackSession,
         )
         lesson = RecordedLesson.objects.create(
             course=self.course, module=self.module, title="Introduction video", position=1,
@@ -316,6 +317,20 @@ class ManualCourseEnrollmentTests(APITransactionTestCase):
             f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/viewing-session/",
         )
         self.assertEqual(playback_session.status_code, 200, playback_session.data)
+        for position in (5, 11):
+            LessonPlaybackSession.objects.filter(
+                student=self.student, lesson=lesson,
+            ).update(last_heartbeat_at=timezone.now() - timedelta(seconds=6))
+            heartbeat = self.client.post(
+                f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/heartbeat/",
+                {
+                    "playback_ticket": playback_session.data["ticket"],
+                    "position_seconds": position,
+                    "duration_seconds": 12,
+                }, format="json",
+            )
+            self.assertEqual(heartbeat.status_code, 200, heartbeat.data)
+            self.assertTrue(heartbeat.data["accepted"])
         with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
             watched = self.client.post(
                 f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/complete/",
