@@ -17,6 +17,9 @@ from rest_framework.views import APIView
 from accounts.models import StudentProfile
 from .learning_access import OrganizationLearningEnabled
 from .learning_progression import module_access_map, is_module_unlocked
+from .learning_playback import (
+    create_playback_ticket, verify_playback_ticket, PlaybackTicketError,
+)
 from .models import (
     CourseModule, LessonLearningProgress, ModuleResource, RecordedCourse,
     RecordedCourseAccess, RecordedLesson,
@@ -204,8 +207,36 @@ class StudentLearningResourceDownloadAPIView(APIView):
         return response
 
 
+class StudentLearningPlaybackSessionAPIView(APIView):
+    """Start a signed viewing session after a student opens an authorized lesson."""
+    permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
+
+    def post(self, request, lesson_id):
+        student = _student(request.user)
+        if not student:
+            return Response({"detail": "Student account required."}, status=403)
+        lesson = get_object_or_404(
+            RecordedLesson.objects.select_related("module", "course").filter(
+                pk=lesson_id, is_active=True,
+                course__organization=request.user.organization,
+                course__is_active=True,
+                module__isnull=False, module__is_published=True,
+            ),
+        )
+        _, access = _student_access(request.user, lesson.course_id)
+        if not access:
+            return Response({"detail": "Active course access required."}, status=403)
+        if not is_module_unlocked(lesson.module, student):
+            return Response({"detail": "Complete the previous module first."}, status=403)
+        return Response(create_playback_ticket(student, lesson))
+
+
 class StudentLearningLessonCompleteAPIView(APIView):
-    """Record self-reported lesson viewing; not certification/exam eligibility."""
+    """Record learner-reported viewing after a signed playback session.
+
+    The signed ticket and minimum server elapsed time reduce casual
+    completion spoofing; they do not establish attentive video watching.
+    """
     permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
 
     def post(self, request, lesson_id):
@@ -226,6 +257,19 @@ class StudentLearningLessonCompleteAPIView(APIView):
             return Response({"detail": "No active course access."}, status=403)
         if not is_module_unlocked(lesson.module, student):
             return Response({"detail": "Complete the previous module first."}, status=403)
+        # Keep already-earned progress idempotent, including older recordings
+        # completed before playback tickets were introduced.
+        progress = LessonLearningProgress.objects.filter(
+            student=student, lesson=lesson, completed_at__isnull=False,
+        ).first()
+        if progress:
+            return Response({"lesson_id": lesson.pk, "completed": True,
+                             "completion_type": "learner_reported"})
+        ticket = request.data.get("playback_ticket") if hasattr(request.data, "get") else None
+        try:
+            verify_playback_ticket(ticket, student, lesson)
+        except PlaybackTicketError as exc:
+            return Response({"detail": str(exc)}, status=400)
         progress, created = LessonLearningProgress.objects.get_or_create(
             student=student, lesson=lesson,
             defaults={"completed_at": timezone.now()},
@@ -234,7 +278,7 @@ class StudentLearningLessonCompleteAPIView(APIView):
             progress.completed_at = timezone.now()
             progress.save(update_fields=["completed_at", "updated_at"])
         return Response({"lesson_id": lesson.pk, "completed": True,
-                         "completion_type": "learner_reported"})
+                         "completion_type": "learner_reported_with_session"})
 
 
 

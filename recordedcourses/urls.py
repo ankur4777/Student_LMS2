@@ -5,6 +5,7 @@ from .student_learning import (
     StudentLearningCourseDetailAPIView,
     StudentLearningResourceDownloadAPIView,
     StudentLearningLessonCompleteAPIView,
+    StudentLearningPlaybackSessionAPIView,
     StudentLearningLessonPlaybackAPIView,
 )
 
@@ -94,6 +95,7 @@ urlpatterns = [
     path("learning/student/courses/<int:course_id>/", StudentLearningCourseDetailAPIView.as_view(), name="student-learning-course-detail"),
     path("learning/student/resources/<int:resource_id>/download/", StudentLearningResourceDownloadAPIView.as_view(), name="student-learning-resource-download"),
     path("learning/student/lessons/<int:lesson_id>/complete/", StudentLearningLessonCompleteAPIView.as_view(), name="student-learning-lesson-complete"),
+    path("learning/student/lessons/<int:lesson_id>/viewing-session/", StudentLearningPlaybackSessionAPIView.as_view(), name="student-learning-viewing-session"),
 
     # Staff course readiness preflight, read-only and tenant-scoped.
     path("learning/manage/courses/<int:course_id>/readiness/", ManagedCourseReadinessAPIView.as_view()),
