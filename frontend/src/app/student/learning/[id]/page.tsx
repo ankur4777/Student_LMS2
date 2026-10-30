@@ -33,6 +33,7 @@ export default function StudentLearningCourseDetailPage() {
   const playbackSession = useRef<{lessonId:number;ticket:string}|null>(null);
   const sessionInFlight = useRef<number|null>(null);
   const lastHeartbeatSentAt = useRef(0);
+  const viewingSessionStartedAt = useRef(0);
   const heartbeatInFlight = useRef(false);
   const [reportedWatchPercent,setReportedWatchPercent] = useState(0);
   const currentToken = () => localStorage.getItem("student_access_token");
@@ -70,6 +71,7 @@ export default function StudentLearningCourseDetailPage() {
     playbackSession.current = null;
     sessionInFlight.current = null;
     lastHeartbeatSentAt.current = 0;
+    viewingSessionStartedAt.current = 0;
     heartbeatInFlight.current = false;
     setReportedWatchPercent(0);
     if (!selectedId || !token) {setVideoUrl("");return;}
@@ -128,6 +130,7 @@ export default function StudentLearningCourseDetailPage() {
       if (selectedId===lessonId) {
         playbackSession.current={lessonId,ticket:data.ticket};
         lastHeartbeatSentAt.current=0;
+        viewingSessionStartedAt.current=Date.now();
       }
     }catch(err){setError(err instanceof Error?err.message:"Could not start viewing session.");}
     finally{if(sessionInFlight.current===lessonId)sessionInFlight.current=null;}
@@ -144,7 +147,8 @@ export default function StudentLearningCourseDetailPage() {
         !Number.isFinite(position) || !Number.isFinite(duration) ||
         duration<1 || position<0 || selected?.completed) return;
     const now=Date.now(), minInterval=force?3000:4800;
-    if(now-lastHeartbeatSentAt.current<minInterval)return;
+    if(now-viewingSessionStartedAt.current<4800 ||
+       now-lastHeartbeatSentAt.current<minInterval)return;
     // Sending during the timeupdate event means the player is active; this
     // client-side signal remains untrusted, so the backend caps all credit.
     if(!force && (video.paused || video.seeking))return;
