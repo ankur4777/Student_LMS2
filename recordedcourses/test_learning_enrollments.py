@@ -311,9 +311,15 @@ class ManualCourseEnrollmentTests(APITransactionTestCase):
         )
         self.assertEqual(locked.status_code, 403)
 
-        watched = self.client.post(
-            f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/complete/",
+        playback_session = self.client.post(
+            f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/viewing-session/",
         )
+        self.assertEqual(playback_session.status_code, 200, playback_session.data)
+        with patch("recordedcourses.learning_playback.MIN_VIEW_SECONDS", 0):
+            watched = self.client.post(
+                f"/api/recorded-courses/learning/student/lessons/{lesson.pk}/complete/",
+                {"playback_ticket": playback_session.data["ticket"]}, format="json",
+            )
         self.assertEqual(watched.status_code, 200, watched.data)
         quiz_result = self.client.post(
             f"/api/recorded-courses/learning/student/modules/{self.module.pk}/quiz/",
