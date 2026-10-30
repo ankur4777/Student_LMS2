@@ -32,6 +32,9 @@ export default function StudentLearningCourseDetailPage() {
   const activeVideoUrl = useRef("");
   const playbackSession = useRef<{lessonId:number;ticket:string}|null>(null);
   const sessionInFlight = useRef<number|null>(null);
+  const lastHeartbeatSentAt = useRef(0);
+  const heartbeatInFlight = useRef(false);
+  const [reportedWatchPercent,setReportedWatchPercent] = useState(0);
   const currentToken = () => localStorage.getItem("student_access_token");
 
   useEffect(() => {
@@ -66,6 +69,9 @@ export default function StudentLearningCourseDetailPage() {
     const token = currentToken();
     playbackSession.current = null;
     sessionInFlight.current = null;
+    lastHeartbeatSentAt.current = 0;
+    heartbeatInFlight.current = false;
+    setReportedWatchPercent(0);
     if (!selectedId || !token) {setVideoUrl("");return;}
     const controller = new AbortController();
     const loadVideo = async () => {
@@ -119,17 +125,60 @@ export default function StudentLearningCourseDetailPage() {
       );
       const data=await response.json().catch(()=>({}));
       if(!response.ok)throw Error(data.detail||"Unable to start lesson viewing session.");
-      if (selectedId===lessonId) playbackSession.current={lessonId,ticket:data.ticket};
+      if (selectedId===lessonId) {
+        playbackSession.current={lessonId,ticket:data.ticket};
+        lastHeartbeatSentAt.current=0;
+      }
     }catch(err){setError(err instanceof Error?err.message:"Could not start viewing session.");}
     finally{if(sessionInFlight.current===lessonId)sessionInFlight.current=null;}
   }
 
-  async function finishedLesson() {
+
+  async function reportWatchMilestone(video:HTMLVideoElement, force=false) {
+    const selectedLesson=selectedId;
+    const ticket=playbackSession.current?.lessonId===selectedLesson
+      ? playbackSession.current.ticket : null;
+    const token=currentToken();
+    const position=video.currentTime, duration=video.duration;
+    if (!selectedLesson || !token || !ticket || heartbeatInFlight.current ||
+        !Number.isFinite(position) || !Number.isFinite(duration) ||
+        duration<1 || position<0 || selected?.completed) return;
+    const now=Date.now(), minInterval=force?3000:4800;
+    if(now-lastHeartbeatSentAt.current<minInterval)return;
+    // Sending during the timeupdate event means the player is active; this
+    // client-side signal remains untrusted, so the backend caps all credit.
+    if(!force && (video.paused || video.seeking))return;
+    heartbeatInFlight.current=true;
+    lastHeartbeatSentAt.current=now;
+    try{
+      const response=await fetch(
+        BASE+"/api/recorded-courses/learning/student/lessons/"+selectedLesson+"/heartbeat/",{
+          method:"POST",
+          headers:{Authorization:"Bearer "+token,"Content-Type":"application/json"},
+          body:JSON.stringify({
+            playback_ticket:ticket,position_seconds:position,
+            duration_seconds:duration,
+          }),
+        }
+      );
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok)throw Error(payload.detail||"Unable to track playback.");
+      if(selectedId===selectedLesson)setReportedWatchPercent(payload.milestone_percent||0);
+    }catch(err){
+      if(selectedId===selectedLesson)
+        setError(err instanceof Error?err.message:"Unable to track playback.");
+    }finally{heartbeatInFlight.current=false;}
+  }
+
+  async function finishedLesson(video:HTMLVideoElement) {
     const token = currentToken();
     if (!token || !selectedId || selected?.completed) return;
     const lessonId=selectedId;
     const ticket=playbackSession.current?.lessonId===lessonId ? playbackSession.current.ticket : null;
     if(!ticket){setError("Viewing session has not started. Play the lecture again.");return;}
+    // Report the final position if enough server time has elapsed. Completion
+    // may still be rejected if playback reports or credited time are missing.
+    await reportWatchMilestone(video,true);
     try {
       const result = await fetch(`${BASE}/api/recorded-courses/learning/student/lessons/${lessonId}/complete/`,{
         method:"POST",headers:{
@@ -192,10 +241,16 @@ export default function StudentLearningCourseDetailPage() {
               {videoLoading ? <span>Loading secure lecture...</span> : videoUrl ?
                 <video key={videoUrl} controls controlsList="nodownload" disablePictureInPicture
                   src={videoUrl} onContextMenu={event=>event.preventDefault()}
-                  onPlay={()=>void startViewingSession()} onEnded={()=>void finishedLesson()} /> :
+                  onPlay={()=>void startViewingSession()}
+                  onTimeUpdate={event=>{void reportWatchMilestone(event.currentTarget);}}
+                  onEnded={event=>{void finishedLesson(event.currentTarget);}} /> :
                 <span>{selected ? "Video is unavailable." : "Select a lecture from a module."}</span>}
             </div>
             <div className="learning-viewer-info"><p>{selected?.description || "Play a lecture to learn at your own pace."}</p>
+              {!selected?.completed&&selected&&<p className="small text-muted" role="status">
+                Session-tracked playback: {reportedWatchPercent}% (reported media duration).
+                Complete the video to submit progress. Long pauses and skipped segments are not credited.
+              </p>}
               {selected?.completed && <span className="learning-done"><i className="bi bi-check-circle-fill" />
                 {selected.completion_method === "signed_session" ? "Viewed · Session recorded" : "Viewed · Legacy report"}
               </span>}
