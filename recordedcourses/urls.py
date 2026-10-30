@@ -38,6 +38,7 @@ from .learning_content import (
     ManagedCourseTeachersAPIView,
     ManagedModuleLessonsAPIView,
     ManagedLessonModuleAPIView,
+    ManagedLessonDurationVerificationAPIView,
 )
 
 from .learning_enrollments import ManagedCourseEnrollmentsAPIView
@@ -89,6 +90,9 @@ urlpatterns = [
     path("learning/manage/modules/<int:module_id>/quiz/", ManagedModuleQuizAPIView.as_view()),
     path("learning/manage/modules/<int:module_id>/quiz/questions/", ManagedModuleQuizQuestionsAPIView.as_view()),
     path("learning/student/modules/<int:module_id>/quiz/", StudentModuleQuizAPIView.as_view()),
+
+    # Staff video-duration inspection for previously uploaded module lessons.
+    path("learning/manage/lessons/<int:lesson_id>/verify-duration/", ManagedLessonDurationVerificationAPIView.as_view()),
 
     # Student Learning Center (existing paid-course playback stays intact).
     path("learning/student/lessons/<int:lesson_id>/play/", StudentLearningLessonPlaybackAPIView.as_view()),

@@ -18,6 +18,8 @@ from rest_framework.views import APIView
 
 from accounts.models import TeacherProfile
 from .learning_access import OrganizationLearningEnabled
+from .learning_media import MediaProbeError, probe_video_duration
+from django.utils import timezone
 from .models import (
     RecordedCourse, RecordedLesson, CourseModule, ModuleResource,
     TeacherCourseAssignment,
@@ -91,6 +93,8 @@ def _lesson_data(lesson):
         "id": lesson.pk, "title": lesson.title,
         "description": lesson.description, "position": lesson.position,
         "module_id": lesson.module_id, "is_active": lesson.is_active,
+        "verified_duration_seconds": lesson.verified_duration_seconds,
+        "duration_verified_at": lesson.duration_verified_at,
     }
 
 
@@ -286,6 +290,10 @@ class ManagedModuleLessonsAPIView(APIView):
         if not title or len(title) > 180 or not video:
             return Response({"detail": "Title and video are required."}, status=400)
         try:
+            verified_duration = probe_video_duration(video)
+        except MediaProbeError as exc:
+            return Response({"detail": str(exc)}, status=503 if exc.unavailable else 400)
+        try:
             with transaction.atomic():
                 # Lesson ordering remains course-wide for legacy compatibility.
                 position = (RecordedLesson.objects.filter(course=module.course).aggregate(
@@ -294,12 +302,40 @@ class ManagedModuleLessonsAPIView(APIView):
                     course=module.course, module=module, title=title,
                     description=str(request.data.get("description", "")).strip(),
                     position=position, video=video, is_active=True,
+                    verified_duration_seconds=verified_duration,
+                    duration_verified_at=timezone.now(),
                 )
                 lesson.full_clean()
                 lesson.save()
         except (ValidationError, IntegrityError) as exc:
             return _error(exc)
         return Response({"lesson": _lesson_data(lesson)}, status=201)
+
+
+class ManagedLessonDurationVerificationAPIView(APIView):
+    """Explicitly verify existing module videos without exposing file paths."""
+    permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
+
+    def post(self, request, lesson_id):
+        lesson = get_object_or_404(
+            RecordedLesson.objects.select_related("course").filter(
+                course__in=_authorized_courses(request.user),
+                module__isnull=False,
+            ), pk=lesson_id,
+        )
+        if not lesson.video:
+            return Response({"detail": "No video is attached to this lesson."}, status=400)
+        try:
+            with lesson.video.open("rb") as source:
+                duration = probe_video_duration(source)
+        except MediaProbeError as exc:
+            return Response({"detail": str(exc)}, status=503 if exc.unavailable else 400)
+        except (OSError, FileNotFoundError):
+            return Response({"detail": "The stored video could not be opened."}, status=404)
+        lesson.verified_duration_seconds = duration
+        lesson.duration_verified_at = timezone.now()
+        lesson.save(update_fields=["verified_duration_seconds", "duration_verified_at", "updated_at"])
+        return Response({"lesson": _lesson_data(lesson)})
 
 
 class ManagedLessonModuleAPIView(APIView):
