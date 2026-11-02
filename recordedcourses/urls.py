@@ -41,6 +41,7 @@ from .learning_content import (
     ManagedLessonDurationVerificationAPIView,
 )
 
+from .learning_progress_exports import ManagedCourseProgressCSVAPIView
 from .learning_enrollments import ManagedCourseEnrollmentsAPIView
 from .learning_readiness import ManagedCourseReadinessAPIView
 from .learning_access import (
@@ -111,6 +112,7 @@ urlpatterns = [
 
     # Paginated learner progress, restricted to authorized course staff.
     path("learning/manage/courses/<int:course_id>/progress/", ManagedCourseProgressAPIView.as_view()),
+    path("learning/manage/courses/<int:course_id>/progress/export.csv", ManagedCourseProgressCSVAPIView.as_view()),
 
     # Organization-entitled, tenant-scoped authoring APIs.
     path("learning/manage/courses/", ManagedLearningCoursesAPIView.as_view()),
