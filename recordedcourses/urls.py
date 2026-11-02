@@ -45,6 +45,7 @@ from .learning_progress_exports import ManagedCourseProgressCSVAPIView
 from .learning_certificate_exports import ManagedCertificateCSVAPIView
 from .learning_enrollments import ManagedCourseEnrollmentsAPIView
 from .learning_readiness import ManagedCourseReadinessAPIView
+from .learning_analytics import OrganizationLearningAnalyticsAPIView
 from .learning_access import (
     CurrentOrganizationLearningSettingsAPIView,
     PlatformAdminOrganizationLearningSettingsAPIView,
@@ -111,6 +112,9 @@ urlpatterns = [
 
     # Manual enrollments are College Admin only; paid access is immutable here.
     path("learning/manage/courses/<int:course_id>/enrollments/", ManagedCourseEnrollmentsAPIView.as_view()),
+
+    # College Admin organization-wide, privacy-preserving learning analytics.
+    path("learning/manage/analytics/", OrganizationLearningAnalyticsAPIView.as_view()),
 
     # Paginated learner progress, restricted to authorized course staff.
     path("learning/manage/courses/<int:course_id>/progress/", ManagedCourseProgressAPIView.as_view()),
