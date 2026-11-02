@@ -98,6 +98,31 @@ The CI check is a **browser routing/access smoke check**, not a
 backend authorization test. Django role, tenant isolation and certificate
 checks remain covered by separate backend tests.
 
+## Simulated Student Learning Center UI regression checks
+
+GitHub Actions also runs `tests/student-learning-mocked.spec.mjs` in Chromium.
+Its network responses are **fixtures**, not Django responses; no real accounts
+or database are used. These checks verify:
+
+- Empty enrollment messaging when the API returns no courses.
+- An enrolled-course progress card, percentage, and Continue learning link.
+- Valid versus revoked certificates; only valid ones show Download PDF.
+- Local PDF download naming using fixture bytes.
+- Expired/unauthorized student access redirects to Student Login.
+- An API error surfaces a warning while existing issued certificates still display.
+
+These tests are safe to execute in feature CI. They do **not** prove that
+Django enforces authorization or that the videos/certificates themselves
+are valid. The role/tenant isolation and completion rules are covered
+by the Django test suite and must be exercised against local QA data.
+
+Run only the CI-safe subset locally (no QA credentials required):
+
+```powershell
+cd C:\\student_LMS\\frontend\\e2e
+npm test -- --grep "Unauthenticated access must redirect to role login|Student Learning Center UI"
+```
+
 ## 4. Complete the manual browser acceptance journey
 
 This automated smoke suite **does not** simulate real video watching,
