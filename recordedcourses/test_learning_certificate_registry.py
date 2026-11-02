@@ -1,6 +1,7 @@
 """Certificate registry, filtered audit export and tenant isolation regressions."""
 import csv
 import io
+from decimal import Decimal
 from unittest.mock import patch
 
 from django.utils import timezone
@@ -35,7 +36,7 @@ class CertificateRegistryTests(APITransactionTestCase):
             user=self.student_user, admission_number="P16-001",
         )
         self.course = RecordedCourse.objects.create(
-            organization=self.org, title="Certificate Program",
+            organization=self.org, title="Certificate Program", price=Decimal("0.00"),
         )
         self.exam = CourseFinalExam.objects.create(course=self.course, title="Final Exam")
         OrganizationLearningSettings.objects.create(organization=self.org, is_enabled=True)
