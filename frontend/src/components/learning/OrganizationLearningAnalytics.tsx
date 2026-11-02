@@ -24,6 +24,7 @@ export default function OrganizationLearningAnalytics(){
  const [error,setError]=useState("");
  const [search,setSearch]=useState("");
  const [refresh,setRefresh]=useState(0);
+ const [exporting,setExporting]=useState(false);
  useEffect(()=>{
   const abort=new AbortController();
   const token=localStorage.getItem("college_admin_access_token");
@@ -47,6 +48,31 @@ export default function OrganizationLearningAnalytics(){
   return ()=>abort.abort();
  },[refresh]);
  const courses=useMemo(()=>data?.courses.filter(c=>c.title.toLowerCase().includes(search.toLowerCase()))||[],[data,search]);
+ async function exportCSV(){
+  const token=localStorage.getItem("college_admin_access_token");
+  if(!token){setError("Please sign in again to export analytics.");return;}
+  setError("");setExporting(true);
+  try{
+   const params=new URLSearchParams();
+   if(search.trim())params.set("search",search.trim());
+   const url=API+"/api/recorded-courses/learning/manage/analytics/export.csv"+
+    (params.size?"?"+params.toString():"");
+   const response=await fetch(url,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+   if(!response.ok){
+    const result=await response.json().catch(()=>({}));
+    throw Error(result.detail||"Analytics download failed.");
+   }
+   const blob=await response.blob();
+   const objectUrl=URL.createObjectURL(blob);
+   const anchor=document.createElement("a");
+   anchor.href=objectUrl;
+   anchor.download="mysls-learning-analytics.csv";
+   document.body.appendChild(anchor);
+   anchor.click();anchor.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+  }catch(e){setError(e instanceof Error?e.message:"Unable to export analytics.");}
+  finally{setExporting(false);}
+ }
  // An organization with Learning & Certification switched OFF sees none of
  // this optional dashboard, keeping its existing paid course list unchanged.
  if(!enabled)return null;
@@ -57,8 +83,14 @@ export default function OrganizationLearningAnalytics(){
     <div><h3 className="h5 fw-bold mb-1">Learning & Certification Analytics</h3>
      <p className="text-muted small mb-0">Organization-wide totals across recorded-learning courses. No individual student details.</p>
     </div>
-    <button className="btn btn-outline-primary btn-sm" disabled={loading}
-     type="button" onClick={()=>setRefresh(v=>v+1)}>Refresh analytics</button>
+    <div className="d-flex flex-wrap gap-2">
+     <button className="btn btn-outline-success btn-sm" disabled={loading||exporting}
+      type="button" onClick={()=>void exportCSV()}>
+      {exporting?"Exporting...":"Export CSV"}
+     </button>
+     <button className="btn btn-outline-primary btn-sm" disabled={loading}
+      type="button" onClick={()=>setRefresh(v=>v+1)}>Refresh analytics</button>
+    </div>
    </div>
    {loading&&<p role="status" className="small text-muted">Loading analytics…</p>}
    {error&&<div className="alert alert-danger" role="alert">{error}</div>}
