@@ -42,6 +42,7 @@ from .learning_content import (
 )
 
 from .learning_progress_exports import ManagedCourseProgressCSVAPIView
+from .learning_certificate_exports import ManagedCertificateCSVAPIView
 from .learning_enrollments import ManagedCourseEnrollmentsAPIView
 from .learning_readiness import ManagedCourseReadinessAPIView
 from .learning_access import (
@@ -78,6 +79,7 @@ urlpatterns = [
     path("learning/manage/courses/<int:course_id>/final-exam/", ManagedCourseFinalExamAPIView.as_view()),
     path("learning/manage/courses/<int:course_id>/final-exam/questions/", ManagedCourseFinalQuestionsAPIView.as_view()),
     path("learning/manage/courses/<int:course_id>/certificates/", ManagedCertificateAPIView.as_view()),
+    path("learning/manage/courses/<int:course_id>/certificates/export.csv", ManagedCertificateCSVAPIView.as_view()),
     path("learning/student/courses/<int:course_id>/final-exam/", StudentCourseFinalExamAPIView.as_view()),
     path("learning/certificates/verify/<uuid:public_id>/", PublicCourseCertificateVerificationAPIView.as_view()),
     # Module assignments and manually graded work.
