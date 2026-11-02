@@ -393,3 +393,96 @@ class LearningModuleAPITests(APITransactionTestCase):
                 self.assertIsNotNone(lesson.duration_verified_at)
             finally:
                 field.storage = previous
+
+
+    def test_course_progress_csv_export_tenant_scope_and_roles(self):
+        self.enable()
+        from recordedcourses.models import OrganizationLearningSettings
+        OrganizationLearningSettings.objects.create(
+            organization=self.org_b, is_enabled=True,
+        )
+        url = f"/api/recorded-courses/learning/manage/courses/{self.course_a.pk}/progress/export.csv"
+        self.auth(self.student_a)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.auth(self.admin_b)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.auth(self.teacher_a.user)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.assign()
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8")
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.assertIn("attachment", response["Content-Disposition"])
+        self.auth(self.admin_a)
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_course_progress_csv_contains_all_pages_and_respects_search(self):
+        import csv
+        import io
+        from accounts.models import StudentProfile
+        from recordedcourses.models import RecordedCourseAccess
+        self.enable()
+        module = CourseModule.objects.create(
+            course=self.course_a, title="Module Export", position=1,
+            is_published=True,
+        )
+        RecordedLesson.objects.create(
+            course=self.course_a, module=module,
+            title="Introduction", position=1,
+        )
+        for index in range(27):
+            user = User.objects.create(
+                username=f"csv-student-{index:02d}",
+                role="student", organization=self.org_a,
+            )
+            profile = StudentProfile.objects.create(
+                user=user, admission_number=f"CSV-{index:03d}",
+            )
+            RecordedCourseAccess.objects.create(
+                organization=self.org_a, course=self.course_a, student=profile,
+            )
+        self.auth(self.admin_a)
+        url = f"/api/recorded-courses/learning/manage/courses/{self.course_a.pk}/progress/export.csv"
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200, response.content[:300])
+        rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+        self.assertEqual(rows[0][0], "Student ID")
+        self.assertEqual(len(rows), 28)  # header + 27, across two API pages
+        self.assertEqual({row[2] for row in rows[1:]}, {
+            f"CSV-{index:03d}" for index in range(27)
+        })
+        self.assertTrue(all(row[14] == "Module Export" for row in rows[1:]))
+        filtered = self.client.get(url, {"search": "CSV-026"})
+        filtered_rows = list(csv.reader(io.StringIO(filtered.content.decode("utf-8-sig"))))
+        self.assertEqual(len(filtered_rows), 2)
+        self.assertEqual(filtered_rows[1][2], "CSV-026")
+        self.assertEqual(self.client.get(url, {"search": "x" * 81}).status_code, 400)
+
+    def test_course_progress_csv_escapes_spreadsheet_formulas_and_limits_exports(self):
+        import csv
+        import io
+        from accounts.models import StudentProfile
+        from recordedcourses.models import RecordedCourseAccess
+        from recordedcourses.learning_progress_exports import ManagedCourseProgressCSVAPIView
+        self.enable()
+        self.student_a.first_name = '=HYPERLINK("https://example.test", "Open")'
+        self.student_a.last_name = "Student"
+        self.student_a.save(update_fields=["first_name", "last_name"])
+        profile = StudentProfile.objects.create(
+            user=self.student_a, admission_number="@malicious",
+        )
+        RecordedCourseAccess.objects.create(
+            organization=self.org_a, course=self.course_a, student=profile,
+        )
+        self.auth(self.admin_a)
+        url = f"/api/recorded-courses/learning/manage/courses/{self.course_a.pk}/progress/export.csv"
+        result = self.client.get(url)
+        self.assertEqual(result.status_code, 200)
+        rows = list(csv.reader(io.StringIO(result.content.decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(rows[1][1].startswith("'=HYPERLINK"))
+        self.assertEqual(rows[1][2], "'@malicious")
+        with patch.object(ManagedCourseProgressCSVAPIView, "MAX_STUDENTS", 0):
+            too_large = self.client.get(url)
+        self.assertEqual(too_large.status_code, 413)
