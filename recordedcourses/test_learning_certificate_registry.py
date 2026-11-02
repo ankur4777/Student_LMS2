@@ -53,7 +53,7 @@ class CertificateRegistryTests(APITransactionTestCase):
         student = student or self.student
         attempt = CourseFinalAttempt.objects.create(
             exam=self.exam, student=student,
-            attempt_number=1, answers={}, correct_count=1,
+            attempt_number=1, answers={"1": 0}, correct_count=1,
             question_count=1, score_percent=95, passed=True,
         )
         return CourseCertificate.objects.create(
