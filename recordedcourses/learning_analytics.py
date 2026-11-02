@@ -25,14 +25,21 @@ class OrganizationLearningAnalyticsAPIView(APIView):
     def get(self, request):
         if request.user.role != "college_admin":
             return Response({"detail": "College Admin required."}, status=403)
-        organization = request.user.organization
-        courses = list(RecordedCourse.objects.filter(
-            organization=organization,
-        ).order_by("title", "pk").values("id", "title", "is_active")[:self.MAX_COURSES + 1])
-        if len(courses) > self.MAX_COURSES:
+        data = self.summary_for_organization(request.user.organization)
+        if data is None:
             return Response({
                 "detail": "Analytics supports up to 200 courses. Contact an administrator for an extended report.",
             }, status=413)
+        return Response(data)
+
+    @classmethod
+    def summary_for_organization(cls, organization):
+        """One shared read-only source for dashboard and CSV analytics."""
+        courses = list(RecordedCourse.objects.filter(
+            organization=organization,
+        ).order_by("title", "pk").values("id", "title", "is_active")[:cls.MAX_COURSES + 1])
+        if len(courses) > cls.MAX_COURSES:
+            return None
         course_ids = [c["id"] for c in courses]
         now = timezone.now()
         active_filter = (
@@ -155,7 +162,7 @@ class OrganizationLearningAnalyticsAPIView(APIView):
         totals["graduation_percent"] = round(
             100 * totals["graduated_students"] / totals["enrolled_students"]
         ) if totals["enrolled_students"] else 0
-        return Response({
+        return {
             "totals": totals, "courses": rows,
             "definitions": {
                 "enrolled_students": "Course-student access records, counted once per course.",
@@ -164,4 +171,4 @@ class OrganizationLearningAnalyticsAPIView(APIView):
                 "average_attempt_score": "Average score across final-exam attempts, not each student's best score.",
                 "active_enrollments": "Access is enabled, started, not revoked and not expired.",
             },
-        })
+        }
