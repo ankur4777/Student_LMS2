@@ -5,6 +5,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import CollegeAdminSidebar from "@/components/college-admin/CollegeAdminSidebar";
 import CollegeAdminTopbar from "@/components/college-admin/CollegeAdminTopbar";
+import OrganizationLearningAnalytics from "@/components/learning/OrganizationLearningAnalytics";
 import "../../teacher/dashboard/dashboard.css";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -23,6 +24,7 @@ export default function RecordedCoursesPage(){
  return <div className="teacher-dashboard"><CollegeAdminSidebar/><main className="teacher-dashboard-main"><CollegeAdminTopbar name={admin.name||admin.username||"College Admin"} organization={admin.organization||""}/>
  <div className="teacher-dashboard-content"><div className="container-fluid"><div className="mb-4"><h2 className="fw-bold mb-1">Recorded Courses</h2><p className="text-muted mb-0">Create paid recorded courses and manage their lessons.</p></div>
  {error&&<div className="alert alert-danger">{error}</div>}
+ <OrganizationLearningAnalytics/>
  <div className="card border-0 shadow-sm mb-4"><div className="card-body"><h5 className="fw-bold mb-3">Create Recorded Course</h5><form onSubmit={create}><div className="row g-3">
  <div className="col-md-6"><label className="form-label">Course Title</label><input required className="form-control" value={form.title} onChange={e=>setForm({...form,title:e.target.value})}/></div>
  <div className="col-md-3"><label className="form-label">Price (₹)</label><input required min="0" step="0.01" type="number" className="form-control" value={form.price} onChange={e=>setForm({...form,price:e.target.value})}/></div>
