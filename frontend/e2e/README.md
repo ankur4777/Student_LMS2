@@ -73,6 +73,31 @@ screenshots and traces under `test-results` and an HTML report under
 `playwright-report`. Keep those files local; they might contain student
 information or browser state.
 
+## GitHub Actions browser smoke gate
+
+The existing `.github/workflows/recorded-learning-ci.yml` now installs
+Chromium in the Next.js job, starts the **built** frontend automatically,
+and runs only the three unauthenticated redirect checks. No Django server,
+QA credentials or real course records are needed for that CI subset.
+
+If running the same subset against a locally built frontend:
+
+```powershell
+cd C:\\student_LMS\\frontend
+npm run build
+cd e2e
+$env:E2E_START_WEB_SERVER = "1"
+npm test -- --grep "Unauthenticated access must redirect to role login"
+Remove-Item Env:E2E_START_WEB_SERVER
+```
+
+`E2E_START_WEB_SERVER=1` tells Playwright to start `npm run start`
+in the parent `frontend` directory. Do not use it when `npm run dev`
+is already serving port 3000; instead leave it unset and run `npm test`.
+The CI check is a **browser routing/access smoke check**, not a
+backend authorization test. Django role, tenant isolation and certificate
+checks remain covered by separate backend tests.
+
 ## 4. Complete the manual browser acceptance journey
 
 This automated smoke suite **does not** simulate real video watching,
