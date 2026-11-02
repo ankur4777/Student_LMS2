@@ -313,6 +313,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
   const [search,setSearch] = useState("");
   const [refreshCounter,setRefreshCounter] = useState(0);
   const [loading,setLoading] = useState(true);
+  const [exporting,setExporting] = useState(false);
   const [error,setError] = useState("");
 
   useEffect(()=>{
@@ -338,6 +339,34 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
     return ()=>controller.abort();
   },[courseId,role,page,search,refreshCounter]);
 
+  async function exportCSV() {
+    const token=localStorage.getItem(role==="teacher"?"teacher_access_token":"college_admin_access_token");
+    if(!token){setError("Please sign in again to export progress.");return;}
+    setError("");setExporting(true);
+    try{
+      const params=new URLSearchParams();
+      if(search)params.set("search",search);
+      const url=ROOT+"/courses/"+courseId+"/progress/export.csv"+(params.size?"?"+params.toString():"");
+      const response=await fetch(url,{
+        headers:{Authorization:"Bearer "+token},cache:"no-store",
+      });
+      if(!response.ok){
+        const body=await response.json().catch(()=>({}));
+        throw Error(body.detail||"Course progress export failed.");
+      }
+      const csv=await response.blob();
+      const objectUrl=URL.createObjectURL(csv);
+      const anchor=document.createElement("a");
+      anchor.href=objectUrl;
+      anchor.download="mysls-course-"+courseId+"-progress.csv";
+      document.body.appendChild(anchor);
+      anchor.click();anchor.remove();
+      window.setTimeout(()=>URL.revokeObjectURL(objectUrl),30000);
+    }catch(err){
+      setError(err instanceof Error?err.message:"Unable to export progress.");
+    }finally{setExporting(false);}
+  }
+
   return <section className="card border-0 shadow-sm my-4" aria-label="Student course progress dashboard">
     <div className="card-body p-4">
       <div className="d-flex align-items-start justify-content-between flex-wrap gap-3 mb-3">
@@ -345,8 +374,14 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
           <h3 className="h5 fw-bold mb-1">Student Learning Progress</h3>
           <p className="small text-muted mb-0">Module completion, quiz and assignment outcomes, final exams and certificates.</p>
         </div>
-        <button type="button" className="btn btn-outline-primary btn-sm" disabled={loading}
-          onClick={()=>setRefreshCounter(value=>value+1)}>Refresh</button>
+        <div className="d-flex gap-2 flex-wrap">
+          <button type="button" className="btn btn-outline-success btn-sm"
+            disabled={loading||exporting} onClick={()=>void exportCSV()}>
+            {exporting?"Exporting...":"Export CSV"}
+          </button>
+          <button type="button" className="btn btn-outline-primary btn-sm" disabled={loading}
+            onClick={()=>setRefreshCounter(value=>value+1)}>Refresh</button>
+        </div>
       </div>
       <form className="d-flex flex-wrap gap-2 mb-3" onSubmit={event=>{
         event.preventDefault();setPage(1);setSearch(draftSearch.trim());
