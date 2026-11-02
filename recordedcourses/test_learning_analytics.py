@@ -167,3 +167,89 @@ class OrganizationLearningAnalyticsTests(APITransactionTestCase):
         with patch.object(OrganizationLearningAnalyticsAPIView, "MAX_COURSES", 0):
             response = self.client.get(self.url)
         self.assertEqual(response.status_code, 413, response.data)
+
+
+    def test_analytics_csv_admin_only_and_organization_isolation(self):
+        import csv
+        import io
+
+        url = self.url + "export.csv"
+        self.auth(self.teacher)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.auth(self.user)
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.auth(self.admin)
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
+        self.assertIn("attachment;", response["Content-Disposition"])
+        rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 3)  # header, total and one course
+        self.assertEqual(rows[2][1], "Accounting Basics")
+        self.assertNotIn("Other College Secret", response.content.decode("utf-8-sig"))
+        self.assertNotIn("Demo Student", response.content.decode("utf-8-sig"))
+        self.assertNotIn("P17-S", response.content.decode("utf-8-sig"))
+        self.auth(self.other_admin)
+        outside = self.client.get(url)
+        self.assertEqual(outside.status_code, 200)
+        self.assertIn("Other College Secret", outside.content.decode("utf-8-sig"))
+        self.assertNotIn("Accounting Basics", outside.content.decode("utf-8-sig"))
+        OrganizationLearningSettings.objects.filter(organization=self.other).update(
+            is_enabled=False,
+        )
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+    def test_analytics_csv_filter_totals_and_csv_formula_escaping(self):
+        import csv
+        import io
+
+        also = RecordedCourse.objects.create(
+            organization=self.org, title="Accounting Advanced",
+            price=Decimal("0.00"),
+        )
+        unsafe = RecordedCourse.objects.create(
+            organization=self.org, title="=1+1", price=Decimal("0.00"),
+        )
+        RecordedCourseAccess.objects.create(
+            organization=self.org, course=self.course, student=self.student,
+        )
+        self.auth(self.admin)
+        url = self.url + "export.csv"
+        filtered = self.client.get(url, {"search": "ACCOUNTING"})
+        self.assertEqual(filtered.status_code, 200)
+        rows = list(csv.reader(io.StringIO(filtered.content.decode("utf-8-sig"))))
+        headers = rows[0]
+        self.assertEqual(len(rows), 4)  # header, totals, two matching courses
+        self.assertEqual(rows[1][headers.index("Course")], "TOTAL (matching courses)")
+        self.assertEqual(rows[1][headers.index("Enrolled Students (per course)")], "1")
+        self.assertEqual(
+            {r[headers.index("Course")] for r in rows[2:]},
+            {"Accounting Basics", "Accounting Advanced"},
+        )
+        self.assertEqual(rows[1][headers.index("Average Attempt Score (%)")], "")
+        whole = self.client.get(url)
+        all_rows = list(csv.reader(io.StringIO(whole.content.decode("utf-8-sig"))))
+        self.assertEqual(len(all_rows), 5)  # header, total and three courses
+        self.assertIn("'=1+1", [r[headers.index("Course")] for r in all_rows[2:]])
+        self.assertEqual(
+            all_rows[1][headers.index("Enrolled Students (per course)")], "1",
+        )
+
+    def test_analytics_csv_empty_filtered_results_and_validation(self):
+        import csv
+        import io
+
+        self.auth(self.admin)
+        url = self.url + "export.csv"
+        response = self.client.get(url, {"search": "not-present"})
+        self.assertEqual(response.status_code, 200)
+        rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 2)  # header and zero totals
+        self.assertEqual(rows[1][4], "0")
+        self.assertEqual(rows[1][-1], "0")
+        self.assertEqual(self.client.get(url, {"search": "x" * 81}).status_code, 400)
+        from recordedcourses.learning_analytics import OrganizationLearningAnalyticsAPIView
+        with patch.object(OrganizationLearningAnalyticsAPIView, "MAX_COURSES", 0):
+            too_many = self.client.get(url)
+        self.assertEqual(too_many.status_code, 413)
