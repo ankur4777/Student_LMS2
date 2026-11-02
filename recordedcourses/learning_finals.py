@@ -248,22 +248,73 @@ class PublicCourseCertificateVerificationAPIView(APIView):
         })
 
 
+def _certificate_queryset(course, search="", status_filter="all"):
+    """Always scoped to a course; used by admin list and CSV audit export."""
+    from django.db.models import Q
+
+    qs = CourseCertificate.objects.filter(
+        course=course, organization=course.organization,
+    ).select_related("student__user").order_by("-issued_at", "-pk")
+    if search:
+        qs = qs.filter(
+            Q(student_name_at_issue__icontains=search) |
+            Q(student__admission_number__icontains=search)
+        )
+    if status_filter == "issued":
+        qs = qs.filter(revoked_at__isnull=True)
+    elif status_filter == "revoked":
+        qs = qs.filter(revoked_at__isnull=False)
+    return qs
+
+
+def _certificate_filters(request):
+    """Return query filters or a user-facing 400 error."""
+    search = request.query_params.get("search", "").strip()
+    status_filter = request.query_params.get("status", "all")
+    if len(search) > 80:
+        return None, None, "Search is limited to 80 characters."
+    if status_filter not in ("all", "issued", "revoked"):
+        return None, None, "status must be all, issued or revoked."
+    return search, status_filter, None
+
+
 class ManagedCertificateAPIView(APIView):
-    """Review or revoke certificates only within the admin's institution."""
+    """Review or revoke certificates only within the College Admin's institution."""
     permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
+    PAGE_SIZE = 25
 
     def get(self, request, course_id):
         if request.user.role != "college_admin":
             return Response({"detail": "College Admin required."}, status=403)
         course = _course(request.user, course_id)
-        certificates = CourseCertificate.objects.filter(course=course).select_related("student__user")
-        return Response({"certificates": [
-            {
+        search, status_filter, error = _certificate_filters(request)
+        if error:
+            return Response({"detail": error}, status=400)
+        page_text = request.query_params.get("page", "1")
+        if (not page_text.isascii() or not page_text.isdecimal()
+                or len(page_text) > 6):
+            return Response({"detail": "page must be a positive integer."}, status=400)
+        page = int(page_text)
+        if not 1 <= page <= 100000:
+            return Response({"detail": "page must be a positive integer."}, status=400)
+        certificates = _certificate_queryset(course, search, status_filter)
+        count = certificates.count()
+        start = (page - 1) * self.PAGE_SIZE
+        records = certificates[start:start + self.PAGE_SIZE]
+        return Response({
+            "certificates": [{
                 "id": str(c.public_id), "student": c.student_name_at_issue,
+                "admission_number": c.student.admission_number,
                 "issued_at": c.issued_at, "score_percent": c.score_percent,
                 "status": "revoked" if c.revoked_at else "issued",
-            } for c in certificates
-        ]})
+                "revoked_at": c.revoked_at,
+            } for c in records],
+            "total": count,
+            "page": page,
+            "page_size": self.PAGE_SIZE,
+            "has_next": start + self.PAGE_SIZE < count,
+        })
+
 
     def patch(self, request, course_id):
         if request.user.role != "college_admin":
