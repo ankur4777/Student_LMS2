@@ -74,6 +74,7 @@ jobs:
             recordedcourses.test_module_quizzes \
             recordedcourses.test_module_assignments \
             recordedcourses.test_learning_finals \
+            recordedcourses.test_learning_certificate_registry \
             recordedcourses.test_learning_enrollments \
             recordedcourses.test_learning_readiness \
             --noinput --verbosity 2
