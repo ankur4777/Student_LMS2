@@ -367,13 +367,6 @@ class ManagedCourseProgressAPIView(APIView):
     PAGE_SIZE = 25
 
     def get(self, request, course_id):
-        from django.db.models import Count, Max, Q
-        from .models import (
-            RecordedCourseAccess, LessonLearningProgress, ModuleQuiz,
-            ModuleQuizAttempt, ModuleAssignment, ModuleAssignmentSubmission,
-            CourseFinalAttempt, CourseCertificate,
-        )
-
         course = _course(request.user, course_id)
         raw_page = request.query_params.get("page", "1")
         if not raw_page.isascii() or not raw_page.isdecimal() or len(raw_page) > 6:
@@ -381,10 +374,21 @@ class ManagedCourseProgressAPIView(APIView):
         page = int(raw_page)
         if page < 1 or page > 100000:
             return Response({"detail": "page must be a positive integer."}, status=400)
-
         search = request.query_params.get("search", "").strip()
         if len(search) > 80:
             return Response({"detail": "Search is limited to 80 characters."}, status=400)
+        return Response(self.report_page(course, page, search))
+
+    @classmethod
+    def report_page(cls, course, page, search, page_size=None):
+        from django.db.models import Count, Max, Q
+        from .models import (
+            RecordedCourseAccess, LessonLearningProgress, ModuleQuiz,
+            ModuleQuizAttempt, ModuleAssignment, ModuleAssignmentSubmission,
+            CourseFinalAttempt, CourseCertificate,
+        )
+        if page_size is None:
+            page_size = cls.PAGE_SIZE
         accesses = RecordedCourseAccess.objects.filter(
             course=course, organization=course.organization,
             student__user__organization=course.organization,
@@ -397,8 +401,8 @@ class ManagedCourseProgressAPIView(APIView):
                 Q(student__admission_number__icontains=search)
             )
         total = accesses.count()
-        start = (page - 1) * self.PAGE_SIZE
-        enrolled = list(accesses[start:start + self.PAGE_SIZE])
+        start = (page - 1) * page_size
+        enrolled = list(accesses[start:start + page_size])
         student_ids = [item.student_id for item in enrolled]
 
         modules = list(CourseModule.objects.filter(
@@ -523,9 +527,9 @@ class ManagedCourseProgressAPIView(APIView):
                 ) if certificate else "not_issued",
                 "modules": details,
             })
-        return Response({
+        return {
             "course_id": course.pk, "course_title": course.title,
-            "students_total": total, "page": page, "page_size": self.PAGE_SIZE,
-            "has_next": start + self.PAGE_SIZE < total,
+            "students_total": total, "page": page, "page_size": page_size,
+            "has_next": start + page_size < total,
             "students": rows,
-        })
+        }
