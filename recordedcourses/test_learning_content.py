@@ -442,13 +442,16 @@ class LearningModuleAPITests(APITransactionTestCase):
             RecordedCourseAccess.objects.create(
                 organization=self.org_a, course=self.course_a, student=profile,
             )
+        from recordedcourses.learning_progress_exports import ManagedCourseProgressCSVAPIView
         self.auth(self.admin_a)
         url = f"/api/recorded-courses/learning/manage/courses/{self.course_a.pk}/progress/export.csv"
-        response = self.client.get(url)
+        # Force ten students per batch to verify iteration over three pages.
+        with patch.object(ManagedCourseProgressCSVAPIView, "PAGE_SIZE", 10):
+            response = self.client.get(url)
         self.assertEqual(response.status_code, 200, response.content[:300])
         rows = list(csv.reader(io.StringIO(response.content.decode("utf-8-sig"))))
         self.assertEqual(rows[0][0], "Student ID")
-        self.assertEqual(len(rows), 28)  # header + 27, across two API pages
+        self.assertEqual(len(rows), 28)  # header + 27, fetched across three batches
         self.assertEqual({row[2] for row in rows[1:]}, {
             f"CSV-{index:03d}" for index in range(27)
         })
