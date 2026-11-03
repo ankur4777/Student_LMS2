@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   ...(startWebServer ? {
     webServer: {
-      command: "npm run start",
+      command: `npm run start -- -p ${new URL(baseURL).port || "3000"}`,
       cwd: fileURLToPath(new URL("..", import.meta.url)),
       url: `${baseURL}/college-admin/login`,
       timeout: 120_000,

@@ -133,6 +133,39 @@ port 3000 to Django on port 8000. Request handlers match the API **pathname**,
 even if your `NEXT_PUBLIC_API_BASE_URL` uses `localhost` instead of
 `127.0.0.1`. No application API behavior has been changed.
 
+## Trace-confirmed stuck hydration: run production browser smoke tests
+
+The user-supplied Playwright trace from November 3, 2026 showed successful
+HTTP 200 responses for the Student Login and My Courses pages and their
+JavaScript bundles, but the Student Learning page stayed at **Loading your
+courses...**. There were **no** Student Learning API requests at all.
+The only recorded browser console errors were repeated Next.js dev-server
+hot-reload WebSocket handshake errors (`/_next/hmr`). This shows that the
+problem happens before the mocked API response is used; it does **not**
+prove that the WebSocket errors themselves caused the page to stall.
+
+Instead of changing Django or mocking more routes, run an isolated
+**production Next.js build** for this browser suite, so the development
+server and its HMR WebSocket are not involved. Stop any running `npm run
+dev` instance first to avoid concurrent writes to `.next`:
+
+```powershell
+cd C:\student_LMS\frontend\e2e
+npm run test:built
+```
+
+The script builds `frontend`, then Playwright launches `next start` on
+**http://127.0.0.1:3100** and runs only the six mocked Student Learning
+Center UI tests. It needs no Django server or login credentials. The
+Playwright-managed server stops after the run; existing `main` and live
+VPS files are unaffected.
+
+If the tests still fail, inspect the **new** trace. It will be from the
+production frontend rather than the hot-reloading development server.
+This isolates whether the issue is caused by development-mode behavior
+or a more general hydration/runtime problem. It is not a claim that
+all six tests are passing.
+
 ## Troubleshooting: all simulated UI tests failed
 
 If every simulated Student Learning Center test fails, the browser may be
