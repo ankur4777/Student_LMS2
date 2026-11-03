@@ -136,7 +136,7 @@ export default function TeacherDashboard() {
 
   if (loading) {
     return (
-      <div className="teacher-dashboard teacher-dashboard-polished">
+      <div className="teacher-dashboard teacher-dashboard-polished mysls-bento-workspace">
         <TeacherSidebar />
         <main className="teacher-dashboard-main">
           <div className="teacher-dashboard-content">
@@ -155,7 +155,7 @@ export default function TeacherDashboard() {
 
   if (error) {
     return (
-      <div className="teacher-dashboard teacher-dashboard-polished">
+      <div className="teacher-dashboard teacher-dashboard-polished mysls-bento-workspace">
         <TeacherSidebar />
         <main className="teacher-dashboard-main">
           <div className="teacher-dashboard-content">
@@ -179,7 +179,7 @@ export default function TeacherDashboard() {
   ];
 
   return (
-    <div className="teacher-dashboard teacher-dashboard-polished">
+    <div className="teacher-dashboard teacher-dashboard-polished mysls-bento-workspace">
       <TeacherSidebar />
 
       <main className="teacher-dashboard-main">

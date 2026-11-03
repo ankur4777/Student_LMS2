@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import "./college-admin-ui.css";
+import "../portal-bento.css";
 
 export default function CollegeAdminLayout({
   children,

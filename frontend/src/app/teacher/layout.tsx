@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import "./teacher-ui.css";
+import "../portal-bento.css";
 
 export default function TeacherLayout({
   children,

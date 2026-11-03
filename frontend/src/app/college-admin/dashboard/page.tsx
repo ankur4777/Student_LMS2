@@ -387,7 +387,7 @@ export default function CollegeAdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="teacher-dashboard college-admin-dashboard-redesign">
+      <div className="teacher-dashboard college-admin-dashboard-redesign mysls-bento-workspace">
         <CollegeAdminSidebar />
         <main className="teacher-dashboard-main">
           <CollegeAdminTopbar
@@ -403,7 +403,7 @@ export default function CollegeAdminDashboardPage() {
   }
 
   return (
-    <div className="teacher-dashboard college-admin-dashboard-redesign">
+    <div className="teacher-dashboard college-admin-dashboard-redesign mysls-bento-workspace">
       <CollegeAdminSidebar />
 
       <main className="teacher-dashboard-main">

@@ -1,0 +1,566 @@
+/*
+ * MySLS / Option B — Bento workspace (Student • Teacher • College Admin).
+ * All selectors are scoped to authenticated portal shells. Login screens,
+ * public website, parent portal, data sources and role permissions remain intact.
+ * This layer intentionally changes layout/presentation, not behavior.
+ */
+.student-ui-scope,
+.teacher-ui-scope,
+.college-admin-ui-scope {
+  --bento-ink: #26352f;
+  --bento-muted: #66766f;
+  --bento-canvas: #f6f8f4;
+  --bento-surface: #fffefa;
+  --bento-line: #e3eae3;
+  --bento-mint: #e2f5e9;
+  --bento-peach: #fff0e5;
+  --bento-lilac: #f0edff;
+  --bento-sky: #eaf5f8;
+  --bento-coral: #ca6657;
+  --bento-shadow: 0 10px 28px rgba(43, 67, 53, .055);
+}
+
+.student-ui-scope .student-dashboard,
+.teacher-ui-scope .teacher-dashboard,
+.college-admin-ui-scope .teacher-dashboard {
+  --brand-primary: var(--bento-coral);
+  --brand-primary-hover: #b95347;
+  --brand-primary-soft: #fff0e5;
+  --student-bg: var(--bento-canvas);
+  --teacher-bg: var(--bento-canvas);
+  --ca-bg: var(--bento-canvas);
+  background: var(--bento-canvas);
+  color: var(--bento-ink);
+}
+
+/* The original sidebar mobile positioning/visibility rules are preserved. */
+.student-ui-scope .student-portal-sidebar,
+.teacher-ui-scope .teacher-portal-sidebar,
+.college-admin-ui-scope .teacher-sidebar {
+  background: #fffefa;
+  border-right: 1px solid #e2ebe2;
+  box-shadow: 5px 0 26px rgba(41, 69, 50, .028);
+}
+
+.student-ui-scope .student-portal-brand,
+.teacher-ui-scope .teacher-portal-brand,
+.college-admin-ui-scope .teacher-sidebar-brand {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--bento-line);
+  margin-bottom: 14px;
+}
+
+.student-ui-scope .student-nav-section-title,
+.teacher-ui-scope .teacher-nav-section-title {
+  color: #89968d;
+  letter-spacing: .105em;
+  font-size: .68rem;
+}
+
+.student-ui-scope .student-portal-nav a,
+.teacher-ui-scope .teacher-portal-nav a,
+.college-admin-ui-scope .teacher-sidebar-nav a,
+.college-admin-ui-scope .college-admin-menu-group-toggle {
+  border-radius: 12px;
+  color: #55675c;
+  transition: background .18s ease, color .18s ease, box-shadow .18s ease;
+}
+
+.student-ui-scope .student-portal-nav a:hover,
+.teacher-ui-scope .teacher-portal-nav a:hover,
+.college-admin-ui-scope .teacher-sidebar-nav a:hover,
+.college-admin-ui-scope .college-admin-menu-group-toggle:hover {
+  background: #edf6ef;
+  color: #275b42;
+}
+
+.student-ui-scope .student-portal-nav a.active,
+.teacher-ui-scope .teacher-portal-nav a.active,
+.college-admin-ui-scope .teacher-sidebar-nav a.active,
+.college-admin-ui-scope .college-admin-menu-group-toggle.active,
+.college-admin-ui-scope .college-admin-dashboard-link.active {
+  background: #e2f3e8;
+  color: #266449;
+  box-shadow: inset 3px 0 0 #73b28d;
+  font-weight: 720;
+}
+
+.student-ui-scope .student-nav-icon,
+.teacher-ui-scope .teacher-nav-icon {
+  border-radius: 11px;
+  background: #f2f6f0;
+}
+
+.student-ui-scope .student-portal-nav a.active .student-nav-icon,
+.teacher-ui-scope .teacher-portal-nav a.active .teacher-nav-icon {
+  background: #ccebd8;
+}
+
+.student-ui-scope .student-portal-topbar,
+.teacher-ui-scope .teacher-portal-topbar,
+.college-admin-ui-scope .teacher-topbar {
+  background: rgba(255, 254, 250, .96);
+  border-bottom: 1px solid var(--bento-line);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+
+.student-ui-scope .student-portal-topbar h4,
+.teacher-ui-scope .teacher-portal-topbar h4,
+.college-admin-ui-scope .teacher-topbar h4 {
+  color: var(--bento-ink);
+  font-weight: 790;
+  letter-spacing: -.035em;
+}
+
+.student-ui-scope .student-portal-topbar p,
+.teacher-ui-scope .teacher-portal-topbar p,
+.college-admin-ui-scope .teacher-topbar p {
+  color: var(--bento-muted);
+}
+
+.student-ui-scope .student-portal-avatar,
+.teacher-ui-scope .teacher-portal-avatar {
+  background: #dff2e4;
+  color: #27684a;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #d3e7d8;
+}
+
+/* Shared content surfaces: consistent spacing with existing forms & tables. */
+.student-ui-scope .dashboard-content,
+.student-ui-scope .student-dashboard-content,
+.teacher-ui-scope .teacher-dashboard-content,
+.college-admin-ui-scope .teacher-dashboard-content {
+  background: var(--bento-canvas);
+}
+
+.student-ui-scope .dashboard-content > .container-fluid,
+.student-ui-scope .student-dashboard-content > .container-fluid,
+.teacher-ui-scope .teacher-dashboard-content > .container-fluid,
+.college-admin-ui-scope .teacher-dashboard-content > .container-fluid {
+  max-width: 1640px;
+}
+
+.student-ui-scope .student-dashboard .card,
+.teacher-ui-scope .teacher-dashboard .card,
+.college-admin-ui-scope .teacher-dashboard .card {
+  border-radius: 19px;
+  border: 1px solid var(--bento-line);
+  box-shadow: var(--bento-shadow);
+}
+
+.student-ui-scope .student-dashboard .form-control,
+.student-ui-scope .student-dashboard .form-select,
+.teacher-ui-scope .teacher-dashboard .form-control,
+.teacher-ui-scope .teacher-dashboard .form-select,
+.college-admin-ui-scope .teacher-dashboard .form-control,
+.college-admin-ui-scope .teacher-dashboard .form-select {
+  background-color: #fff;
+  border-color: #dae5dc;
+  border-radius: 12px;
+}
+
+.student-ui-scope .student-dashboard .form-control:focus,
+.teacher-ui-scope .teacher-dashboard .form-control:focus,
+.college-admin-ui-scope .teacher-dashboard .form-control:focus {
+  border-color: #79b495;
+  box-shadow: 0 0 0 3px rgba(111, 178, 143, .16);
+}
+
+.student-ui-scope .student-dashboard .btn,
+.teacher-ui-scope .teacher-dashboard .btn,
+.college-admin-ui-scope .teacher-dashboard .btn {
+  border-radius: 12px;
+  font-weight: 650;
+}
+
+.student-ui-scope .student-dashboard .table-responsive,
+.teacher-ui-scope .teacher-dashboard .table-responsive,
+.college-admin-ui-scope .teacher-dashboard .table-responsive {
+  border-radius: 16px;
+}
+
+.student-ui-scope .student-dashboard .table thead th,
+.teacher-ui-scope .teacher-dashboard .table thead th,
+.college-admin-ui-scope .teacher-dashboard .table thead th {
+  background: #f2f7f1;
+  color: #607369;
+}
+
+.student-ui-scope .student-dashboard .table tbody tr:hover,
+.teacher-ui-scope .teacher-dashboard .table tbody tr:hover,
+.college-admin-ui-scope .teacher-dashboard .table tbody tr:hover {
+  background: #f7fbf7;
+}
+
+/* The dashboard cards use the live API values already present in the pages. */
+.student-ui-scope .mysls-bento-workspace .student-welcome,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome,
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  min-height: 210px;
+  padding: clamp(24px, 3.5vw, 40px);
+  border: 1px solid #d4ebda;
+  border-radius: 27px;
+  box-shadow: var(--bento-shadow);
+  background: linear-gradient(116deg, #e0f3e7 0%, #eaf8ee 61%, #f5fbf5 100%);
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+.student-ui-scope .mysls-bento-workspace .student-welcome::after,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome::after,
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: -55px;
+  top: -110px;
+  width: 365px;
+  height: 365px;
+  border: 54px solid rgba(99, 160, 118, .12);
+  border-radius: 42%;
+  transform: rotate(-22deg);
+  pointer-events: none;
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome {
+  background: linear-gradient(118deg, #f1edff 0%, #f8f5ff 58%, #fffefa 100%);
+  border-color: #e7defb;
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome::after {
+  border-color: rgba(153, 129, 204, .10);
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome {
+  background: linear-gradient(118deg, #fff0e4 0%, #fff7ee 62%, #fffcf7 100%);
+  border-color: #f4e1cc;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome::after {
+  border-color: rgba(205, 153, 101, .12);
+}
+.student-ui-scope .mysls-bento-workspace .student-welcome h1,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome h1,
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome h1 {
+  color: #244234;
+  font-size: clamp(1.6rem, 2.35vw, 2.35rem);
+  font-weight: 820;
+  letter-spacing: -.055em;
+  line-height: 1.16;
+  max-width: 730px;
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome h1 { color: #37344f; }
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome h1 { color: #533d33; }
+.student-ui-scope .mysls-bento-workspace .student-welcome p,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome p,
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome p:not(.cad-eyebrow) {
+  color: #68786d;
+  font-size: .91rem;
+  line-height: 1.6;
+}
+.student-ui-scope .mysls-bento-workspace .student-welcome-kicker,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome-kicker,
+.college-admin-ui-scope .mysls-bento-workspace .cad-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 99px;
+  color: #357a57 !important;
+  background: rgba(255,255,255,.65);
+  border: 1px solid rgba(115,171,134,.24);
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .09em;
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome-kicker {color:#68579b !important;}
+.college-admin-ui-scope .mysls-bento-workspace .cad-eyebrow {color:#b46b4d !important;}
+.student-ui-scope .mysls-bento-workspace .student-welcome-actions,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome-actions {
+  position: relative;
+  z-index: 1;
+}
+.student-ui-scope .mysls-bento-workspace .student-welcome-actions .btn,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome-actions .btn {
+  padding: 11px 17px;
+  border-radius: 14px;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-campus-art { opacity: .6; }
+.college-admin-ui-scope .mysls-bento-workspace .cad-date {
+  background: rgba(255, 255, 255, .84);
+  border: 1px solid #f1ddcb;
+  border-radius: 14px;
+  padding: 9px 13px;
+}
+
+/* Asymmetrical Bento KPI cards. Child counts are based on existing dashboard
+ * data and visibility rules; no access-hidden cards are reintroduced. */
+.student-ui-scope .mysls-bento-workspace .student-overview-grid,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+  margin-bottom: 21px;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  min-width: 0;
+  min-height: 144px;
+  padding: 23px;
+  border: 1px solid #e1eadf;
+  border-radius: 22px;
+  box-shadow: var(--bento-shadow);
+  background: var(--bento-surface);
+  color: var(--bento-ink);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card:nth-child(4n+1),
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card:nth-child(4n+1),
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(4n+1) {
+  background: #e4f4e9;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card:nth-child(4n+2),
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card:nth-child(4n+2),
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(4n+2) {
+  background: #fff0e5;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card:nth-child(4n+3),
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card:nth-child(4n+3),
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(4n+3) {
+  background: #f0edff;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card:nth-child(4n),
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card:nth-child(4n),
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(4n) {
+  background: #e9f4f8;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card::after,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card::after,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card::after {
+  content: "";
+  position: absolute;
+  right: -23px;
+  bottom: -32px;
+  width: 112px;
+  height: 112px;
+  border: 22px solid rgba(78, 103, 85, .065);
+  border-radius: 39%;
+  pointer-events: none;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card strong,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card strong,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card strong {
+  color: #2c3c33;
+  font-size: clamp(1.5rem, 2.4vw, 2.3rem);
+  font-weight: 820;
+  line-height: 1.12;
+  letter-spacing: -.055em;
+  overflow-wrap: anywhere;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card small,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card small,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card span {
+  color: #66746b;
+  font-weight: 680;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-icon,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-icon,
+.college-admin-ui-scope .mysls-bento-workspace .cad-icon-box {
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .7);
+  color: #49795b;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 21px;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(1),
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(4) { grid-column: span 2; }
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(5),
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(6) { grid-column: span 3; }
+@media (min-width: 1100px) {
+  .student-ui-scope .mysls-bento-workspace .student-overview-grid:has(> :nth-child(4)),
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+  .student-ui-scope .mysls-bento-workspace .student-overview-grid:has(> :nth-child(4)) > :nth-child(1),
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-grid > :nth-child(1) { grid-column: span 4; }
+  .student-ui-scope .mysls-bento-workspace .student-overview-grid:has(> :nth-child(4)) > :nth-child(2),
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-grid > :nth-child(2) { grid-column: span 3; }
+  .student-ui-scope .mysls-bento-workspace .student-overview-grid:has(> :nth-child(4)) > :nth-child(3),
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-grid > :nth-child(3) { grid-column: span 3; }
+  .student-ui-scope .mysls-bento-workspace .student-overview-grid:has(> :nth-child(4)) > :nth-child(4),
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-grid > :nth-child(4) { grid-column: span 2; }
+}
+
+/* Large/small Bento surfaces rather than repeated identical white panels. */
+.student-ui-scope .mysls-bento-workspace .student-dashboard-grid,
+.teacher-ui-scope .mysls-bento-workspace .teacher-dashboard-grid,
+.college-admin-ui-scope .mysls-bento-workspace .cad-main-grid,
+.college-admin-ui-scope .mysls-bento-workspace .cad-secondary-grid {
+  gap: 18px;
+  margin-bottom: 20px;
+}
+.student-ui-scope .mysls-bento-workspace .student-dashboard-grid {
+  grid-template-columns: minmax(0, 1.24fr) minmax(0, 1fr);
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-dashboard-grid {
+  grid-template-columns: minmax(0, 1.18fr) minmax(0, 1fr);
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-main-grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, .85fr);
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-secondary-grid {
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, .95fr) minmax(0, .83fr);
+}
+.student-ui-scope .mysls-bento-workspace .student-panel,
+.teacher-ui-scope .mysls-bento-workspace .teacher-panel,
+.college-admin-ui-scope .mysls-bento-workspace .cad-panel {
+  min-width: 0;
+  border: 1px solid var(--bento-line);
+  border-radius: 23px;
+  background: var(--bento-surface);
+  box-shadow: var(--bento-shadow);
+  overflow: hidden;
+}
+.student-ui-scope .mysls-bento-workspace .student-panel-header,
+.teacher-ui-scope .mysls-bento-workspace .teacher-panel-header,
+.college-admin-ui-scope .mysls-bento-workspace .cad-panel-heading {
+  border-bottom-color: #edf1eb;
+}
+.student-ui-scope .mysls-bento-workspace .student-panel h2,
+.teacher-ui-scope .mysls-bento-workspace .teacher-panel h2,
+.college-admin-ui-scope .mysls-bento-workspace .cad-panel h2 {
+  color: #2b4034;
+  font-weight: 775;
+  letter-spacing: -.025em;
+}
+.student-ui-scope .mysls-bento-workspace .student-quick-link,
+.teacher-ui-scope .mysls-bento-workspace .teacher-quick-link,
+.college-admin-ui-scope .mysls-bento-workspace .cad-action-tile {
+  border-radius: 15px;
+  background: #f2f8f2;
+  border: 1px solid #e4eee3;
+  color: #315d45;
+}
+.student-ui-scope .mysls-bento-workspace .student-quick-link:nth-child(3n+2),
+.teacher-ui-scope .mysls-bento-workspace .teacher-quick-link:nth-child(3n+2),
+.college-admin-ui-scope .mysls-bento-workspace .cad-action-tile:nth-child(3n+2) {
+  background: #fff4ea;
+  border-color: #f4e8da;
+}
+.student-ui-scope .mysls-bento-workspace .student-quick-link:nth-child(3n),
+.teacher-ui-scope .mysls-bento-workspace .teacher-quick-link:nth-child(3n),
+.college-admin-ui-scope .mysls-bento-workspace .cad-action-tile:nth-child(3n) {
+  background: #f3f0ff;
+  border-color: #eae4fa;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-snapshot-card,
+.teacher-ui-scope .mysls-bento-workspace .teacher-assigned-class-card {
+  border: 1px solid #e5ece3;
+  background: #f8faf6;
+  border-radius: 17px;
+}
+.student-ui-scope .student-learning .learning-card,
+.student-ui-scope .student-learning .learning-course-toolbar {
+  border: 1px solid var(--bento-line);
+  border-radius: 21px;
+  background: #fffefa;
+  box-shadow: var(--bento-shadow);
+}
+.student-ui-scope .student-learning .learning-heading {
+  background: #e8f5ea;
+  border: 1px solid #d9ebdc;
+  border-radius: 21px;
+  padding: 20px 24px;
+}
+.student-ui-scope .student-learning .learning-meter > span {
+  background: #6ca783;
+}
+
+/* Secondary portal screens keep existing forms/tables/operations, restyled
+ * consistently without changing role-specific access checks or routes. */
+.student-ui-scope .student-dashboard .card-header,
+.teacher-ui-scope .teacher-dashboard .card-header,
+.college-admin-ui-scope .teacher-dashboard .card-header {
+  background: #f6faf4;
+  border-bottom-color: var(--bento-line);
+}
+.student-ui-scope .student-dashboard .alert,
+.teacher-ui-scope .teacher-dashboard .alert,
+.college-admin-ui-scope .teacher-dashboard .alert {
+  border-radius: 15px;
+}
+.student-ui-scope .student-dashboard a:focus-visible,
+.teacher-ui-scope .teacher-dashboard a:focus-visible,
+.college-admin-ui-scope .teacher-dashboard a:focus-visible,
+.student-ui-scope .student-dashboard button:focus-visible,
+.teacher-ui-scope .teacher-dashboard button:focus-visible,
+.college-admin-ui-scope .teacher-dashboard button:focus-visible {
+  outline: 3px solid #5ca77d;
+  outline-offset: 3px;
+}
+
+/* Layout reflow, never resize the existing mobile sidebar overlay widths. */
+@media (max-width: 1199px) {
+  .college-admin-ui-scope .mysls-bento-workspace .cad-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card:nth-child(n) {
+    grid-column: auto;
+  }
+  .college-admin-ui-scope .mysls-bento-workspace .cad-main-grid,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .student-ui-scope .mysls-bento-workspace .student-dashboard-grid,
+  .teacher-ui-scope .mysls-bento-workspace .teacher-dashboard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .student-ui-scope .mysls-bento-workspace .student-welcome,
+  .teacher-ui-scope .mysls-bento-workspace .teacher-welcome,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-welcome {
+    min-height: 0;
+  }
+}
+@media (max-width: 700px) {
+  .college-admin-ui-scope .mysls-bento-workspace .cad-kpi-grid,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-main-grid,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-secondary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .student-ui-scope .mysls-bento-workspace .student-welcome,
+  .teacher-ui-scope .mysls-bento-workspace .teacher-welcome,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-welcome {
+    padding: 22px;
+    border-radius: 20px;
+  }
+  .student-ui-scope .mysls-bento-workspace .student-overview-card,
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-card,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card {
+    min-height: 120px;
+    padding: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .student-ui-scope .mysls-bento-workspace *,
+  .teacher-ui-scope .mysls-bento-workspace *,
+  .college-admin-ui-scope .mysls-bento-workspace * {
+    scroll-behavior: auto;
+    transition-duration: .01ms;
+    animation-duration: .01ms;
+  }
+}

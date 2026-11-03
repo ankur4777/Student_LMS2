@@ -208,7 +208,7 @@ export default function StudentDashboard() {
 
   if (loading) {
     return (
-      <div className="student-dashboard student-dashboard-polished">
+      <div className="student-dashboard student-dashboard-polished mysls-bento-workspace">
         <StudentSidebar />
         <main className="dashboard-main">
           <div className="dashboard-content">
@@ -227,7 +227,7 @@ export default function StudentDashboard() {
 
   if (error) {
     return (
-      <div className="student-dashboard student-dashboard-polished">
+      <div className="student-dashboard student-dashboard-polished mysls-bento-workspace">
         <StudentSidebar />
         <main className="dashboard-main">
           <div className="dashboard-content">
@@ -290,7 +290,7 @@ export default function StudentDashboard() {
     recordedClassesEnabled || quickLinks.length > 0;
 
   return (
-    <div className="student-dashboard student-dashboard-polished">
+    <div className="student-dashboard student-dashboard-polished mysls-bento-workspace">
       {shareMessage && <div className="share-toast">{shareMessage}</div>}
 
       <StudentSidebar />
