@@ -287,6 +287,16 @@ class FullRecordedLearningJourneyTests(APITransactionTestCase):
             grade_url, {"score_percent": 99}, format="json",
         ).status_code, 404)
         self.auth(self.outsider)
+        # A disabled tenant is rejected by the organization feature gate
+        # before its submission visibility is checked.
+        self.assertEqual(self.client.patch(
+            grade_url, {"score_percent": 99}, format="json",
+        ).status_code, 403)
+        # With Learning enabled, this separate tenant still cannot see or
+        # grade another organization's submission.
+        OrganizationLearningSettings.objects.create(
+            organization=self.other, is_enabled=True,
+        )
         self.assertEqual(self.client.patch(
             grade_url, {"score_percent": 99}, format="json",
         ).status_code, 404)

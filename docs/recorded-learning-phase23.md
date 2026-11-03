@@ -12,7 +12,7 @@ The full API journey now checks:
 2. Modules remain locked; direct video access and the final exam are blocked early.
 3. Completing a lesson without a ticket or before playback progress returns 400.
 4. Quiz submissions and grading must unlock the second module in sequence.
-5. Unassigned and cross-organization teachers/admins cannot grade work.
+5. An unassigned teacher cannot grade work (404); a cross-organization College Admin gets 403 when their Learning feature is disabled, then 404 after enabling it because the submission is outside their organization.
 6. A passing final issues one certificate, with no duplicate certificate on resubmit.
 7. Another student cannot download the certificate; public verification works.
 8. College Admin progress and analytics CSV exports are available with attachment headers.
@@ -60,3 +60,12 @@ VPS or actual student accounts.
 **Gate for completion:** report the exact Django test count/results, any
 failing traceback, and browser-acceptance results separately. Do not claim
 the full feature is production-ready from mocked-browser tests alone.
+
+## Local test finding — feature gate vs tenant isolation
+
+The first Phase 23 test run reached the grading checks and failed because the
+other organization's Learning switch was OFF: Django correctly returned HTTP
+403 at the permission layer, before the tenant-scoped submission lookup could
+return HTTP 404. The regression test now explicitly validates both cases,
+with **test-only organizations** and no production permission changes.
+A successful rerun is still required to complete Phase 23 verification.
