@@ -1,0 +1,397 @@
+/*
+ * MySLS Portal Type System — Student / Teacher / College Admin.
+ *
+ * Pure typography only. Matches the approved light Bento visual language.
+ * Scope is intentionally limited to authenticated portal shells; it does
+ * not alter login screens, the public website, parent portal, or print CSS.
+ * Uses local system fonts so the design works offline and on Windows 10.
+ */
+
+/* 01 / Foundation: comfortable body copy, no condensed/artificial bold. */
+.student-ui-scope .student-dashboard,
+.teacher-ui-scope .teacher-dashboard,
+.college-admin-ui-scope .teacher-dashboard {
+  font-family: "Segoe UI Variable Text", "Segoe UI", Inter, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Top navigation: clear title with quieter organization/profile metadata. */
+.student-ui-scope .student-portal-topbar h4,
+.teacher-ui-scope .teacher-portal-topbar h4,
+.college-admin-ui-scope .teacher-topbar h4 {
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.3;
+  font-weight: 680;
+  letter-spacing: -.022em;
+}
+.student-ui-scope .student-portal-topbar p,
+.teacher-ui-scope .teacher-portal-topbar p,
+.college-admin-ui-scope .teacher-topbar p,
+.college-admin-ui-scope .teacher-topbar .small {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+.student-ui-scope .student-portal-user strong,
+.teacher-ui-scope .teacher-portal-user strong,
+.college-admin-ui-scope .teacher-topbar strong {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+}
+.student-ui-scope .student-portal-user small,
+.teacher-ui-scope .teacher-portal-user small,
+.college-admin-ui-scope .teacher-topbar .small {
+  font-size: 11.5px;
+  font-weight: 430;
+}
+.student-ui-scope .student-portal-organization,
+.teacher-ui-scope .teacher-portal-organization {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+/* Sidebar brand, section captions, primary navigation. */
+.student-ui-scope .student-portal-brand h5,
+.teacher-ui-scope .teacher-portal-brand strong,
+.college-admin-ui-scope .college-admin-brand-name {
+  font-size: 16px;
+  font-weight: 690;
+  letter-spacing: -.02em;
+  line-height: 1.35;
+}
+.student-ui-scope .student-portal-brand small,
+.teacher-ui-scope .teacher-portal-brand small,
+.college-admin-ui-scope .college-admin-brand-copy .small {
+  font-size: 12px;
+  font-weight: 430;
+}
+.student-ui-scope .student-nav-section-title,
+.teacher-ui-scope .teacher-nav-section-title {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: .085em;
+  line-height: 1.35;
+}
+.student-ui-scope .student-portal-nav a,
+.teacher-ui-scope .teacher-portal-nav a,
+.college-admin-ui-scope .teacher-sidebar-nav a,
+.college-admin-ui-scope .college-admin-menu-group-toggle {
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 520;
+  letter-spacing: 0;
+}
+.student-ui-scope .student-portal-nav a.active,
+.teacher-ui-scope .teacher-portal-nav a.active,
+.college-admin-ui-scope .teacher-sidebar-nav a.active,
+.college-admin-ui-scope .college-admin-menu-group-toggle.active {
+  font-weight: 650;
+}
+.college-admin-ui-scope .college-admin-submenu a {
+  font-size: 12.5px;
+  font-weight: 470;
+}
+.college-admin-ui-scope .college-admin-submenu a.active { font-weight: 625; }
+.student-ui-scope .sidebar-product-credit,
+.teacher-ui-scope .sidebar-product-credit,
+.college-admin-ui-scope .sidebar-product-credit {
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+
+/* 02 / Hero headlines: elegant rather than oversized/heavy. */
+.student-ui-scope .mysls-bento-workspace .student-welcome h1,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome h1,
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome h1 {
+  font-family: inherit;
+  font-size: clamp(25px, 2.05vw, 32px);
+  font-weight: 685;
+  line-height: 1.24;
+  letter-spacing: -.034em;
+  text-wrap: pretty;
+}
+.student-ui-scope .mysls-bento-workspace .student-welcome-kicker,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome-kicker,
+.college-admin-ui-scope .mysls-bento-workspace .cad-eyebrow {
+  font-size: 10.5px;
+  font-weight: 660;
+  letter-spacing: .075em;
+}
+.student-ui-scope .mysls-bento-workspace .student-welcome p,
+.teacher-ui-scope .mysls-bento-workspace .teacher-welcome p,
+.college-admin-ui-scope .mysls-bento-workspace .cad-welcome p:not(.cad-eyebrow) {
+  font-size: 14px;
+  font-weight: 415;
+  line-height: 1.65;
+  letter-spacing: 0;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-date {
+  font-size: 12.5px;
+  font-weight: 540;
+  line-height: 1.35;
+}
+
+/* 03 / KPI labels, figures and supporting captions. */
+.student-ui-scope .mysls-bento-workspace .student-overview-card small,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card small,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-copy > span {
+  font-size: 12.5px;
+  font-weight: 610;
+  line-height: 1.35;
+  letter-spacing: .002em;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card strong,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card strong,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card .cad-kpi-copy strong {
+  font-size: clamp(26px, 2.15vw, 33px);
+  font-weight: 705;
+  line-height: 1.16;
+  letter-spacing: -.035em;
+}
+.student-ui-scope .mysls-bento-workspace .student-overview-card .student-overview-copy > span,
+.teacher-ui-scope .mysls-bento-workspace .teacher-overview-card > div > span,
+.college-admin-ui-scope .mysls-bento-workspace .cad-kpi-copy > small {
+  font-size: 12px;
+  font-weight: 440;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+/* 04 / Panel titles, descriptions and links across all three dashboards. */
+.student-ui-scope .mysls-bento-workspace .student-panel-header h2,
+.teacher-ui-scope .mysls-bento-workspace .teacher-panel-header h2,
+.college-admin-ui-scope .mysls-bento-workspace .cad-panel-heading h2,
+.college-admin-ui-scope .mysls-bento-workspace .cad-snapshot-panel h2,
+.college-admin-ui-scope .mysls-bento-workspace .cad-analytics-panel h2 {
+  font-size: 16px;
+  font-weight: 680;
+  letter-spacing: -.018em;
+  line-height: 1.4;
+}
+.student-ui-scope .mysls-bento-workspace .student-panel-header p,
+.teacher-ui-scope .mysls-bento-workspace .teacher-panel-header p,
+.college-admin-ui-scope .mysls-bento-workspace .cad-panel-heading p {
+  font-size: 12.5px;
+  font-weight: 420;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+.student-ui-scope .mysls-bento-workspace .student-panel-header a,
+.teacher-ui-scope .mysls-bento-workspace .teacher-panel-header a,
+.college-admin-ui-scope .mysls-bento-workspace .cad-panel-heading a {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* College Admin: donut-chart numbers, table cells, quick actions, reports. */
+.college-admin-ui-scope .mysls-bento-workspace .cad-fee-ring strong,
+.college-admin-ui-scope .mysls-bento-workspace .cad-ring-inner strong {
+  font-size: clamp(19px, 1.65vw, 25px);
+  font-weight: 690;
+  letter-spacing: -.025em;
+  line-height: 1.2;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-stat-tile strong,
+.college-admin-ui-scope .mysls-bento-workspace .cad-mini-chart strong {
+  font-size: 19px;
+  font-weight: 675;
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-action-tile strong,
+.college-admin-ui-scope .mysls-bento-workspace .cad-notice-item strong,
+.college-admin-ui-scope .mysls-bento-workspace .cad-activity-row strong {
+  font-size: 12.5px;
+  font-weight: 625;
+  line-height: 1.42;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-fee-legend,
+.college-admin-ui-scope .mysls-bento-workspace .cad-stat-tile small,
+.college-admin-ui-scope .mysls-bento-workspace .cad-notice-item small,
+.college-admin-ui-scope .mysls-bento-workspace .cad-activity-row small,
+.college-admin-ui-scope .mysls-bento-workspace .cad-mini-chart small,
+.college-admin-ui-scope .mysls-bento-workspace .cad-mini-chart > span,
+.college-admin-ui-scope .mysls-bento-workspace .cad-fee-ring span,
+.college-admin-ui-scope .mysls-bento-workspace .cad-ring-inner span {
+  font-size: 12px;
+  font-weight: 430;
+  line-height: 1.5;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-table {
+  font-size: 12.75px;
+  line-height: 1.5;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-table thead th {
+  font-size: 11.5px;
+  font-weight: 640;
+  letter-spacing: .025em;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-snapshot-card small {
+  font-size: 12px;
+  font-weight: 480;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-snapshot-card strong {
+  font-size: 17px;
+  font-weight: 660;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-empty-state strong {
+  font-size: 13px;
+  font-weight: 640;
+}
+.college-admin-ui-scope .mysls-bento-workspace .cad-empty-state span {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* Teacher & Student cards preserve values but gain a calmer reading hierarchy. */
+.teacher-ui-scope .mysls-bento-workspace .teacher-assigned-class-top strong,
+.student-ui-scope .mysls-bento-workspace .student-class-item strong,
+.student-ui-scope .mysls-bento-workspace .student-recording-item strong,
+.teacher-ui-scope .mysls-bento-workspace .teacher-class-item strong,
+.teacher-ui-scope .mysls-bento-workspace .teacher-assignment-item strong {
+  font-size: 13.5px;
+  font-weight: 635;
+  line-height: 1.45;
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-assigned-class-top small,
+.teacher-ui-scope .mysls-bento-workspace .teacher-class-item small,
+.student-ui-scope .mysls-bento-workspace .student-recording-item small,
+.student-ui-scope .mysls-bento-workspace .student-class-item small {
+  font-size: 12px;
+  line-height: 1.55;
+}
+.teacher-ui-scope .mysls-bento-workspace .teacher-student-count strong,
+.student-ui-scope .mysls-bento-workspace .student-attendance-score strong {
+  font-size: 22px;
+  font-weight: 690;
+  letter-spacing: -.02em;
+}
+.student-ui-scope .mysls-bento-workspace .student-quick-link,
+.teacher-ui-scope .mysls-bento-workspace .teacher-quick-link {
+  font-size: 12.5px;
+  font-weight: 610;
+  line-height: 1.4;
+}
+
+/* 05 / Secondary pages: consistent form labels, table data and page titles.
+ * Deliberately excludes the separate Student live chat popup.
+ */
+.student-ui-scope .student-dashboard-content h1,
+.teacher-ui-scope .teacher-dashboard-content h1,
+.college-admin-ui-scope .teacher-dashboard-content h1 {
+  font-family: inherit;
+  font-size: clamp(23px, 1.85vw, 29px);
+  font-weight: 690;
+  line-height: 1.3;
+  letter-spacing: -.024em;
+}
+.student-ui-scope .student-dashboard-content h2,
+.teacher-ui-scope .teacher-dashboard-content h2,
+.college-admin-ui-scope .teacher-dashboard-content h2 {
+  font-size: 17px;
+  font-weight: 665;
+  line-height: 1.4;
+  letter-spacing: -.012em;
+}
+.student-ui-scope .student-dashboard-content .form-label,
+.teacher-ui-scope .teacher-dashboard-content .form-label,
+.college-admin-ui-scope .teacher-dashboard-content .form-label {
+  font-size: 12.5px;
+  font-weight: 590;
+}
+.student-ui-scope .student-dashboard-content .form-control,
+.student-ui-scope .student-dashboard-content .form-select,
+.teacher-ui-scope .teacher-dashboard-content .form-control,
+.teacher-ui-scope .teacher-dashboard-content .form-select,
+.college-admin-ui-scope .teacher-dashboard-content .form-control,
+.college-admin-ui-scope .teacher-dashboard-content .form-select {
+  font-size: 13.5px;
+  font-weight: 430;
+  line-height: 1.5;
+}
+.student-ui-scope .student-dashboard .btn,
+.teacher-ui-scope .teacher-dashboard .btn,
+.college-admin-ui-scope .teacher-dashboard .btn {
+  font-size: 12.75px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.student-ui-scope .student-dashboard .table,
+.teacher-ui-scope .teacher-dashboard .table,
+.college-admin-ui-scope .teacher-dashboard .table {
+  font-size: 12.75px;
+  line-height: 1.5;
+}
+.student-ui-scope .student-dashboard .table thead th,
+.teacher-ui-scope .teacher-dashboard .table thead th,
+.college-admin-ui-scope .teacher-dashboard .table thead th {
+  font-size: 11.5px;
+  font-weight: 640;
+  letter-spacing: .025em;
+}
+
+/* 06 / The Learning Center needs a clear lecture-reading hierarchy. */
+.student-ui-scope .student-learning .learning-kicker,
+.student-ui-scope .student-learning .learning-card-label {
+  font-size: 10.5px;
+  font-weight: 660;
+  letter-spacing: .07em;
+}
+.student-ui-scope .student-learning .learning-card h2,
+.student-ui-scope .student-learning .learning-viewer-header h2,
+.student-ui-scope .student-learning .learning-modules > h2 {
+  font-size: 17px;
+  font-weight: 680;
+  line-height: 1.4;
+}
+.student-ui-scope .student-learning .learning-card p,
+.student-ui-scope .student-learning .learning-viewer-info > p,
+.student-ui-scope .student-learning .learning-module-description {
+  font-size: 13px;
+  font-weight: 430;
+  line-height: 1.6;
+}
+.student-ui-scope .student-learning .learning-course-toolbar label,
+.student-ui-scope .student-learning .learning-module summary strong,
+.student-ui-scope .student-learning .learning-lesson-button,
+.student-ui-scope .student-learning .learning-resource-list button {
+  font-size: 13px;
+  font-weight: 575;
+  line-height: 1.45;
+}
+.student-ui-scope .student-learning .learning-module summary small,
+.student-ui-scope .student-learning .learning-card-meta,
+.student-ui-scope .student-learning .learning-card-bottom > span {
+  font-size: 12px;
+  font-weight: 480;
+}
+
+/* Scoped overrides for the existing portal styles that declare !important.
+ * These apply only where those legacy selectors already force a heavy title.
+ */
+.student-ui-scope .student-dashboard-content > .container-fluid h1:not(.student-welcome h1),
+.teacher-ui-scope .teacher-dashboard-content > .container-fluid h1:not(.teacher-welcome h1),
+.college-admin-ui-scope .teacher-dashboard-content > .container-fluid h1:not(.cad-welcome h1) {
+  font-weight: 690;
+}
+@media (max-width: 640px) {
+  .student-ui-scope .mysls-bento-workspace .student-welcome h1,
+  .teacher-ui-scope .mysls-bento-workspace .teacher-welcome h1,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-welcome h1 {
+    font-size: clamp(22px, 5vw, 26px);
+    line-height: 1.3;
+  }
+  .student-ui-scope .mysls-bento-workspace .student-overview-card strong,
+  .teacher-ui-scope .mysls-bento-workspace .teacher-overview-card strong,
+  .college-admin-ui-scope .mysls-bento-workspace .cad-kpi-card .cad-kpi-copy strong {
+    font-size: 26px;
+  }
+}

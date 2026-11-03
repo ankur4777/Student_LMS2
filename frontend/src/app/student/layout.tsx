@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 
 import "./student-ui.css";
 import "../portal-bento.css";
+import "../portal-typography.css";
 import FloatingTutorChatButton from "@/components/student/FloatingTutorChatButton";
 
 export default function StudentLayout({
