@@ -199,9 +199,26 @@ class FullRecordedLearningJourneyTests(APITransactionTestCase):
         self.expect(self.client.patch(assignment_url, {"is_published": True}, format="json"), 200)
         self.expect(self.client.patch(final_url, {"is_published": True}, format="json"), 200)
         enrollment_url = ROOT + f"learning/manage/courses/{course_id}/enrollments/"
+        # A student without course access must not see content or start playback.
+        self.auth(self.student_user)
+        self.assertEqual(
+            self.expect(self.client.get(ROOT + "learning/student/courses/"), 200)["courses"], [],
+        )
+        self.assertEqual(
+            self.client.get(ROOT + f"learning/student/courses/{course_id}/").status_code, 403,
+        )
+        self.assertEqual(
+            self.client.post(
+                ROOT + f"learning/student/lessons/{lesson1}/viewing-session/",
+            ).status_code, 403,
+        )
+        self.auth(self.admin)
         self.expect(self.client.post(
             enrollment_url, {"student_id": self.student.pk, "duration_days": 45}, format="json",
         ), 201)
+        self.assertEqual(self.client.post(
+            enrollment_url, {"student_id": self.student.pk, "duration_days": 90}, format="json",
+        ).status_code, 409)  # Duplicate grants must not silently extend access.
         readiness = self.expect(self.client.get(
             ROOT + f"learning/manage/courses/{course_id}/readiness/",
         ), 200)
@@ -224,6 +241,23 @@ class FullRecordedLearningJourneyTests(APITransactionTestCase):
         self.assertEqual(self.client.post(
             student_final_url, {"answers": {str(final_question.pk): 1}}, format="json",
         ).status_code, 403)
+        # A later module stays inaccessible even when its ID is known.
+        self.assertEqual(self.client.get(
+            ROOT + f"learning/student/lessons/{lesson2}/play/",
+        ).status_code, 403)
+        # Video completion requires a signed viewing session and watch credit.
+        first_lesson_url = ROOT + f"learning/student/lessons/{lesson1}/"
+        self.assertEqual(self.client.post(
+            first_lesson_url + "complete/", format="json",
+        ).status_code, 400)
+        early_ticket = self.expect(self.client.post(
+            first_lesson_url + "viewing-session/",
+        ), 200)["ticket"]
+        self.assertEqual(self.client.post(
+            first_lesson_url + "complete/",
+            {"playback_ticket": early_ticket}, format="json",
+        ).status_code, 400)
+        self.assertFalse(LessonLearningProgress.objects.exists())
 
         self.complete_video(lesson1)
         middle = self.expect(self.client.get(detail_url), 200)
@@ -242,10 +276,23 @@ class FullRecordedLearningJourneyTests(APITransactionTestCase):
         ), 201)
         submission_id = submitted["submission"]["id"]
         self.assertTrue(self.expect(self.client.get(detail_url), 200)["course"]["modules"][1]["locked"])
+        grade_url = ROOT + f"learning/manage/submissions/{submission_id}/grade/"
+        unassigned = User.objects.create_user(
+            username="p23-unassigned-teacher", password="local", role="teacher",
+            organization=self.org,
+        )
+        TeacherProfile.objects.create(user=unassigned, employee_id="P23-UNASSIGNED")
+        self.auth(unassigned)
+        self.assertEqual(self.client.patch(
+            grade_url, {"score_percent": 99}, format="json",
+        ).status_code, 404)
+        self.auth(self.outsider)
+        self.assertEqual(self.client.patch(
+            grade_url, {"score_percent": 99}, format="json",
+        ).status_code, 404)
         self.auth(self.teacher_user)
         self.expect(self.client.patch(
-            ROOT + f"learning/manage/submissions/{submission_id}/grade/",
-            {"score_percent": 88, "feedback": "Passed"}, format="json",
+            grade_url, {"score_percent": 88, "feedback": "Passed"}, format="json",
         ), 200)
         self.auth(self.student_user)
         self.assertFalse(self.expect(self.client.get(detail_url), 200)["course"]["modules"][1]["locked"])
@@ -264,6 +311,18 @@ class FullRecordedLearningJourneyTests(APITransactionTestCase):
         self.assertEqual(self.client.post(
             student_final_url, {"answers": {str(final_question.pk): 1}}, format="json",
         ).status_code, 409)
+        # An unenrolled student from the same organization cannot read an
+        # earned certificate PDF through another student's private endpoint.
+        other_user = User.objects.create_user(
+            username="p23-other-student", password="local", role="student",
+            organization=self.org,
+        )
+        StudentProfile.objects.create(user=other_user, admission_number="P23-OTHER")
+        self.auth(other_user)
+        self.assertIn(self.client.get(
+            ROOT + f"learning/student/certificates/{cert_id}/pdf/",
+        ).status_code, (403, 404))
+        self.auth(self.student_user)
 
         pdf = self.client.get(
             ROOT + f"learning/student/certificates/{cert_id}/pdf/",
@@ -284,11 +343,24 @@ class FullRecordedLearningJourneyTests(APITransactionTestCase):
         self.assertEqual(report["students"][0]["certificate_status"], "issued")
         analytics = self.expect(self.client.get(ROOT + "learning/manage/analytics/"), 200)
         self.assertEqual(analytics["totals"]["valid_certificates"], 1)
+        for csv_path in (
+            ROOT + f"learning/manage/courses/{course_id}/progress/export.csv",
+            ROOT + "learning/manage/analytics/export.csv",
+        ):
+            exported = self.client.get(csv_path)
+            self.assertEqual(exported.status_code, 200)
+            self.assertIn("text/csv", exported["Content-Type"])
+            self.assertIn("attachment;", exported["Content-Disposition"])
         revoke = self.expect(self.client.patch(
             ROOT + f"learning/manage/courses/{course_id}/certificates/",
             {"certificate_id": cert_id, "reason": "QA certificate revocation"}, format="json",
         ), 200)
         self.assertEqual(revoke["status"], "revoked")
+        self.assertEqual(
+            self.expect(self.client.get(ROOT + "learning/manage/analytics/"), 200)[
+                "totals"
+            ]["valid_certificates"], 0,
+        )
         self.client.force_authenticate(user=None)
         self.assertFalse(self.expect(self.client.get(public_url), 200)["valid"])
         self.auth(self.student_user)
