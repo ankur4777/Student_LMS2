@@ -98,7 +98,7 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
     const details = {
       url: page.url(),
       headings: headings.map(h => h.trim().slice(0, 120)).slice(0, 8),
-      visibleAlerts: await page.getByRole("alert").allTextContents().catch(() => []),
+      visibleAlerts: await page.locator(".student-learning [role='alert']").allTextContents().catch(() => []),
       preview: (await page.locator("body").innerText().catch(() => "")).slice(0, 350),
     };
     console.log("[MySLS browser QA diagnosis]", JSON.stringify(details));
@@ -174,7 +174,7 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
   test("displays a server error while retaining independently issued certificates", async ({ page }) => {
     await setupMockStudent(page, { coursesStatus: 503, certificates: [VALID] });
     await page.goto("/student/learning");
-    await expect(page.getByRole("alert")).toContainText("Local QA fixture API error");
+    await expect(page.locator(".student-learning [role='alert']")).toContainText("Local QA fixture API error");
     await expect(page.getByRole("heading", { name: "My Certificates" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Download PDF" })).toBeVisible();
   });
@@ -211,7 +211,7 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
   test("offers retry and recovers from a temporary course API error", async ({ page }) => {
     await setupMockStudent(page, { coursesStatus: 503 });
     await page.goto("/student/learning");
-    await expect(page.getByRole("alert")).toContainText("Local QA fixture API error");
+    await expect(page.locator(".student-learning [role='alert']")).toContainText("Local QA fixture API error");
     await expect(page.getByRole("heading", { name: "No enrolled courses yet" })).toHaveCount(0);
     await page.route(url => isApiUrl(url, API + "courses/"), route =>
       fulfillMockJson(route, { json: { courses: [
@@ -220,7 +220,7 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
     );
     await page.getByRole("button", { name: "Retry loading courses" }).click();
     await expect(page.getByRole("heading", { name: "Recovered QA Course" })).toBeVisible();
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator(".student-learning [role='alert']")).toHaveCount(0);
   });
 
 });

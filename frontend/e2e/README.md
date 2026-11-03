@@ -133,6 +133,16 @@ port 3000 to Django on port 8000. Request handlers match the API **pathname**,
 even if your `NEXT_PUBLIC_API_BASE_URL` uses `localhost` instead of
 `127.0.0.1`. No application API behavior has been changed.
 
+## Strict-mode alert selector fix (November 3, 2026)
+
+The production-build browser suite passed four out of six checks. The two
+remaining failures were **Playwright locator ambiguity**, not missing error
+messages: `getByRole("alert")` found the visible Learning Center error
+message plus Next.js's invisible route announcer with `role="alert"`.
+The checks now use `.student-learning [role='alert']` so they inspect only
+this page's own warning. The same scoped locator is used to confirm the
+warning clears after a successful retry. This does not modify the app.
+
 ## Trace-confirmed stuck hydration: run production browser smoke tests
 
 The user-supplied Playwright trace from November 3, 2026 showed successful
