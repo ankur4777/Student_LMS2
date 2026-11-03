@@ -125,6 +125,48 @@ cd C:\\student_LMS\\frontend\\e2e
 npm test -- --grep "Unauthenticated access must redirect to role login|Student Learning Center UI"
 ```
 
+## Troubleshooting: all simulated UI tests failed
+
+If every simulated Student Learning Center test fails, the browser may be
+reaching a stale frontend, the wrong application/port, or a page with a
+client-side runtime error. This is **not** evidence of a Django learning
+API failure because those API responses are mocked in this suite.
+
+The browser tests now first load `/student/login` from `E2E_BASE_URL`,
+confirm the correct heading, and set fixture-only session values using
+the frontend's actual browser origin. On failures they print a safe
+`[MySLS browser QA diagnosis]` entry with the final URL, headings,
+and alerts (never passwords or tokens).
+
+Use these terminals:
+
+```powershell
+# Terminal A — from the frontend folder
+cd C:\student_LMS\frontend
+npm run dev
+```
+
+```powershell
+# Terminal B — from e2e
+cd C:\student_LMS\frontend\e2e
+$env:E2E_BASE_URL = "http://127.0.0.1:3000"
+Remove-Item Env:E2E_START_WEB_SERVER -ErrorAction SilentlyContinue
+npm test -- --grep "Student Learning Center UI" --workers=1
+```
+
+Check that Next.js prints `Local: http://localhost:3000` (or an
+equivalent URL with port 3000). If Next.js chooses 3001 because port
+3000 is occupied, **stop the unwanted server or set `E2E_BASE_URL` to the
+actual Next.js port**. Use the HTML report to view browser screenshots:
+
+```powershell
+npx playwright show-report
+```
+
+If the tests still fail, share the first `[MySLS browser QA diagnosis]`
+line and the first test's error context so the root cause can be
+identified. Do not share personal credentials or JWT tokens.
+
 ## 4. Complete the manual browser acceptance journey
 
 This automated smoke suite **does not** simulate real video watching,

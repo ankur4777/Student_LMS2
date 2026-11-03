@@ -24,13 +24,27 @@ async function setupMockStudent(page, {
   certificates = [],
   coursesStatus = 200,
 } = {}) {
-  await page.addInitScript(() => {
+  // Establish the fixture session on the exact frontend origin, rather
+  // than relying on an init script that may run on intermediate documents.
+  // This also fails early when port 3000 serves a different application.
+  const loginResponse = await page.goto("/student/login");
+  if (!loginResponse?.ok()) {
+    throw new Error(`MySLS preflight: Student Login did not load (HTTP ${loginResponse?.status() ?? "no response"}) at ${page.url()}. Check the frontend terminal and E2E_BASE_URL.`);
+  }
+  await expect(
+    page.getByRole("heading", { name: "Student Login", exact: true }),
+    "MySLS preflight: the Student Login heading must be visible before fixture setup. Check that port 3000 serves this project.",
+  ).toBeVisible();
+  await page.evaluate(() => {
     localStorage.setItem("student_access_token", "browser-fixture-access-only");
     localStorage.setItem("student_user", JSON.stringify({
       id: "browser-qa", name: "Browser QA Student", organization: "Local Fixture Campus",
     }));
     localStorage.removeItem("student_refresh_token");
   });
+  expect(await page.evaluate(
+    () => localStorage.getItem("student_access_token"),
+  )).toBe("browser-fixture-access-only");
 
   await page.route("**" + API + "courses/", route =>
     route.fulfill({
@@ -56,6 +70,17 @@ async function setupMockStudent(page, {
 }
 
 test.describe("Student Learning Center UI (simulated backend responses)", () => {
+  // Attach safe browser diagnostics on failures. Never log auth tokens.
+  test.afterEach(async ({ page }, testInfo) => {
+    if (testInfo.status === testInfo.expectedStatus) return;
+    const headings = await page.locator("h1, h2").allTextContents().catch(() => []);
+    const details = {
+      url: page.url(),
+      headings: headings.map(h => h.trim().slice(0, 120)).slice(0, 8),
+      visibleAlerts: await page.getByRole("alert").allTextContents().catch(() => []),
+    };
+    console.log("[MySLS browser QA diagnosis]", JSON.stringify(details));
+  });
   test("shows the no-enrollments state", async ({ page }) => {
     await setupMockStudent(page);
     await page.goto("/student/learning");
