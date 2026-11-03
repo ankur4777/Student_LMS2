@@ -127,4 +127,49 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
     await expect(page.getByRole("heading", { name: "My Certificates" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Download PDF" })).toBeVisible();
   });
+  test("searches enrolled courses and filters by lesson progress without treating exams as completed", async ({ page }) => {
+    await setupMockStudent(page, {
+      courses: [
+        { id: 901, title: "Algebra Fundamentals", description: "Mathematics", module_count: 1, completed_lessons: 0, total_lessons: 2, access_expires_at: null },
+        { id: 902, title: "Physics Lab", description: "Science", module_count: 1, completed_lessons: 1, total_lessons: 2, access_expires_at: null },
+        { id: 903, title: "English Literature", description: "Language", module_count: 1, completed_lessons: 2, total_lessons: 2, access_expires_at: null },
+        { id: 904, title: "Orientation", description: "Introduction", module_count: 0, completed_lessons: 0, total_lessons: 0, access_expires_at: null },
+      ],
+    });
+    await page.goto("/student/learning");
+    await expect(page.locator("article.learning-card")).toHaveCount(4);
+    await expect(page.getByText("4 of 4 courses")).toBeVisible();
+    await page.getByLabel("Search courses").fill("math");
+    await expect(page.locator("article.learning-card")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Algebra Fundamentals" })).toBeVisible();
+    await page.getByLabel("Search courses").clear();
+    await page.getByLabel("View by progress").selectOption("in_progress");
+    await expect(page.locator("article.learning-card")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "Physics Lab" })).toBeVisible();
+    await page.getByLabel("View by progress").selectOption("lessons_viewed");
+    await expect(page.locator("article.learning-card")).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: "English Literature" })).toBeVisible();
+    await page.getByLabel("View by progress").selectOption("not_started");
+    await expect(page.locator("article.learning-card")).toHaveCount(2);
+    await page.getByLabel("Search courses").fill("missing");
+    await expect(page.getByRole("heading", { name: "No matching courses" })).toBeVisible();
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await expect(page.locator("article.learning-card")).toHaveCount(4);
+  });
+
+  test("offers retry and recovers from a temporary course API error", async ({ page }) => {
+    await setupMockStudent(page, { coursesStatus: 503 });
+    await page.goto("/student/learning");
+    await expect(page.getByRole("alert")).toContainText("Local QA fixture API error");
+    await expect(page.getByRole("heading", { name: "No enrolled courses yet" })).toHaveCount(0);
+    await page.route("**" + API + "courses/", route =>
+      route.fulfill({ status: 200, json: { courses: [
+        { id: 903, title: "Recovered QA Course", description: "", module_count: 1, completed_lessons: 0, total_lessons: 1, access_expires_at: null },
+      ] } }),
+    );
+    await page.getByRole("button", { name: "Retry loading courses" }).click();
+    await expect(page.getByRole("heading", { name: "Recovered QA Course" })).toBeVisible();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  });
+
 });

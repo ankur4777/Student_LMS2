@@ -110,6 +110,8 @@ or database are used. These checks verify:
 - Local PDF download naming using fixture bytes.
 - Expired/unauthorized student access redirects to Student Login.
 - An API error surfaces a warning while existing issued certificates still display.
+- Course search and lesson-progress filters show the right results and clear cleanly.
+- The Retry action recovers from a temporary API error without claiming no enrollments.
 
 These tests are safe to execute in feature CI. They do **not** prove that
 Django enforces authorization or that the videos/certificates themselves
