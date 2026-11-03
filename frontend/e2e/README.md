@@ -125,6 +125,14 @@ cd C:\\student_LMS\\frontend\\e2e
 npm test -- --grep "Unauthenticated access must redirect to role login|Student Learning Center UI"
 ```
 
+## Cross-origin API mocking fix
+
+Mocked API responses now include browser CORS response headers and handle
+the `OPTIONS` preflight sent by `Authorization` requests from Next.js on
+port 3000 to Django on port 8000. Request handlers match the API **pathname**,
+even if your `NEXT_PUBLIC_API_BASE_URL` uses `localhost` instead of
+`127.0.0.1`. No application API behavior has been changed.
+
 ## Troubleshooting: all simulated UI tests failed
 
 If every simulated Student Learning Center test fails, the browser may be

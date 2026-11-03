@@ -3,6 +3,29 @@ import { test, expect } from "@playwright/test";
 // All API responses are simulated; no real student identity or production
 // database is ever used. These are frontend UI regressions, not API tests.
 const API = "/api/recorded-courses/learning/student/";
+
+// Browser fetches from Next.js and Django may be cross-origin. The
+// Authorization header triggers a CORS preflight even for a mocked GET.
+function isApiUrl(url, suffix) {
+  return url.pathname.endsWith(suffix);
+}
+function mockCorsHeaders(route) {
+  return {
+    "Access-Control-Allow-Origin": route.request().headers().origin || "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Vary": "Origin",
+  };
+}
+async function fulfillMockJson(route, { status = 200, json }) {
+  const headers = mockCorsHeaders(route);
+  if (route.request().method() === "OPTIONS") {
+    await route.fulfill({ status: 204, headers });
+    return;
+  }
+  await route.fulfill({ status, headers, json });
+}
+
 const VALID = {
   id: "QA-VALID-CERT",
   course_id: 901,
@@ -46,26 +69,24 @@ async function setupMockStudent(page, {
     () => localStorage.getItem("student_access_token"),
   )).toBe("browser-fixture-access-only");
 
-  await page.route("**" + API + "courses/", route =>
-    route.fulfill({
+  await page.route(url => isApiUrl(url, API + "courses/"), route =>
+    fulfillMockJson(route, {
       status: coursesStatus,
       json: coursesStatus === 200 ? { courses } : { detail: "Local QA fixture API error" },
     }),
   );
-  await page.route("**" + API + "certificates/", route =>
-    route.fulfill({ status: 200, json: { certificates } }),
+  await page.route(url => isApiUrl(url, API + "certificates/"), route =>
+    fulfillMockJson(route, { json: { certificates } }),
   );
-
-  // Auxiliary sidebar requests are also simulated to make the tests
-  // deterministic without requiring a Django server.
-  await page.route("**/api/recorded-courses/learning-access/", route =>
-    route.fulfill({ status: 200, json: { can_use_learning_center: true } }),
+  // Sidebar and popup requests also need CORS preflight support.
+  await page.route(url => isApiUrl(url, "/api/recorded-courses/learning-access/"), route =>
+    fulfillMockJson(route, { json: { can_use_learning_center: true } }),
   );
-  await page.route("**/api/academics/student/feature-access/", route =>
-    route.fulfill({ status: 200, json: { features: { recorded_courses: true, ai_assistant: false } } }),
+  await page.route(url => isApiUrl(url, "/api/academics/student/feature-access/"), route =>
+    fulfillMockJson(route, { json: { features: { recorded_courses: true, ai_assistant: false } } }),
   );
-  await page.route("**/api/live-classes/student/today/", route =>
-    route.fulfill({ status: 200, json: [] }),
+  await page.route(url => isApiUrl(url, "/api/live-classes/student/today/"), route =>
+    fulfillMockJson(route, { json: [] }),
   );
 }
 
@@ -78,6 +99,7 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
       url: page.url(),
       headings: headings.map(h => h.trim().slice(0, 120)).slice(0, 8),
       visibleAlerts: await page.getByRole("alert").allTextContents().catch(() => []),
+      preview: (await page.locator("body").innerText().catch(() => "")).slice(0, 350),
     };
     console.log("[MySLS browser QA diagnosis]", JSON.stringify(details));
   });
@@ -125,13 +147,17 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
     await expect(revoked.getByText("Revoked", { exact: true })).toBeVisible();
     await expect(revoked.getByRole("button", { name: "Download PDF" })).toHaveCount(0);
 
-    await page.route("**" + API + "certificates/QA-VALID-CERT/pdf/", route =>
-      route.fulfill({
+    await page.route(url => isApiUrl(url, API + "certificates/QA-VALID-CERT/pdf/"), route => {
+      if (route.request().method() === "OPTIONS") {
+        return route.fulfill({ status: 204, headers: mockCorsHeaders(route) });
+      }
+      return route.fulfill({
         status: 200,
+        headers: mockCorsHeaders(route),
         contentType: "application/pdf",
         body: "%PDF-1.4\n% Browser QA fixture (not a genuine certificate)\n",
-      }),
-    );
+      });
+    });
     const downloading = page.waitForEvent("download");
     await valid.getByRole("button", { name: "Download PDF" }).click();
     const download = await downloading;
@@ -187,8 +213,8 @@ test.describe("Student Learning Center UI (simulated backend responses)", () => 
     await page.goto("/student/learning");
     await expect(page.getByRole("alert")).toContainText("Local QA fixture API error");
     await expect(page.getByRole("heading", { name: "No enrolled courses yet" })).toHaveCount(0);
-    await page.route("**" + API + "courses/", route =>
-      route.fulfill({ status: 200, json: { courses: [
+    await page.route(url => isApiUrl(url, API + "courses/"), route =>
+      fulfillMockJson(route, { json: { courses: [
         { id: 903, title: "Recovered QA Course", description: "", module_count: 1, completed_lessons: 0, total_lessons: 1, access_expires_at: null },
       ] } }),
     );
