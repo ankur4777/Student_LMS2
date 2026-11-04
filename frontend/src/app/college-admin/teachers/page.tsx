@@ -51,13 +51,18 @@ function initials(name: string, username: string) {
 
 export default function CollegeAdminTeachersPage() {
   const router = useRouter();
-  const [admin] = useState<AdminUser>(getSavedAdmin);
+  const [admin, setAdmin] = useState<AdminUser>({});
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Browser storage is unavailable during SSR; load it after hydration.
+  useEffect(() => {
+    setAdmin(getSavedAdmin());
+  }, []);
 
   const clearSession = useCallback(() => {
     localStorage.removeItem("college_admin_access_token");
