@@ -67,6 +67,17 @@ const navSections: TeacherNavSection[] = [
 export default function TeacherSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  // Close the mobile navigation using Escape without changing any links
+  // or role-specific permissions.
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
   const [learningEnabled, setLearningEnabled] = useState(false);
 
   useEffect(() => {
@@ -94,17 +105,23 @@ export default function TeacherSidebar() {
         type="button"
         className="dashboard-menu-toggle teacher-menu-toggle"
         aria-label="Open navigation"
+        aria-expanded={open}
+        aria-controls="teacher-portal-navigation"
         onClick={() => setOpen(true)}
       >
         Menu
       </button>
 
-      <div
+      <button
+        type="button"
         className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
+        aria-label="Close navigation"
+        tabIndex={open ? 0 : -1}
         onClick={() => setOpen(false)}
       />
 
       <aside
+        id="teacher-portal-navigation"
         className={`teacher-sidebar teacher-portal-sidebar ${open ? "sidebar-open" : ""}`}
       >
         <div className="teacher-sidebar-brand teacher-portal-brand">
@@ -128,6 +145,7 @@ export default function TeacherSidebar() {
                     key={item.href}
                     href={item.href}
                     className={isActive(item.href) ? "active" : ""}
+                    aria-current={isActive(item.href) ? "page" : undefined}
                     onClick={() => setOpen(false)}
                   >
                     <span className="teacher-nav-label">

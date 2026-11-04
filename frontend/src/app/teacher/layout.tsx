@@ -9,6 +9,7 @@ export const metadata: Metadata = {
 import "./teacher-ui.css";
 import "../portal-bento.css";
 import "../portal-typography.css";
+import "../portal-polish.css";
 
 export default function TeacherLayout({
   children,

@@ -80,6 +80,17 @@ const navSections: StudentNavSection[] = [
 export default function StudentSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  // Close the mobile navigation using Escape without changing any links
+  // or role-specific permissions.
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
   const [learningEnabled, setLearningEnabled] = useState(false);
   const [featureAccess, setFeatureAccess] = useState<
     Partial<Record<StudentFeatureKey, boolean>> | null
@@ -169,17 +180,22 @@ export default function StudentSidebar() {
         type="button"
         className="dashboard-menu-toggle student-menu-toggle"
         aria-label="Open navigation"
+        aria-expanded={open}
+        aria-controls="student-portal-navigation"
         onClick={() => setOpen(true)}
       >
         Menu
       </button>
 
-      <div
+      <button
+        type="button"
         className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
+        aria-label="Close navigation"
+        tabIndex={open ? 0 : -1}
         onClick={() => setOpen(false)}
       />
 
-      <aside className={`student-sidebar student-portal-sidebar ${open ? "sidebar-open" : ""}`}>
+      <aside id="student-portal-navigation" className={`student-sidebar student-portal-sidebar ${open ? "sidebar-open" : ""}`}>
         <div className="sidebar-brand student-portal-brand">
           <OrganizationBrand
             tokenKey="student_access_token"
@@ -199,6 +215,7 @@ export default function StudentSidebar() {
                     key={item.href}
                     href={item.href}
                     className={isActive(item.href) ? "active" : ""}
+                    aria-current={isActive(item.href) ? "page" : undefined}
                     onClick={() => setOpen(false)}
                   >
                     <span className="student-nav-label">

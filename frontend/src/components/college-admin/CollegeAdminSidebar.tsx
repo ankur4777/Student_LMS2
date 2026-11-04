@@ -179,6 +179,17 @@ function getSavedBranding(): OrganizationBranding {
 export default function CollegeAdminSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  // Close the mobile navigation using Escape without changing any links
+  // or role-specific permissions.
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [open]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [branding, setBranding] =
     useState<OrganizationBranding>(getSavedBranding);
@@ -332,17 +343,23 @@ export default function CollegeAdminSidebar() {
         type="button"
         className="dashboard-menu-toggle"
         aria-label="Open navigation"
+        aria-expanded={open}
+        aria-controls="college-admin-portal-navigation"
         onClick={() => setOpen(true)}
       >
         Menu
       </button>
 
-      <div
+      <button
+        type="button"
         className={`dashboard-menu-backdrop ${open ? "show" : ""}`}
+        aria-label="Close navigation"
+        tabIndex={open ? 0 : -1}
         onClick={() => setOpen(false)}
       />
 
       <aside
+        id="college-admin-portal-navigation"
         className={`teacher-sidebar ${open ? "sidebar-open" : ""}`}
         style={{
           height: "100vh",
@@ -387,6 +404,7 @@ export default function CollegeAdminSidebar() {
           <Link
             href={dashboardItem.href}
             className={`college-admin-dashboard-link ${isActive(dashboardItem.href) ? "active" : ""}`}
+            aria-current={isActive(dashboardItem.href) ? "page" : undefined}
             onClick={closeMobileMenu}
           >
             <span className="college-admin-nav-label">
@@ -445,6 +463,7 @@ export default function CollegeAdminSidebar() {
                         key={item.href}
                         href={item.href}
                         className={isActive(item.href) ? "active" : ""}
+                        aria-current={isActive(item.href) ? "page" : undefined}
                         onClick={closeMobileMenu}
                       >
                         <span className="college-admin-nav-label">
