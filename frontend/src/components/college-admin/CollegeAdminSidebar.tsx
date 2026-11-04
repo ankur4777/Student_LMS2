@@ -191,8 +191,12 @@ export default function CollegeAdminSidebar() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [open]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [branding, setBranding] =
-    useState<OrganizationBranding>(getSavedBranding);
+  // Use identical branding on the server and the browser's first render.
+  // Restore cached organization branding only after hydration.
+  const [branding, setBranding] = useState<OrganizationBranding>({
+    name: "MySLS",
+    logo: "",
+  });
 
   const isActive = useCallback(
     (href: string) => {
@@ -312,6 +316,7 @@ export default function CollegeAdminSidebar() {
   }, []);
 
   useEffect(() => {
+    setBranding(getSavedBranding());
     void loadOrganizationBranding();
 
     const handleOrganizationUpdated = () => {
