@@ -46,6 +46,37 @@
   color: #b85c4b;
   background: #fff7f4;
 }
+/* Nested College Admin links retain a lighter visual hierarchy while
+ * their selected item, accent rule and icons match the parent menu. */
+.college-admin-ui-scope .teacher-sidebar-nav .college-admin-submenu a.active {
+  background: #fff1ec !important;
+  color: #b85c4b !important;
+  box-shadow: none !important;
+  font-weight: 650;
+}
+.college-admin-ui-scope .college-admin-submenu a.active::before {
+  background: #d98a77;
+}
+.college-admin-ui-scope .college-admin-submenu a:not(.active):hover {
+  background: #fff7f4;
+  color: #b85c4b;
+}
+.college-admin-ui-scope .college-admin-submenu a.active .college-admin-nav-label svg,
+.college-admin-ui-scope .college-admin-menu-group-toggle.active .college-admin-nav-label svg {
+  color: #c96b59 !important;
+}
+.college-admin-ui-scope .college-admin-menu-group-toggle.active .college-admin-menu-chevron {
+  border-color: #c96b59;
+}
+
+/* Give hover icons the same warm feedback as their menu labels. */
+.student-ui-scope .student-portal-nav a:not(.active):hover .student-nav-icon svg,
+.teacher-ui-scope .teacher-portal-nav a:not(.active):hover .teacher-nav-icon svg,
+.college-admin-ui-scope .teacher-sidebar-nav a:not(.active):hover .college-admin-nav-label svg,
+.college-admin-ui-scope .college-admin-menu-group-toggle:not(.active):hover .college-admin-nav-label svg {
+  color: #c96b59;
+}
+
 .college-admin-ui-scope .college-admin-menu-group {
   min-width: 0;
 }
