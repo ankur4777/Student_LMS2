@@ -84,7 +84,8 @@ jobs:
 
   recorded-learning-frontend:
     name: Next.js production build
-    runs-on: ubuntu-latest
+    # Playwright 1.55 supports Ubuntu 24.04, not ubuntu-latest's 26.04 runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
