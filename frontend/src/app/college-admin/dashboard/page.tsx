@@ -185,13 +185,18 @@ function noticeStatus(notice: Notice) {
 export default function CollegeAdminDashboardPage() {
   const router = useRouter();
 
-  const [admin] = useState<CollegeAdminUser>(getSavedCollegeAdmin);
+  const [admin, setAdmin] = useState<CollegeAdminUser>({});
   const [data, setData] = useState<DashboardData | null>(null);
   const [reports, setReports] = useState<ReportsOverview | null>(null);
   const [details, setDetails] = useState<ReportsDetails | null>(null);
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  // Restore session display name only after matching the server render.
+  useEffect(() => {
+    setAdmin(getSavedCollegeAdmin());
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem("college_admin_access_token");
