@@ -15,26 +15,36 @@
   --portal-quiet: #64766c;
 }
 
-/* Sidebar: bring icons into the same palette as the active menu surfaces. */
+/* Unified warm peach/coral active, hover and keyboard-focus navigation
+ * for Student, Teacher and College Admin portals. */
 .student-ui-scope .student-portal-nav a.active,
 .teacher-ui-scope .teacher-portal-nav a.active,
 .college-admin-ui-scope .teacher-sidebar-nav a.active,
-.college-admin-ui-scope .college-admin-menu-group-toggle.active {
-  color: #246346 !important;
-  background: #e5f3e9 !important;
-  box-shadow: inset 3px 0 0 #6fad85 !important;
+.college-admin-ui-scope .college-admin-menu-group-toggle.active,
+.college-admin-ui-scope .college-admin-dashboard-link.active {
+  color: #b85c4b !important;
+  background: #fff1ec !important;
+  box-shadow: inset 3px 0 0 #d98a77 !important;
+  font-weight: 720;
 }
 .student-ui-scope .student-portal-nav a.active svg,
 .teacher-ui-scope .teacher-portal-nav a.active svg,
 .college-admin-ui-scope .teacher-sidebar-nav a.active svg,
-.college-admin-ui-scope .college-admin-menu-group-toggle.active svg {
-  color: #287450 !important;
+.college-admin-ui-scope .college-admin-menu-group-toggle.active svg,
+.college-admin-ui-scope .college-admin-dashboard-link.active svg {
+  color: #c96b59 !important;
+}
+.student-ui-scope .student-portal-nav a.active .student-nav-icon,
+.teacher-ui-scope .teacher-portal-nav a.active .teacher-nav-icon {
+  background: #ffe5dc !important;
 }
 .student-ui-scope .student-portal-nav a:hover,
 .teacher-ui-scope .teacher-portal-nav a:hover,
 .college-admin-ui-scope .teacher-sidebar-nav a:hover,
-.college-admin-ui-scope .college-admin-menu-group-toggle:hover {
-  color: #276448;
+.college-admin-ui-scope .college-admin-menu-group-toggle:hover,
+.college-admin-ui-scope .college-admin-dashboard-link:hover {
+  color: #b85c4b;
+  background: #fff7f4;
 }
 .college-admin-ui-scope .college-admin-menu-group {
   min-width: 0;
@@ -54,7 +64,7 @@
 .teacher-ui-scope .teacher-portal-sidebar a:focus-visible,
 .college-admin-ui-scope .teacher-sidebar a:focus-visible,
 .college-admin-ui-scope .college-admin-menu-group-toggle:focus-visible {
-  outline: 2px solid #3c8a63;
+  outline: 2px solid #c96b59;
   outline-offset: 2px;
 }
 
