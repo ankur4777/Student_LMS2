@@ -43,14 +43,17 @@ export default function StudentTopbar({
   organization,
 }: StudentTopbarProps) {
   const router = useRouter();
-  const [profilePicture, setProfilePicture] = useState(
-    savedProfilePicture
-  );
+  // Keep the first client render identical to the server render.
+  // The saved avatar is restored after hydration, avoiding an <img>/<span>
+  // mismatch when a student already has a profile picture.
+  const [profilePicture, setProfilePicture] = useState("");
 
   useEffect(() => {
     const refreshPicture = () => {
       setProfilePicture(savedProfilePicture());
     };
+
+    refreshPicture();
 
     window.addEventListener(
       "student:profile-updated",
