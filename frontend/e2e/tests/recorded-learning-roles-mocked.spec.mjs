@@ -225,7 +225,7 @@ test.describe("Recorded Learning management UI (mocked local QA)", () => {
     await mockBackend(page, { teacherStatus: 503 });
     await page.goto("/teacher/recorded-courses");
 
-    await expect(page.getByRole("alert")).toContainText("Recorded Learning unavailable for QA teacher");
+    await expect(page.locator(".teacher-dashboard-content [role='alert']")).toContainText("Recorded Learning unavailable for QA teacher");
     await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(0);
 
     // Later route registration takes precedence over the 503 fixture.
@@ -243,7 +243,7 @@ test.describe("Recorded Learning management UI (mocked local QA)", () => {
     });
 
     await page.getByRole("button", { name: "Retry loading courses" }).click();
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator(".teacher-dashboard-content [role='alert']")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "QA Recorded Chemistry" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(2);
   });
