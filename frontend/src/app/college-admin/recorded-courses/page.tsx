@@ -13,7 +13,12 @@ type Course={id:number;title:string;description:string;price:string;access_durat
 export default function RecordedCoursesPage(){
  const router=useRouter(); const [courses,setCourses]=useState<Course[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState("");
  const [form,setForm]=useState({title:"",description:"",price:"",access_duration_days:"180",is_active:true});
- const [admin]=useState<any>(()=>{try{return JSON.parse(localStorage.getItem("college_admin_user")||"{}")}catch{return {}}});
+ const [admin,setAdmin]=useState<{name?:string;username?:string;organization?:string}>({});
+ // Cached browser account details must be loaded after hydration so the
+ // server and the initial client render show the same header content.
+ useEffect(()=>{
+  try{setAdmin(JSON.parse(localStorage.getItem("college_admin_user")||"{}"))}catch{setAdmin({})}
+ },[]);
  const load=useCallback(async()=>{const token=localStorage.getItem("college_admin_access_token");if(!token){router.replace("/college-admin/login");return}
   setLoading(true);try{const r=await fetch(`${API_BASE}/api/recorded-courses/college-admin/courses/`,{headers:{Authorization:`Bearer ${token}`}});const j=await r.json();if(!r.ok)throw new Error(j.detail||"Unable to load recorded courses.");setCourses(j.courses||[])}catch(e){setError(e instanceof Error?e.message:"Unable to load recorded courses.")}finally{setLoading(false)}},[router]);
  useEffect(()=>{void load()},[load]);
