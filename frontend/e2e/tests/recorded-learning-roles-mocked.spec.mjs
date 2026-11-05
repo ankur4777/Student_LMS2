@@ -188,4 +188,63 @@ test.describe("Recorded Learning management UI (mocked local QA)", () => {
     await expect(page.getByText("Recorded Learning unavailable for QA teacher")).toBeVisible();
     await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(0);
   });
+
+  test("Teacher can search, sort and reset assigned course filters", async ({ page }) => {
+    await initRole(page, "teacher");
+    await mockBackend(page);
+    await page.goto("/teacher/recorded-courses");
+
+    await expect(page.getByText("Showing 2 of 2 assigned courses")).toBeVisible();
+    const search = page.getByRole("searchbox", { name: "Search assigned courses" });
+    const sort = page.getByRole("combobox", { name: "Sort assigned courses" });
+
+    await search.fill("synthetic course");
+    await expect(page.getByText("Showing 1 of 2 assigned courses")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "QA Recorded Chemistry" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "QA Recorded Mathematics" })).toHaveCount(0);
+
+    await search.fill("");
+    await sort.selectOption("title_desc");
+    const courseHeadings = page.locator(".teacher-dashboard-content .card h2");
+    await expect(courseHeadings.first()).toHaveText("QA Recorded Mathematics");
+    await sort.selectOption("most_lessons");
+    await expect(courseHeadings.first()).toHaveText("QA Recorded Chemistry");
+
+    await search.fill("not-a-course");
+    await expect(page.getByRole("heading", { name: "No matching courses" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Clear course filters" }).click();
+    await expect(page.getByText("Showing 2 of 2 assigned courses")).toBeVisible();
+    await expect(search).toHaveValue("");
+    await expect(sort).toHaveValue("assigned");
+    await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(2);
+  });
+
+  test("Teacher can retry a temporary courses API error", async ({ page }) => {
+    await initRole(page, "teacher");
+    await mockBackend(page, { teacherStatus: 503 });
+    await page.goto("/teacher/recorded-courses");
+
+    await expect(page.getByRole("alert")).toContainText("Recorded Learning unavailable for QA teacher");
+    await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(0);
+
+    // Later route registration takes precedence over the 503 fixture.
+    await page.route(url => url.pathname.endsWith("/api/recorded-courses/learning/manage/courses/"), async route => {
+      const headers = {
+        "Access-Control-Allow-Origin": route.request().headers().origin || "*",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+      };
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers });
+        return;
+      }
+      await route.fulfill({ status: 200, headers, json: { courses: teacherCourses } });
+    });
+
+    await page.getByRole("button", { name: "Retry loading courses" }).click();
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "QA Recorded Chemistry" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Manage course" })).toHaveCount(2);
+  });
 });
