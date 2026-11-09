@@ -26,6 +26,8 @@ export default function StudentLearningCourseDetailPage() {
   const [expandedModuleId, setExpandedModuleId] = useState<number|null>(null);
   const [videoUrl, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [reloadIndex, setReloadIndex] = useState(0);
   const [videoLoading, setVideoLoading] = useState(false);
   const [busyResource, setBusyResource] = useState<number|null>(null);
   const [error, setError] = useState("");
@@ -43,6 +45,9 @@ export default function StudentLearningCourseDetailPage() {
     const token = currentToken();
     if (!token) { router.replace("/student/login"); return; }
     const controller = new AbortController();
+    setLoading(true);
+    setLoadError("");
+    setCourse(null);
     const load = async () => {
       try {
         const response = await fetch(`${BASE}/api/recorded-courses/learning/student/courses/${id}/`, {
@@ -52,19 +57,24 @@ export default function StudentLearningCourseDetailPage() {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.detail || "Cannot open this course.");
         const next: Course = data.course;
+        if (!next || !Array.isArray(next.modules)) {
+          throw new Error("Course materials could not be loaded.");
+        }
+        if (controller.signal.aborted) return;
         setCourse(next);
         setExpandedModuleId(current =>
           current !== null && next.modules.some(m => m.id === current && !m.locked)
             ? current : (next.modules.find(m => !m.locked)?.id ?? null)
         );
-        setSelectedId(current => current && next.modules.some(m => !m.locked && m.lessons.some(l => l.id === current))
-          ? current : next.modules.flatMap(m => m.lessons)[0]?.id ?? null);
-      } catch(e) {if(!controller.signal.aborted) setError(e instanceof Error?e.message:"Cannot open this course.");}
+        // Locked modules are visible as a roadmap but never auto-selected.
+        setSelectedId(current => current !== null && next.modules.some(m => !m.locked && m.lessons.some(l => l.id === current))
+          ? current : next.modules.filter(m => !m.locked).flatMap(m => m.lessons)[0]?.id ?? null);
+      } catch(e) {if(!controller.signal.aborted) setLoadError(e instanceof Error?e.message:"Cannot open this course.");}
       finally {if(!controller.signal.aborted)setLoading(false);}
     };
     void load();
     return () => controller.abort();
-  }, [id,router]);
+  }, [id,router,reloadIndex]);
 
   useEffect(() => {
     const token = currentToken();
@@ -233,8 +243,12 @@ export default function StudentLearningCourseDetailPage() {
         <p>{course?.description || "Your recorded lectures and study resources"}</p></div>
         <Link className="btn btn-outline-primary" href="/student/learning">← All courses</Link></header>
       {error && <div className="alert alert-warning" role="alert">{error}</div>}
-      {loading ? <div className="learning-empty">Loading your learning materials...</div> : !course ?
-        <div className="learning-empty">This course is unavailable or your course access has expired.</div> : <>
+      {loading ? <div className="learning-empty" role="status">Loading your learning materials...</div> : loadError || !course ?
+        <div className="learning-empty">
+          <h2>Course materials unavailable</h2>
+          <p>{loadError || "This course is unavailable or your course access has expired."}</p>
+          <button type="button" className="btn btn-outline-primary" onClick={() => setReloadIndex(index => index + 1)}>Retry loading course</button>
+        </div> : <>
         <section className="learning-summary">
           <div><strong>{course.modules.length}</strong><span>Published modules</span></div>
           <div><strong>{course.completed_lessons}/{course.total_lessons}</strong><span>Lectures viewed</span></div>
@@ -280,7 +294,7 @@ export default function StudentLearningCourseDetailPage() {
                 {module.description && <p className="learning-module-description">{module.description}</p>}
                 {module.locked && <p className="learning-module-description"><i className="bi bi-lock" aria-hidden="true" /> Complete the previous module before accessing these lessons.</p>}
                 <div className="learning-lesson-items">{module.lessons.map(lesson=><button type="button" key={lesson.id} className={"learning-lesson-button"+(selectedId===lesson.id?" is-selected":"")}
-                  onClick={()=>setSelectedId(lesson.id)} aria-current={selectedId===lesson.id?"true":undefined}>
+                  disabled={module.locked} onClick={()=>{if(!module.locked)setSelectedId(lesson.id)}} aria-current={selectedId===lesson.id?"true":undefined}>
                   <i className={`bi ${lesson.completed?"bi-check-circle-fill":"bi-play-circle"}`} aria-hidden="true" /><span>{lesson.title}</span></button>)}</div>
                 {module.resources.length>0 && <div className="learning-resource-list"><h3>Notes & resources</h3>
                   {module.resources.map(resource=><button key={resource.id} type="button" disabled={busyResource===resource.id} onClick={()=>void download(resource)}>
