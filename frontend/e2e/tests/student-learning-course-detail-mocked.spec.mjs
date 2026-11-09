@@ -68,6 +68,27 @@ async function setupStudent(page, fixture) {
         : { status, headers, json: { detail: "Student QA course temporarily unavailable" } });
       return;
     }
+    if (path === courseURL + "final-exam/" && route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200, headers,
+        json: { exam: fixture.course.final_exam, questions: [] },
+      });
+      return;
+    }
+    if (path.endsWith("/api/recorded-courses/learning/student/modules/11/quiz/") && route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200, headers,
+        json: { quiz: fixture.course.modules[0]?.quiz || fixture.course.modules.find(m => m.id === 11)?.quiz, questions: [] },
+      });
+      return;
+    }
+    if (path.endsWith("/api/recorded-courses/learning/student/modules/11/assignment/") && route.request().method() === "GET") {
+      await route.fulfill({
+        status: 200, headers,
+        json: { assignment: fixture.course.modules.find(m => m.id === 11)?.assignment },
+      });
+      return;
+    }
     if (path.startsWith(lessonPrefix) && path.endsWith("/play/")) {
       const lessonId = Number(path.slice(lessonPrefix.length).split("/")[0]);
       fixture.playRequests.push(lessonId);
@@ -182,6 +203,158 @@ test.describe("Student course detail UI (simulated backend)", () => {
     await expect(page.getByText("No published modules yet. Please check back later.")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Choose a lecture" })).toBeVisible();
     expect(fixture.playRequests).toEqual([]);
+  });
+
+
+  test("explains that watching lectures does not complete a module with an unpassed quiz", async ({ page }) => {
+    const quiz = {
+      id: 71, title: "QA Module Quiz", passing_percent: 70, max_attempts: 3,
+      attempts_used: 0, attempts_remaining: 3, passed: false,
+      best_score_percent: null, unlocked: true,
+    };
+    const course = {
+      ...baseCourse,
+      completed_lessons: 2,
+      modules: [
+        { ...baseCourse.modules[0], completed_lessons: 2, completed: false,
+          lessons: [playable, { ...second, completed: true }], quiz },
+        baseCourse.modules[1],
+      ],
+    };
+    const fixture = fixtureFor(course);
+    await setupStudent(page, fixture);
+    await page.goto("/student/learning/901");
+
+    const milestones = page.getByRole("region", { name: "Learning milestones and certification" });
+    await expect(milestones).toBeVisible();
+    await expect(milestones.getByText("2 of 3 viewed")).toBeVisible();
+    await expect(milestones.getByText("0 of 2 completed")).toBeVisible();
+    await expect(milestones.getByText("Not published")).toBeVisible();
+    await expect(milestones.getByText("Not yet issued")).toBeVisible();
+    await expect(milestones.getByRole("status")).toContainText("Pass the required quiz in QA Open Module.");
+    await expect(page.getByRole("heading", { name: "QA Module Quiz" })).toBeVisible();
+  });
+
+  test("shows pending assignment grading as the next learning step", async ({ page }) => {
+    const assignment = {
+      id: 75, title: "QA Teacher Assignment", instructions: "Upload your work",
+      passing_percent: 70, max_attempts: 2, attempts_used: 1,
+      attempts_remaining: 1, passed: false, unlocked: true,
+      pending_review: true, latest_submission: null,
+    };
+    const course = {
+      ...baseCourse,
+      completed_lessons: 2,
+      modules: [
+        { ...baseCourse.modules[0], completed_lessons: 2, completed: false,
+          lessons: [playable, { ...second, completed: true }], assignment },
+        baseCourse.modules[1],
+      ],
+    };
+    await setupStudent(page, fixtureFor(course));
+    await page.goto("/student/learning/901");
+
+    const milestones = page.getByRole("region", { name: "Learning milestones and certification" });
+    await expect(milestones.getByRole("status")).toContainText(
+      "Your assignment in QA Open Module is awaiting teacher grading.",
+    );
+    await expect(page.getByText("Your submission is awaiting grading.")).toBeVisible();
+    await expect(milestones.getByText("0 of 2 completed")).toBeVisible();
+  });
+
+  test("shows an unlocked final exam without treating lecture completion as a certificate", async ({ page }) => {
+    const final = {
+      id: 91, title: "QA Course Final", passing_percent: 70, max_attempts: 3,
+      attempts_used: 1, attempts_remaining: 2, passed: false, unlocked: true,
+      required_modules: 2, best_score_percent: 50, certificate_id: null,
+    };
+    const course = {
+      ...baseCourse,
+      completed_lessons: 3,
+      modules: [
+        { ...baseCourse.modules[0], completed: true, completed_lessons: 2,
+          lessons: [playable, { ...second, completed: true }] },
+        { ...baseCourse.modules[1], locked: false, completed: true, completed_lessons: 1,
+          lessons: [{ ...lockedLesson, completed: true }] },
+      ],
+      final_exam: final,
+    };
+    await setupStudent(page, fixtureFor(course));
+    await page.goto("/student/learning/901");
+
+    const milestones = page.getByRole("region", { name: "Learning milestones and certification" });
+    await expect(milestones.getByText("2 of 2 completed")).toBeVisible();
+    await expect(milestones.getByText("Ready to attempt")).toBeVisible();
+    await expect(milestones.getByText("Not yet issued")).toBeVisible();
+    await expect(milestones.getByRole("status")).toContainText(
+      "Take the unlocked final examination to qualify for your certificate.",
+    );
+    await expect(milestones.getByRole("link", { name: "Go to final exam" }))
+      .toHaveAttribute("href", "#student-final-exam");
+    await expect(page.getByRole("region", { name: "Final course examination" }))
+      .toHaveAttribute("id", "student-final-exam");
+  });
+
+  test("shows an issued certificate only when the final exam has an active certificate ID", async ({ page }) => {
+    const final = {
+      id: 95, title: "QA Course Final", passing_percent: 70, max_attempts: 3,
+      attempts_used: 1, attempts_remaining: 2, passed: true, unlocked: true,
+      required_modules: 2, best_score_percent: 91,
+      certificate_id: "11111111-2222-4333-8444-555555555555",
+    };
+    const course = {
+      ...baseCourse,
+      completed_lessons: 3,
+      modules: [
+        { ...baseCourse.modules[0], completed: true, completed_lessons: 2,
+          lessons: [playable, { ...second, completed: true }] },
+        { ...baseCourse.modules[1], locked: false, completed: true, completed_lessons: 1,
+          lessons: [{ ...lockedLesson, completed: true }] },
+      ],
+      final_exam: final,
+    };
+    const fixture = fixtureFor(course);
+    await setupStudent(page, fixture);
+    await page.goto("/student/learning/901");
+
+    const milestones = page.getByRole("region", { name: "Learning milestones and certification" });
+    await expect(milestones.getByText("Passed", { exact: true })).toBeVisible();
+    await expect(milestones.getByText("Available", { exact: true })).toBeVisible();
+    await expect(milestones.getByRole("status")).toContainText("Your certificate is available");
+    await expect(milestones.getByRole("link", { name: "Go to your certificate" }))
+      .toHaveAttribute("href", "#student-final-exam");
+    await expect(page.getByRole("region", { name: "Final course examination" })
+      .getByRole("button", { name: "Download PDF certificate" })).toBeVisible();
+  });
+
+  test("does not label a revoked or unavailable certificate as issued", async ({ page }) => {
+    const final = {
+      id: 96, title: "QA Course Final", passing_percent: 70, max_attempts: 3,
+      attempts_used: 1, attempts_remaining: 2, passed: true, unlocked: true,
+      required_modules: 2, best_score_percent: 91, certificate_id: null,
+    };
+    const course = {
+      ...baseCourse,
+      completed_lessons: 3,
+      modules: [
+        { ...baseCourse.modules[0], completed: true, completed_lessons: 2,
+          lessons: [playable, { ...second, completed: true }] },
+        { ...baseCourse.modules[1], locked: false, completed: true, completed_lessons: 1,
+          lessons: [{ ...lockedLesson, completed: true }] },
+      ],
+      final_exam: final,
+    };
+    await setupStudent(page, fixtureFor(course));
+    await page.goto("/student/learning/901");
+
+    const milestones = page.getByRole("region", { name: "Learning milestones and certification" });
+    await expect(milestones.getByText("Not currently available", { exact: true })).toBeVisible();
+    await expect(milestones.getByRole("status")).toContainText(
+      "You passed the final exam, but no active certificate is available.",
+    );
+    await expect(milestones.getByRole("link", { name: "Go to your certificate" })).toHaveCount(0);
+    await expect(page.getByRole("region", { name: "Final course examination" })
+      .getByRole("button", { name: "Download PDF certificate" })).toHaveCount(0);
   });
 
   test("redirects to the Student Login when course-detail access expires", async ({ page }) => {
