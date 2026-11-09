@@ -178,7 +178,7 @@ test.describe("College Admin course detail UI (mocked local QA)", () => {
     await expect(upload.getByRole("textbox", { name: "Lesson Title" })).toBeVisible();
     await upload.getByRole("textbox", { name: "Lesson Title" }).fill("QA Uploaded Video");
     await upload.getByRole("textbox", { name: "Description" }).fill("Synthetic upload");
-    await upload.getByRole("fileinput", { name: "Video" }).setInputFiles({
+    await upload.getByLabel("Video", { exact: true }).setInputFiles({
       name: "browser-qa.webm", mimeType: "video/webm", buffer: Buffer.from("browser test video only"),
     });
     await upload.getByRole("button", { name: "Upload Lesson" }).click();
@@ -197,12 +197,12 @@ test.describe("College Admin course detail UI (mocked local QA)", () => {
     fixture.loadStatus = 503;
     await setupAdmin(page, fixture);
     await page.goto("/college-admin/recorded-courses/911");
-    await expect(page.getByRole("alert")).toContainText("Temporary course detail failure");
+    await expect(page.locator(".teacher-dashboard-content [role='alert']")).toContainText("Temporary course detail failure");
     await expect(page.getByRole("region", { name: "Recorded course details" })).toHaveCount(0);
 
     fixture.loadStatus = 200;
     await page.getByRole("button", { name: "Retry loading course" }).click();
     await expect(page.getByRole("region", { name: "Recorded course details" })).toBeVisible();
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.locator(".teacher-dashboard-content [role='alert']")).toHaveCount(0);
   });
 });
