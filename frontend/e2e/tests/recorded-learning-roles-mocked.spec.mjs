@@ -59,6 +59,7 @@ async function mockBackend(page, {
   analyticsEnabled = true,
   paid = paidCourses,
   assigned = teacherCourses,
+  collegeStatus = 200,
   teacherStatus = 200,
 } = {}) {
   await page.route(url => url.pathname.includes("/api/"), async route => {
@@ -80,7 +81,9 @@ async function mockBackend(page, {
     }
     const pathname = new URL(route.request().url()).pathname;
     if (pathname.endsWith("/api/recorded-courses/college-admin/courses/")) {
-      await route.fulfill({ status: 200, headers, json: { courses: paid } });
+      await route.fulfill(collegeStatus === 200
+        ? { status: 200, headers, json: { courses: paid } }
+        : { status: collegeStatus, headers, json: { detail: "Temporary recorded course list failure" } });
     } else if (pathname.endsWith("/api/recorded-courses/learning/manage/analytics/")) {
       await route.fulfill(analyticsEnabled
         ? { status: 200, headers, json: analytics }
@@ -157,6 +160,161 @@ test.describe("Recorded Learning management UI (mocked local QA)", () => {
       "href", "/college-admin/recorded-courses/911",
     );
     await expect(page.getByRole("heading", { name: "Create Recorded Course" })).toBeVisible();
+  });
+
+  test("College Admin searches and filters paid courses without affecting analytics", async ({ page }) => {
+    await initRole(page, "college-admin");
+    await mockBackend(page);
+    await page.goto("/college-admin/recorded-courses");
+
+    const management = page.getByRole("region", { name: "Recorded course management" });
+    const search = management.getByRole("searchbox", { name: "Search recorded courses" });
+    const status = management.getByRole("combobox", { name: "Filter courses by status" });
+    const courseTable = management.getByRole("table", { name: "Recorded courses" });
+
+    await expect(management.getByText("Total: 2")).toBeVisible();
+    await expect(management.getByText("Active: 1")).toBeVisible();
+    await expect(management.getByText("Inactive: 1")).toBeVisible();
+    await expect(management.getByText("Showing 2 of 2 recorded courses")).toBeVisible();
+
+    await search.fill("synthetic");
+    await expect(management.getByText("Showing 1 of 2 recorded courses")).toBeVisible();
+    await expect(courseTable.getByRole("row").filter({ hasText: "QA Recorded Chemistry" })).toBeVisible();
+    await expect(courseTable.getByRole("row").filter({ hasText: "QA Intro to Programming" })).toHaveCount(0);
+
+    await search.fill("");
+    await status.selectOption("inactive");
+    await expect(management.getByText("Showing 1 of 2 recorded courses")).toBeVisible();
+    await expect(courseTable.getByRole("row").filter({ hasText: "QA Intro to Programming" })).toBeVisible();
+
+    await status.selectOption("active");
+    await expect(courseTable.getByRole("row").filter({ hasText: "QA Recorded Chemistry" })).toBeVisible();
+
+    // The independent analytics section still shows its own unfiltered data.
+    await expect(page.getByRole("region", { name: "Organization learning analytics" })
+      .getByRole("link", { name: analyticsCourse })).toBeVisible();
+
+    await search.fill("missing course");
+    await expect(management.getByRole("heading", { name: "No matching recorded courses" })).toBeVisible();
+    await expect(management.getByRole("link", { name: "Manage" })).toHaveCount(0);
+    await management.getByRole("button", { name: "Clear course filters" }).click();
+    await expect(search).toHaveValue("");
+    await expect(status).toHaveValue("all");
+    await expect(courseTable.getByRole("link", { name: "Manage" })).toHaveCount(2);
+  });
+
+  test("College Admin sorts course rows by title, price and lessons", async ({ page }) => {
+    await initRole(page, "college-admin");
+    await mockBackend(page);
+    await page.goto("/college-admin/recorded-courses");
+
+    const management = page.getByRole("region", { name: "Recorded course management" });
+    const sort = management.getByRole("combobox", { name: "Sort courses" });
+    const rows = management.getByRole("table", { name: "Recorded courses" }).locator("tbody tr");
+    await expect(rows).toHaveCount(2);
+
+    await sort.selectOption("title_asc");
+    await expect(rows.first()).toContainText("QA Intro to Programming");
+    await sort.selectOption("title_desc");
+    await expect(rows.first()).toContainText("QA Recorded Chemistry");
+    await sort.selectOption("price_asc");
+    await expect(rows.first()).toContainText("QA Intro to Programming");
+    await sort.selectOption("price_desc");
+    await expect(rows.first()).toContainText("QA Recorded Chemistry");
+    await sort.selectOption("most_lessons");
+    await expect(rows.first()).toContainText("QA Recorded Chemistry");
+
+    await management.getByRole("button", { name: "Clear", exact: true }).click();
+    await expect(sort).toHaveValue("original");
+    await expect(rows.first()).toContainText("QA Recorded Chemistry");
+  });
+
+  test("College Admin shows a separate empty state when no courses exist", async ({ page }) => {
+    await initRole(page, "college-admin");
+    await mockBackend(page, { paid: [] });
+    await page.goto("/college-admin/recorded-courses");
+    const management = page.getByRole("region", { name: "Recorded course management" });
+    await expect(management.getByText("No recorded courses created yet.")).toBeVisible();
+    await expect(management.getByText("Total: 0")).toBeVisible();
+    await expect(management.getByRole("searchbox", { name: "Search recorded courses" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Create Recorded Course" })).toBeVisible();
+  });
+
+  test("College Admin can retry a temporary course-list failure", async ({ page }) => {
+    await initRole(page, "college-admin");
+    await mockBackend(page, { collegeStatus: 503 });
+    await page.goto("/college-admin/recorded-courses");
+
+    const management = page.getByRole("region", { name: "Recorded course management" });
+    await expect(management.getByRole("alert")).toContainText("Temporary recorded course list failure");
+    await expect(management.getByRole("link", { name: "Manage" })).toHaveCount(0);
+
+    // Replace only the failed local API fixture; no real Django requests.
+    await page.route(url => url.pathname.endsWith("/api/recorded-courses/college-admin/courses/"), async route => {
+      const headers = {
+        "Access-Control-Allow-Origin": route.request().headers().origin || "*",
+        "Access-Control-Allow-Headers": "Authorization, Content-Type",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+      };
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers });
+        return;
+      }
+      await route.fulfill({ status: 200, headers, json: { courses: paidCourses } });
+    });
+
+    await management.getByRole("button", { name: "Retry loading courses" }).click();
+    await expect(management.getByRole("alert")).toHaveCount(0);
+    await expect(management.getByText("Showing 2 of 2 recorded courses")).toBeVisible();
+    await expect(management.getByRole("link", { name: "Manage" })).toHaveCount(2);
+  });
+
+  test("College Admin creates a course through a simulated POST and refreshes the list", async ({ page }) => {
+    const paid = [...paidCourses];
+    await initRole(page, "college-admin");
+    await mockBackend(page, { paid });
+
+    let posted;
+    await page.route(url => url.pathname.endsWith("/api/recorded-courses/college-admin/courses/"), async route => {
+      if (route.request().method() !== "POST") {
+        await route.fallback();
+        return;
+      }
+      posted = route.request().postDataJSON();
+      paid.push({
+        id: 920, title: posted.title, description: posted.description, price: posted.price,
+        access_duration_days: posted.access_duration_days, is_active: posted.is_active, lesson_count: 0,
+      });
+      await route.fulfill({
+        status: 201,
+        headers: { "Access-Control-Allow-Origin": route.request().headers().origin || "*" },
+        json: { id: 920 },
+      });
+    });
+
+    await page.goto("/college-admin/recorded-courses");
+    const create = page.getByRole("region", { name: "Create recorded course" });
+    await create.getByRole("textbox", { name: "Course Title" }).fill("QA Newly Created Course");
+    await create.getByRole("spinbutton", { name: "Price (₹)" }).fill("49.50");
+    await create.getByRole("spinbutton", { name: "Access Duration (Days)" }).fill("60");
+    await create.getByRole("textbox", { name: "Description" }).fill("Generated by browser fixture");
+    await create.getByRole("checkbox", { name: "Active" }).uncheck();
+
+    await create.getByRole("button", { name: "Create Course" }).click();
+    await expect(create.getByRole("status")).toHaveText("Course created successfully.");
+    await expect(create.getByRole("textbox", { name: "Course Title" })).toHaveValue("");
+    await expect(create.getByRole("spinbutton", { name: "Access Duration (Days)" })).toHaveValue("180");
+    expect(posted).toMatchObject({
+      title: "QA Newly Created Course", price: "49.50", access_duration_days: 60,
+      is_active: false,
+    });
+
+    const management = page.getByRole("region", { name: "Recorded course management" });
+    await expect(management.getByText("Showing 3 of 3 recorded courses")).toBeVisible();
+    const newRow = management.getByRole("row").filter({ hasText: "QA Newly Created Course" });
+    await expect(newRow.getByRole("link", { name: "Manage" })).toHaveAttribute(
+      "href", "/college-admin/recorded-courses/920",
+    );
   });
 
   test("Teacher sees assigned courses and their management links", async ({ page }) => {
