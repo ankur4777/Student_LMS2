@@ -7,6 +7,7 @@ import StudentSidebar from "@/components/student/studentsidebar";
 import StudentModuleQuiz, {type QuizSummary} from "@/components/learning/StudentModuleQuiz";
 import StudentModuleAssignment, {type AssignmentSummary} from "@/components/learning/StudentModuleAssignment";
 import StudentFinalExam, {type FinalExamSummary} from "@/components/learning/StudentFinalExam";
+import StudentLearningMilestones from "@/components/learning/StudentLearningMilestones";
 import StudentTopbar from "@/components/student/studentTopbar";
 import "../../dashboard/dashboard.css";
 import "../learning.css";
@@ -255,6 +256,7 @@ export default function StudentLearningCourseDetailPage() {
           <div className="learning-summary-progress"><strong>{percent}%</strong><span>Reported video progress</span>
             <div className="learning-meter"><span style={{width:`${percent}%`}} /></div></div>
         </section>
+        <StudentLearningMilestones course={course} />
         <div className="learning-workspace">
           <section className="learning-viewer" aria-label="Course lecture player">
             <div className="learning-viewer-header"><small>NOW PLAYING</small><h2>{selected?.title || "Choose a lecture"}</h2></div>
