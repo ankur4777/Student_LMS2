@@ -37,7 +37,7 @@ if (built !== 0) {
   console.log("[MySLS QA] Running Chromium tests against production Next.js on " + baseURL);
   const result = await runNpm([
     "run", "test", "--",
-    "--grep", "Student Learning Center UI|College Admin branding hydration|Student and Teacher branding hydration|Recorded Learning management UI|College Admin course detail UI|Student course detail UI|Student final exam submission and certificate UI",
+    "--grep", "Student Learning Center UI|College Admin branding hydration|Student and Teacher branding hydration|Recorded Learning management UI|College Admin course detail UI|Student course detail UI|Student final exam submission and certificate UI|Student module quiz and assignment UI",
     "--workers=1",
   ], e2eDir, env);
   process.exitCode = result;
