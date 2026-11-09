@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 export type FinalExamSummary = {
   id: number;
@@ -43,6 +43,10 @@ export default function StudentFinalExam({ courseId, summary, onUpdated }: {
   const [loadError, setLoadError] = useState("");
   const [actionError, setActionError] = useState("");
   const [reloadIndex, setReloadIndex] = useState(0);
+  // A confirmed POST must not be mislabeled as a failed attempt when the
+  // parent refresh also triggers a failing GET.
+  const acceptedAttemptNeedsRefresh = useRef(false);
+  useEffect(() => { acceptedAttemptNeedsRefresh.current = false; }, [courseId]);
 
   const load = useCallback(async (signal?: AbortSignal): Promise<ExamResponse> => {
     const token = localStorage.getItem("student_access_token");
@@ -72,9 +76,12 @@ export default function StudentFinalExam({ courseId, summary, onUpdated }: {
       if (controller.signal.aborted) return;
       setStatus(body.exam);
       setQuestions(Array.isArray(body.questions) ? body.questions : []);
+      acceptedAttemptNeedsRefresh.current = false;
     }).catch(cause => {
       if (!controller.signal.aborted) {
-        setLoadError(cause instanceof Error ? cause.message : "Unable to load the final examination.");
+        setLoadError(acceptedAttemptNeedsRefresh.current
+          ? "Your attempt was recorded, but the exam could not refresh. Retry loading exam status before attempting again."
+          : cause instanceof Error ? cause.message : "Unable to load the final examination.");
       }
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);
@@ -112,6 +119,7 @@ export default function StudentFinalExam({ courseId, summary, onUpdated }: {
       }
       const saved = payload as { exam: FinalExamSummary; attempt: ExamAttempt };
       setStatus(saved.exam);
+      acceptedAttemptNeedsRefresh.current = true;
       setResult(saved.attempt);
       setAnswers({});
       setQuestions([]);
@@ -122,6 +130,7 @@ export default function StudentFinalExam({ courseId, summary, onUpdated }: {
         const latest = await load();
         setStatus(latest.exam);
         setQuestions(Array.isArray(latest.questions) ? latest.questions : []);
+        acceptedAttemptNeedsRefresh.current = false;
       } catch {
         setLoadError("Your attempt was recorded, but the exam could not refresh. Retry loading exam status before attempting again.");
       }
