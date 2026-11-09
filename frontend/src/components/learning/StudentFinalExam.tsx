@@ -51,7 +51,7 @@ export default function StudentFinalExam({courseId,summary,onUpdated}:{
    window.setTimeout(()=>URL.revokeObjectURL(src),30000);
   }catch(e){setError(e instanceof Error?e.message:"Download failed.");}finally{setBusy(false);}
  }
- return <section className="card border-0 shadow-sm mt-4" aria-label="Final course examination"><div className="card-body p-4">
+ return <section id="student-final-exam" className="card border-0 shadow-sm mt-4" aria-label="Final course examination"><div className="card-body p-4">
   <div className="d-flex gap-3 align-items-center"><i className="bi bi-award fs-2 text-danger" aria-hidden="true"/>
    <div><h2 className="h5 fw-bold mb-1">{status.title}</h2>
     <p className="small text-muted mb-0">Pass mark {status.passing_percent}% · {status.attempts_used}/{status.max_attempts} attempts · {status.required_modules} modules</p>
