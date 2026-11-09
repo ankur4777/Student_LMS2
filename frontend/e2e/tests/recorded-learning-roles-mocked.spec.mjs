@@ -172,9 +172,9 @@ test.describe("Recorded Learning management UI (mocked local QA)", () => {
     const status = management.getByRole("combobox", { name: "Filter courses by status" });
     const courseTable = management.getByRole("table", { name: "Recorded courses" });
 
-    await expect(management.getByText("Total: 2")).toBeVisible();
-    await expect(management.getByText("Active: 1")).toBeVisible();
-    await expect(management.getByText("Inactive: 1")).toBeVisible();
+    await expect(management.getByText("Total: 2", { exact: true })).toBeVisible();
+    await expect(management.getByText("Active: 1", { exact: true })).toBeVisible();
+    await expect(management.getByText("Inactive: 1", { exact: true })).toBeVisible();
     await expect(management.getByText("Showing 2 of 2 recorded courses")).toBeVisible();
 
     await search.fill("synthetic");
@@ -235,7 +235,7 @@ test.describe("Recorded Learning management UI (mocked local QA)", () => {
     await page.goto("/college-admin/recorded-courses");
     const management = page.getByRole("region", { name: "Recorded course management" });
     await expect(management.getByText("No recorded courses created yet.")).toBeVisible();
-    await expect(management.getByText("Total: 0")).toBeVisible();
+    await expect(management.getByText("Total: 0", { exact: true })).toBeVisible();
     await expect(management.getByRole("searchbox", { name: "Search recorded courses" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Create Recorded Course" })).toBeVisible();
   });
