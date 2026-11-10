@@ -352,6 +352,12 @@ class LearningModuleAPITests(APITransactionTestCase):
                 user=user, admission_number=f"FILTER-{index:02d}",
             )
             profiles.append(profile)
+            if index == 27:
+                user.first_name, user.last_name = "Aaa", "Graduate"
+                user.save(update_fields=["first_name", "last_name"])
+            if index == 26:
+                user.first_name, user.last_name = "Zzz", "Pending"
+                user.save(update_fields=["first_name", "last_name"])
             access = RecordedCourseAccess.objects.create(
                 course=self.course_a, organization=self.org_a, student=profile,
             )
@@ -434,13 +440,52 @@ class LearningModuleAPITests(APITransactionTestCase):
         self.assertEqual(len(revoked_rows), 2)
         self.assertEqual(revoked_rows[1][2], "FILTER-26")
 
-        # Both public-facing endpoints must reject unsupported filter values.
+        # Sorting must consider *all* matching learners before pagination.
+        # In default DB order the graduate and pending learner are on page two.
+        high = self.client.get(root, {"sort": "progress_high"})
+        self.assertEqual(high.status_code, 200, high.data)
+        self.assertEqual(high.data["students_total"], 28)
+        self.assertEqual(
+            [student["admission_number"] for student in high.data["students"][:2]],
+            ["FILTER-27", "FILTER-26"],
+        )
+        low = self.client.get(root, {"sort": "progress_low"})
+        self.assertEqual(low.data["students"][0]["admission_number"], "FILTER-00")
+        self.assertIn(
+            "FILTER-27",
+            [student["admission_number"] for student in
+             self.client.get(root, {"sort": "progress_low", "page": 2}).data["students"]],
+        )
+        by_name = self.client.get(root, {"sort": "name"})
+        self.assertEqual(by_name.status_code, 200, by_name.data)
+        self.assertEqual(by_name.data["students"][0]["admission_number"], "FILTER-27")
+        self.assertEqual(
+            self.client.get(root, {"sort": "name", "page": 2}).data["students"][-1]["admission_number"],
+            "FILTER-26",
+        )
+
+        # CSV ordering matches the API, across all pages and combined filters.
+        high_csv = self.client.get(csv_url, {"sort": "progress_high"})
+        self.assertEqual(high_csv.status_code, 200)
+        high_csv_rows = list(csv.reader(io.StringIO(high_csv.content.decode("utf-8-sig"))))
+        self.assertEqual([row[2] for row in high_csv_rows[1:3]], ["FILTER-27", "FILTER-26"])
+        filtered_csv = self.client.get(csv_url, {"progress": "not_started", "sort": "name"})
+        self.assertEqual(filtered_csv.status_code, 200)
+        self.assertEqual(len(list(csv.reader(io.StringIO(filtered_csv.content.decode("utf-8-sig")))), 27)
+        self.assertEqual(
+            self.client.get(root, {"progress": "not_started", "sort": "name"}).data["students_total"], 26
+        )
+
+        # Both public-facing endpoints must reject unsupported filter and sort values.
         for target in (root, csv_url):
             self.assertEqual(self.client.get(target, {"progress": "unknown"}).status_code, 400)
             self.assertEqual(self.client.get(target, {"certificate": "unknown"}).status_code, 400)
+            self.assertEqual(self.client.get(target, {"sort": "unknown"}).status_code, 400)
         with patch.object(ManagedCourseProgressAPIView, "MAX_FILTER_CANDIDATES", 10):
             self.assertEqual(self.client.get(root, {"progress": "completed"}).status_code, 413)
             self.assertEqual(self.client.get(csv_url, {"progress": "completed"}).status_code, 413)
+            self.assertEqual(self.client.get(root, {"sort": "progress_high"}).status_code, 413)
+            self.assertEqual(self.client.get(csv_url, {"sort": "name"}).status_code, 413)
         self.assertEqual(self.client.get(root, {"search": "FILTER-27",
             "progress": "completed", "certificate": "issued"}).data["students_total"], 1)
 
