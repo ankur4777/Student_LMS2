@@ -486,12 +486,11 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
             {" · "}Certificates issued on this page: {data.students.filter(student=>student.certificate_status==="issued").length}
             {" · "}Revoked on this page: {data.students.filter(student=>student.certificate_status==="revoked").length}
           </p>
-        </>}
+        </>
         {data.students.length===0?
         <div className="py-3">
           <p className="text-muted">No learners match the course-wide search and filters.</p>
-          {hasFilters&&<button type="button" className="btn btn-outline-primary btn-sm"
-            onClick={resetFilters}>Clear filters</button>}
+
         </div>:
         <div className="table-responsive"><table className="table table-hover align-middle" aria-label="Student course progress">
           <thead><tr><th scope="col">Student</th><th scope="col">Modules</th>
