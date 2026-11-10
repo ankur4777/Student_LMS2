@@ -357,6 +357,50 @@ class ManagedLessonModuleAPIView(APIView):
         return Response({"lesson": _lesson_data(lesson)})
 
 
+PROGRESS_FILTERS = {
+    "all", "not_started", "in_progress", "completed",
+    "awaiting_grading", "inactive_access",
+}
+CERTIFICATE_FILTERS = {"all", "issued", "revoked", "not_issued"}
+
+
+class ProgressFilterTooBroad(Exception):
+    """The course exceeds the bounded cohort scan for derived progress filters."""
+
+
+def parse_progress_filters(params):
+    """Use identical, strictly validated filters for staff API and CSV."""
+    progress = params.get("progress", "all")
+    certificate = params.get("certificate", "all")
+    if progress not in PROGRESS_FILTERS:
+        raise ValueError("Unknown progress filter.")
+    if certificate not in CERTIFICATE_FILTERS:
+        raise ValueError("Unknown certificate filter.")
+    return progress, certificate
+
+
+def matches_progress_filters(student, progress, certificate):
+    if certificate != "all" and student["certificate_status"] != certificate:
+        return False
+    if progress == "awaiting_grading":
+        return any(module["assignment_status"] == "awaiting_review"
+                   for module in student["modules"])
+    if progress == "inactive_access":
+        return not student["access_active"]
+    modules_total = student["modules_total"]
+    completed = student["modules_completed"]
+    viewed = student["lectures_viewed"]
+    if progress == "not_started":
+        return modules_total > 0 and completed == 0 and viewed == 0
+    if progress == "in_progress":
+        return modules_total > 0 and completed < modules_total and (
+            completed > 0 or viewed > 0
+        )
+    if progress == "completed":
+        return modules_total > 0 and completed == modules_total
+    return True
+
+
 class ManagedCourseProgressAPIView(APIView):
     """Paginated, tenant-scoped course reporting for assigned teachers and admins.
 
@@ -365,6 +409,8 @@ class ManagedCourseProgressAPIView(APIView):
     """
     permission_classes = [IsAuthenticated, OrganizationLearningEnabled]
     PAGE_SIZE = 25
+    FILTER_BATCH_SIZE = 100
+    MAX_FILTER_CANDIDATES = 5000
 
     def get(self, request, course_id):
         course = _course(request.user, course_id)
@@ -377,7 +423,58 @@ class ManagedCourseProgressAPIView(APIView):
         search = request.query_params.get("search", "").strip()
         if len(search) > 80:
             return Response({"detail": "Search is limited to 80 characters."}, status=400)
-        return Response(self.report_page(course, page, search))
+        try:
+            progress, certificate = parse_progress_filters(request.query_params)
+            report = self.filtered_report_page(
+                course, page, search, progress, certificate,
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except ProgressFilterTooBroad as exc:
+            return Response({"detail": str(exc)}, status=413)
+        return Response(report)
+
+    @classmethod
+    def filtered_report_page(
+        cls, course, page, search, progress="all", certificate="all", page_size=None,
+    ):
+        """Filter derived learning outcomes *before* paging, not merely the visible page.
+
+        Reuse the tenant-scoped, batched report logic for the same grading and
+        certificate semantics. Bound candidate scans to avoid costly requests
+        for very large courses; admins can narrow server-side search first.
+        """
+        if page_size is None:
+            page_size = cls.PAGE_SIZE
+        if progress == "all" and certificate == "all":
+            return cls.report_page(course, page, search, page_size=page_size)
+
+        chunk = cls.FILTER_BATCH_SIZE
+        first = cls.report_page(course, 1, search, page_size=chunk)
+        if first["students_total"] > cls.MAX_FILTER_CANDIDATES:
+            raise ProgressFilterTooBroad(
+                "Filtering is limited to 5,000 enrolled learners. "
+                "Narrow the student search and try again."
+            )
+        matches = []
+        current = first
+        while True:
+            matches.extend(
+                student for student in current["students"]
+                if matches_progress_filters(student, progress, certificate)
+            )
+            if not current["has_next"]:
+                break
+            current = cls.report_page(
+                course, current["page"] + 1, search, page_size=chunk,
+            )
+        start = (page - 1) * page_size
+        return {
+            "course_id": course.pk, "course_title": course.title,
+            "students_total": len(matches), "page": page,
+            "page_size": page_size, "has_next": start + page_size < len(matches),
+            "students": matches[start:start + page_size],
+        }
 
     @classmethod
     def report_page(cls, course, page, search, page_size=None):
