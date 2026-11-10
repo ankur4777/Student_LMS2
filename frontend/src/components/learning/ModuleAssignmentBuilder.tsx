@@ -13,6 +13,7 @@ type Submission = {
   feedback: string; graded_at: string | null;
 };
 type View = "all" | "pending" | "graded";
+type SortOrder = "default" | "pending_first" | "student_asc";
 const BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(/\/$/, "");
 
 export default function ModuleAssignmentBuilder({ moduleId, role }: {
@@ -29,6 +30,8 @@ export default function ModuleAssignmentBuilder({ moduleId, role }: {
   const [scores, setScores] = useState<Record<number, string>>({});
   const [feedback, setFeedback] = useState<Record<number, string>>({});
   const [view, setView] = useState<View>("all");
+  const [studentSearch, setStudentSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("default");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -181,11 +184,26 @@ export default function ModuleAssignmentBuilder({ moduleId, role }: {
 
   const pendingCount = submissions.filter(submission => !submission.graded_at).length;
   const gradedCount = submissions.length - pendingCount;
-  const visibleSubmissions = useMemo(() => submissions.filter(submission => {
-    if (view === "pending") return !submission.graded_at;
-    if (view === "graded") return Boolean(submission.graded_at);
-    return true;
-  }), [submissions, view]);
+  const visibleSubmissions = useMemo(() => {
+    const query = studentSearch.trim().toLocaleLowerCase();
+    const matches = submissions.filter(submission => {
+      if (view === "pending" && submission.graded_at) return false;
+      if (view === "graded" && !submission.graded_at) return false;
+      return submission.student_name.toLocaleLowerCase().includes(query);
+    });
+    if (sortOrder === "default") return matches;
+    return [...matches].sort((first, second) => {
+      if (sortOrder === "student_asc") {
+        return first.student_name.localeCompare(second.student_name);
+      }
+      return Number(Boolean(first.graded_at)) - Number(Boolean(second.graded_at));
+    });
+  }, [submissions, view, studentSearch, sortOrder]);
+  function clearSubmissionFilters() {
+    setView("all");
+    setStudentSearch("");
+    setSortOrder("default");
+  }
   const locked = Boolean(assignment && (assignment.is_published || assignment.submission_count > 0));
 
   return (
@@ -263,11 +281,43 @@ export default function ModuleAssignmentBuilder({ moduleId, role }: {
                 </div>
               </div>
 
+              {submissions.length > 0 && (
+                <>
+                  <div className="d-flex flex-wrap gap-2 align-items-end mb-2" aria-label="Submission search and sorting">
+                    <div>
+                      <label className="form-label small mb-1" htmlFor={`assignment-student-search-${moduleId}`}>
+                        Search student submissions
+                      </label>
+                      <input id={`assignment-student-search-${moduleId}`} type="search"
+                        className="form-control form-control-sm" value={studentSearch}
+                        placeholder="Student name"
+                        onChange={event => setStudentSearch(event.target.value)} />
+                    </div>
+                    <div>
+                      <label className="form-label small mb-1" htmlFor={`assignment-sort-${moduleId}`}>
+                        Sort submissions
+                      </label>
+                      <select id={`assignment-sort-${moduleId}`} className="form-select form-select-sm"
+                        value={sortOrder} onChange={event => setSortOrder(event.target.value as SortOrder)}>
+                        <option value="default">Default order</option>
+                        <option value="pending_first">Pending first</option>
+                        <option value="student_asc">Student name A–Z</option>
+                      </select>
+                    </div>
+                    <button className="btn btn-outline-secondary btn-sm" type="button"
+                      disabled={!studentSearch && view === "all" && sortOrder === "default"}
+                      onClick={clearSubmissionFilters}>Clear filters</button>
+                  </div>
+                  <p className="small text-muted" role="status">
+                    Showing {visibleSubmissions.length} of {submissions.length} submissions
+                  </p>
+                </>
+              )}
               {submissions.length === 0 && (
                 <p className="small text-muted">No student assignment submissions yet.</p>
               )}
               {submissions.length > 0 && visibleSubmissions.length === 0 && (
-                <p className="small text-muted" role="status">No submissions match this grading filter.</p>
+                <p className="small text-muted" role="status">No submissions match your search or grading filter.</p>
               )}
               {visibleSubmissions.map(submission => (
                 <article className="border rounded-3 p-3 mb-2" key={submission.id}
