@@ -314,6 +314,147 @@ class LearningModuleAPITests(APITransactionTestCase):
         self.assertEqual(self.client.get(url, {"search": "x" * 81}).status_code, 400)
 
 
+    def test_course_wide_progress_certificate_filters_and_csv_pagination(self):
+        import csv
+        import io
+        from datetime import timedelta
+        from django.utils import timezone
+        from accounts.models import StudentProfile
+        from recordedcourses.models import (
+            RecordedCourseAccess, LessonLearningProgress,
+            ModuleAssignment, ModuleAssignmentSubmission,
+            CourseCertificate, CourseFinalExam, CourseFinalAttempt,
+        )
+        from recordedcourses.learning_content import ManagedCourseProgressAPIView
+
+        self.enable()
+        module = CourseModule.objects.create(
+            course=self.course_a, title="Whole-course filtering", position=1,
+            is_published=True,
+        )
+        lesson = RecordedLesson.objects.create(
+            course=self.course_a, module=module, title="Recorded lecture", position=1,
+        )
+        assignment = ModuleAssignment.objects.create(
+            module=module, title="Grade this", instructions="Explain the lesson",
+            is_published=True, passing_percent=70,
+        )
+        final_exam = CourseFinalExam.objects.create(
+            course=self.course_a, title="Final exam", is_published=True,
+        )
+        profiles = []
+        for index in range(28):
+            user = User.objects.create(
+                username=f"filtered-student-{index:02d}",
+                role="student", organization=self.org_a,
+            )
+            profile = StudentProfile.objects.create(
+                user=user, admission_number=f"FILTER-{index:02d}",
+            )
+            profiles.append(profile)
+            access = RecordedCourseAccess.objects.create(
+                course=self.course_a, organization=self.org_a, student=profile,
+            )
+            if index == 25:
+                access.revoked_at = timezone.now()
+                access.save(update_fields=["revoked_at"])
+            if index in (26, 27):
+                LessonLearningProgress.objects.create(
+                    student=profile, lesson=lesson, completed_at=timezone.now(),
+                )
+                ModuleAssignmentSubmission.objects.create(
+                    assignment=assignment, student=profile,
+                    attempt_number=1, answer_text="Sample assignment",
+                    **({
+                        "score_percent": 95, "graded_at": timezone.now(),
+                    } if index == 27 else {}),
+                )
+                final_attempt = CourseFinalAttempt.objects.create(
+                    exam=final_exam, student=profile, attempt_number=1,
+                    answers={"1": 0}, question_count=1, correct_count=1,
+                    score_percent=90, passed=True,
+                )
+                cert = CourseCertificate.objects.create(
+                    course=self.course_a, organization=self.org_a,
+                    student=profile, final_attempt=final_attempt,
+                    course_title_at_issue=self.course_a.title,
+                    student_name_at_issue=user.username,
+                    organization_name_at_issue=self.org_a.name,
+                    module_count_at_issue=1, score_percent=90,
+                )
+                if index == 26:
+                    cert.revoked_at = timezone.now()
+                    cert.revocation_reason = "Local test"
+                    cert.save(update_fields=["revoked_at", "revocation_reason"])
+
+        self.auth(self.admin_a)
+        root = f"/api/recorded-courses/learning/manage/courses/{self.course_a.pk}/progress/"
+        csv_url = root + "export.csv"
+        # Filters must run across all students, not only the first page of 25.
+        completed = self.client.get(root, {"progress": "completed"})
+        self.assertEqual(completed.status_code, 200, completed.data)
+        self.assertEqual(completed.data["students_total"], 1)
+        self.assertEqual(completed.data["students"][0]["admission_number"], "FILTER-27")
+        pending = self.client.get(root, {
+            "progress": "awaiting_grading", "certificate": "revoked",
+        })
+        self.assertEqual(pending.status_code, 200, pending.data)
+        self.assertEqual(pending.data["students_total"], 1)
+        self.assertEqual(pending.data["students"][0]["admission_number"], "FILTER-26")
+        self.assertEqual(self.client.get(root, {
+            "progress": "awaiting_grading", "certificate": "issued",
+        }).data["students_total"], 0)
+        self.assertEqual(self.client.get(root, {"certificate": "issued"}).data["students_total"], 1)
+        self.assertEqual(self.client.get(root, {"progress": "in_progress"}).data["students_total"], 1)
+        inactive = self.client.get(root, {"progress": "inactive_access"})
+        self.assertEqual(inactive.data["students_total"], 1)
+        self.assertEqual(inactive.data["students"][0]["admission_number"], "FILTER-25")
+
+        not_started = self.client.get(root, {"progress": "not_started"})
+        self.assertEqual(not_started.data["students_total"], 26)
+        self.assertEqual(len(not_started.data["students"]), 25)
+        self.assertTrue(not_started.data["has_next"])
+        next_page = self.client.get(root, {"progress": "not_started", "page": 2})
+        self.assertEqual(next_page.data["students_total"], 26)
+        self.assertEqual(len(next_page.data["students"]), 1)
+        self.assertEqual(next_page.data["students"][0]["admission_number"], "FILTER-25")
+        self.assertFalse(next_page.data["has_next"])
+
+        exported = self.client.get(csv_url, {"progress": "not_started"})
+        self.assertEqual(exported.status_code, 200)
+        rows = list(csv.reader(io.StringIO(exported.content.decode("utf-8-sig"))))
+        self.assertEqual(len(rows), 27)  # Header plus all 26 filtered students
+        self.assertEqual({row[2] for row in rows[1:]}, {
+            f"FILTER-{index:02d}" for index in range(26)
+        })
+        revoked_export = self.client.get(csv_url, {
+            "progress": "awaiting_grading", "certificate": "revoked",
+        })
+        revoked_rows = list(csv.reader(io.StringIO(revoked_export.content.decode("utf-8-sig"))))
+        self.assertEqual(len(revoked_rows), 2)
+        self.assertEqual(revoked_rows[1][2], "FILTER-26")
+
+        # Both public-facing endpoints must reject unsupported filter values.
+        for target in (root, csv_url):
+            self.assertEqual(self.client.get(target, {"progress": "unknown"}).status_code, 400)
+            self.assertEqual(self.client.get(target, {"certificate": "unknown"}).status_code, 400)
+        with patch.object(ManagedCourseProgressAPIView, "MAX_FILTER_CANDIDATES", 10):
+            self.assertEqual(self.client.get(root, {"progress": "completed"}).status_code, 413)
+            self.assertEqual(self.client.get(csv_url, {"progress": "completed"}).status_code, 413)
+        self.assertEqual(self.client.get(root, {"search": "FILTER-27",
+            "progress": "completed", "certificate": "issued"}).data["students_total"], 1)
+
+        # The filters must not weaken role and organization restrictions.
+        self.auth(self.student_a)
+        self.assertEqual(self.client.get(root, {"progress": "completed"}).status_code, 403)
+        self.auth(self.teacher_a.user)
+        self.assertEqual(self.client.get(root, {"progress": "completed"}).status_code, 404)
+        self.assign()
+        self.assertEqual(self.client.get(root, {"progress": "completed"}).status_code, 200)
+        self.auth(self.admin_b)
+        OrganizationLearningSettings.objects.create(organization=self.org_b, is_enabled=True)
+        self.assertEqual(self.client.get(root, {"certificate": "issued"}).status_code, 404)
+
     def test_new_lesson_upload_stores_verified_duration(self):
         self.enable()
         self.auth(self.admin_a)
