@@ -189,6 +189,57 @@ test.describe("Teacher module assignment grading UI (mocked QA)", () => {
     await expect(section.getByRole("article")).toHaveCount(3);
   });
 
+  test("searches the grading queue by student and restores filters", async ({ page }) => {
+    const f = fixture();
+    await setup(page, f);
+    const section = await openAssignment(page);
+    const search = section.getByRole("searchbox", { name: "Search student submissions" });
+    const gradeFilter = section.getByRole("combobox", { name: "Show" });
+    const sort = section.getByRole("combobox", { name: "Sort submissions" });
+
+    await search.fill("aLiCe");
+    await expect(section.getByRole("article")).toHaveCount(1);
+    await expect(submission(section, 501, "QA Pending Alice")).toBeVisible();
+    await expect(section.getByText("Showing 1 of 3 submissions")).toBeVisible();
+
+    await gradeFilter.selectOption("graded");
+    await expect(section.getByRole("article")).toHaveCount(0);
+    await expect(section.getByText("No submissions match your search or grading filter.")).toBeVisible();
+    await expect(section.getByText("Showing 0 of 3 submissions")).toBeVisible();
+
+    await sort.selectOption("student_asc");
+    await section.getByRole("button", { name: "Clear filters" }).click();
+    await expect(search).toHaveValue("");
+    await expect(gradeFilter).toHaveValue("all");
+    await expect(sort).toHaveValue("default");
+    await expect(section.getByRole("article")).toHaveCount(3);
+    await expect(section.getByRole("button", { name: "Clear filters" })).toBeDisabled();
+  });
+
+  test("sorts grading submissions without changing the server response or grades", async ({ page }) => {
+    const f = fixture();
+    await setup(page, f);
+    const section = await openAssignment(page);
+    const sort = section.getByRole("combobox", { name: "Sort submissions" });
+    const cards = section.getByRole("article");
+
+    await expect(cards.first()).toContainText("QA Pending Alice");
+    await sort.selectOption("student_asc");
+    await expect(cards.first()).toContainText("QA Graded Bob");
+    await expect(cards.nth(1)).toContainText("QA Pending Alice");
+    await expect(cards.nth(2)).toContainText("QA Pending Charlie");
+
+    await sort.selectOption("pending_first");
+    await expect(cards.first()).toContainText("QA Pending Alice");
+    await expect(cards.nth(1)).toContainText("QA Pending Charlie");
+    await expect(cards.nth(2)).toContainText("QA Graded Bob");
+
+    await sort.selectOption("default");
+    await expect(cards.first()).toContainText("QA Pending Alice");
+    await expect(cards.nth(1)).toContainText("QA Graded Bob");
+    expect(f.grades).toHaveLength(0);
+  });
+
   test("rejects invalid grades and preserves feedback after an API rejection", async ({ page }) => {
     const f = fixture({ gradeStatus: 409 });
     await setup(page, f);
