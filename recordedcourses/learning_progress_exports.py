@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from .learning_access import OrganizationLearningEnabled
 from .learning_content import (
     _course, ManagedCourseProgressAPIView, parse_progress_filters,
-    ProgressFilterTooBroad,
+    parse_progress_sort, ProgressFilterTooBroad,
 )
 
 
@@ -40,12 +40,14 @@ class ManagedCourseProgressCSVAPIView(APIView):
             return Response({"detail": "Search is limited to 80 characters."}, status=400)
         try:
             progress, certificate = parse_progress_filters(request.query_params)
-            filtered = progress != "all" or certificate != "all"
+            sort = parse_progress_sort(request.query_params)
+            filtered = progress != "all" or certificate != "all" or sort != "default"
             # Export all *filtered* matches once rather than rescanning the
             # entire course for every CSV page.
             first = ManagedCourseProgressAPIView.filtered_report_page(
                 course, 1, search, progress, certificate,
                 page_size=(self.MAX_STUDENTS + 1 if filtered else self.PAGE_SIZE),
+                sort=sort,
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
