@@ -122,6 +122,15 @@ async function setup(page, data) {
       await route.fulfill({ status: 200, headers, json: { exam: null } });
       return;
     }
+    // The course editor also mounts the Student Progress dashboard, which
+    // requires its own complete response shape even in focused grading tests.
+    if (path === ROOT + "courses/911/progress/" && method === "GET") {
+      await route.fulfill({ status: 200, headers, json: {
+        students_total: 0, page: 1, page_size: 20, has_next: false,
+        students: [],
+      } });
+      return;
+    }
     if (path === ROOT + "courses/911/readiness/") {
       await route.fulfill({ status: 200, headers, json: {
         ready_for_final_exam: false, checks: [], warnings: [],
