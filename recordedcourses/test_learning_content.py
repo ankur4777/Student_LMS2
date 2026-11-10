@@ -471,7 +471,8 @@ class LearningModuleAPITests(APITransactionTestCase):
         self.assertEqual([row[2] for row in high_csv_rows[1:3]], ["FILTER-27", "FILTER-00"])
         filtered_csv = self.client.get(csv_url, {"progress": "not_started", "sort": "name"})
         self.assertEqual(filtered_csv.status_code, 200)
-        self.assertEqual(len(list(csv.reader(io.StringIO(filtered_csv.content.decode("utf-8-sig")))), 27)
+        filtered_csv_rows = list(csv.reader(io.StringIO(filtered_csv.content.decode("utf-8-sig"))))
+        self.assertEqual(len(filtered_csv_rows), 27)
         self.assertEqual(
             self.client.get(root, {"progress": "not_started", "sort": "name"}).data["students_total"], 26
         )
