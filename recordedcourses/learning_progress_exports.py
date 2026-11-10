@@ -7,7 +7,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .learning_access import OrganizationLearningEnabled
-from .learning_content import _course, ManagedCourseProgressAPIView
+from .learning_content import (
+    _course, ManagedCourseProgressAPIView, parse_progress_filters,
+    ProgressFilterTooBroad,
+)
 
 
 def _safe_cell(value):
@@ -35,10 +38,19 @@ class ManagedCourseProgressCSVAPIView(APIView):
         search = request.query_params.get("search", "").strip()
         if len(search) > 80:
             return Response({"detail": "Search is limited to 80 characters."}, status=400)
-
-        first = ManagedCourseProgressAPIView.report_page(
-            course, 1, search, page_size=self.PAGE_SIZE,
-        )
+        try:
+            progress, certificate = parse_progress_filters(request.query_params)
+            filtered = progress != "all" or certificate != "all"
+            # Export all *filtered* matches once rather than rescanning the
+            # entire course for every CSV page.
+            first = ManagedCourseProgressAPIView.filtered_report_page(
+                course, 1, search, progress, certificate,
+                page_size=(self.MAX_STUDENTS + 1 if filtered else self.PAGE_SIZE),
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
+        except ProgressFilterTooBroad as exc:
+            return Response({"detail": str(exc)}, status=413)
         count = first["students_total"]
         module_count = len(first["students"][0]["modules"]) if first["students"] else 0
         if count > self.MAX_STUDENTS or count * max(1, module_count) > self.MAX_ROWS:
