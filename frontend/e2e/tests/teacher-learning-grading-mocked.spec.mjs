@@ -268,7 +268,7 @@ test.describe("Teacher module assignment grading UI (mocked QA)", () => {
     await alice.getByRole("textbox", { name: "Feedback" }).fill("Solid explanation");
     await alice.getByRole("button", { name: "Grade", exact: true }).click();
 
-    await expect(section.getByRole("status")).toContainText("Grade saved");
+    await expect(section.locator(".alert-success[role='status']")).toContainText("Grade saved");
     await expect(alice.getByText("Grade: 92% · Solid explanation")).toBeVisible();
     await expect(alice.getByRole("button", { name: "Grade", exact: true })).toHaveCount(0);
     await expect(section.getByLabel("Submission grading counts")).toContainText("Pending: 1 · Graded: 2");
@@ -284,14 +284,14 @@ test.describe("Teacher module assignment grading UI (mocked QA)", () => {
     await alice.getByRole("textbox", { name: "Feedback" }).fill("Needs examples");
     await alice.getByRole("button", { name: "Grade", exact: true }).click();
 
-    await expect(section.getByRole("status")).toContainText("Grade saved, but the submissions list could not refresh");
+    await expect(section.locator(".alert-success[role='status']")).toContainText("Grade saved, but the submissions list could not refresh");
     await expect(section.getByRole("alert")).toHaveCount(0);
     await expect(alice.getByText("Grade: 78% · Needs examples")).toBeVisible();
     expect(f.grades).toHaveLength(1);
 
     f.submissionsGet = 200;
     await section.getByRole("button", { name: "Refresh submissions" }).click();
-    await expect(section.getByRole("status")).toContainText("Assignment and grading status refreshed.");
+    await expect(section.locator(".alert-success[role='status']")).toContainText("Assignment and grading status refreshed.");
     await expect(alice.getByText("Grade: 78% · Needs examples")).toBeVisible();
     expect(f.grades).toHaveLength(1);
   });
