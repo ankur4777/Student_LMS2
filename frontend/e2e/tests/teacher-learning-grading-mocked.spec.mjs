@@ -60,6 +60,17 @@ function fixture(overrides = {}) {
     ...overrides,
   };
 }
+function sortedLearners(rows, sort) {
+  const copy = [...rows];
+  if (sort === "name") {
+    copy.sort((a, b) => a.student_name.localeCompare(b.student_name) || a.student_id - b.student_id);
+  } else if (sort === "progress_low" || sort === "progress_high") {
+    const direction = sort === "progress_low" ? 1 : -1;
+    copy.sort((a, b) => direction * (a.progress_percent - b.progress_percent) ||
+      a.student_name.localeCompare(b.student_name) || a.student_id - b.student_id);
+  }
+  return copy;
+}
 function mockMatches(student, progressFilter, certificateFilter) {
   if (certificateFilter !== "all" && student.certificate_status !== certificateFilter) return false;
   if (progressFilter === "awaiting_grading") {
@@ -172,7 +183,8 @@ async function setup(page, data) {
       const search = (url.searchParams.get("search") || "").toLocaleLowerCase();
       const progressFilter = url.searchParams.get("progress") || "all";
       const certificateFilter = url.searchParams.get("certificate") || "all";
-      data.progressRequests.push({ page: pageNumber, search, progress: progressFilter, certificate: certificateFilter });
+      const sort = url.searchParams.get("sort") || "default";
+      data.progressRequests.push({ page: pageNumber, search, progress: progressFilter, certificate: certificateFilter, sort });
       if (data.progressStatus !== 200 || data.progressMalformed) {
         await route.fulfill({
           status: data.progressStatus, headers,
@@ -180,9 +192,9 @@ async function setup(page, data) {
         });
         return;
       }
-      const matching = data.progressRows.filter(student =>
+      const matching = sortedLearners(data.progressRows.filter(student =>
         (student.student_name + " " + student.admission_number).toLocaleLowerCase().includes(search) &&
-        mockMatches(student, progressFilter, certificateFilter));
+        mockMatches(student, progressFilter, certificateFilter)), sort);
       const pageSize = 4;
       const start = (pageNumber - 1) * pageSize;
       await route.fulfill({ status: 200, headers, json: {
@@ -197,9 +209,10 @@ async function setup(page, data) {
       const search = (url.searchParams.get("search") || "").toLocaleLowerCase();
       const progressFilter = url.searchParams.get("progress") || "all";
       const certificateFilter = url.searchParams.get("certificate") || "all";
-      const matches = data.progressRows.filter(student =>
+      const sort = url.searchParams.get("sort") || "default";
+      const matches = sortedLearners(data.progressRows.filter(student =>
         (student.student_name + " " + student.admission_number).toLocaleLowerCase().includes(search) &&
-        mockMatches(student, progressFilter, certificateFilter));
+        mockMatches(student, progressFilter, certificateFilter)), sort);
       await route.fulfill({
         status: 200, headers: { ...headers, "Content-Disposition": 'attachment; filename="mysls-progress.csv"' },
         contentType: "text/csv", body: "Student Name,Certificate Status\n" +
@@ -442,39 +455,54 @@ test.describe("Teacher module assignment grading UI — learner progress dashboa
     await expect(rows.first()).toContainText("QA Dana");
   });
 
-  test("paginates globally matching learners and retains local page sorting", async ({ page }) => {
+  test("sorts the entire learner cohort before paging and resets pagination on sort change", async ({ page }) => {
     const f = fixture({ progressRows: progressSeed });
     await setup(page, f);
     await page.goto("/teacher/recorded-courses/911");
     const section = progress(page);
     const rows = section.getByRole("table", { name: "Student course progress" }).locator("tbody tr");
-    const sort = section.getByRole("combobox", { name: "Sort current page" });
+    const sort = section.getByRole("combobox", { name: "Sort learners (all pages)" });
     await expect(rows).toHaveCount(4);
+
     await sort.selectOption("progress_high");
     await expect(rows.first()).toContainText("QA Charlie");
+    await expect(rows.nth(1)).toContainText("QA Bob");
+    await expect(rows.nth(3)).toContainText("QA Alice");
     await sort.selectOption("progress_low");
     await expect(rows.first()).toContainText("QA Alice");
-    await sort.selectOption("name");
-    await expect(rows.nth(1)).toContainText("QA Bob");
-
+    // Eve comes from original page two, now globally sorted onto page one.
+    await expect(rows.nth(1)).toContainText("QA Eve");
+    await expect(rows.nth(3)).toContainText("QA Dana");
     await section.getByRole("button", { name: "Next", exact: true }).click();
     await expect(section.getByText("Page 2", { exact: true })).toBeVisible();
     await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Charlie");
+
+    await sort.selectOption("name");
+    await expect(section.getByText("Page 1", { exact: true })).toBeVisible();
+    await expect(rows).toHaveCount(4);
+    await expect(rows.first()).toContainText("QA Alice");
+    await expect(rows.nth(1)).toContainText("QA Bob");
+    await section.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(section.getByText("Page 2", { exact: true })).toBeVisible();
     await expect(rows.first()).toContainText("QA Eve");
     await expect(section.getByRole("status").filter({ hasText: "Showing" }))
       .toContainText("Showing 1 of 5 matching learners across the course");
-    await expect(section.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
 
     await section.getByRole("combobox", { name: "Filter certificates (all pages)" }).selectOption("issued");
     await expect(section.getByText("Page 1", { exact: true })).toBeVisible();
     await expect(rows).toHaveCount(2);
     await expect(rows.first()).toContainText("QA Charlie");
     await expect(rows.nth(1)).toContainText("QA Eve");
-    expect(f.progressRequests.some(request => request.page === 2 && request.certificate === "all")).toBe(true);
-    expect(f.progressRequests.some(request => request.page === 1 && request.certificate === "issued")).toBe(true);
+    await sort.selectOption("progress_low");
+    await expect(rows.first()).toContainText("QA Eve");
+    await expect(rows.nth(1)).toContainText("QA Charlie");
+    expect(f.progressRequests.some(request => request.page === 1 && request.sort === "progress_high")).toBe(true);
+    expect(f.progressRequests.some(request => request.page === 2 && request.sort === "progress_low")).toBe(true);
+    expect(f.progressRequests.some(request => request.page === 1 && request.sort === "name")).toBe(true);
   });
 
-  test("exports all matching learners with the same search, progress and certificate filters", async ({ page }) => {
+    test("exports all matching learners with the same search, progress and certificate filters", async ({ page }) => {
     const f = fixture({ progressRows: progressSeed });
     await setup(page, f);
     await page.goto("/teacher/recorded-courses/911");
@@ -490,12 +518,14 @@ test.describe("Teacher module assignment grading UI — learner progress dashboa
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText("QA Eve");
 
+    await section.getByRole("combobox", { name: "Sort learners (all pages)" }).selectOption("progress_low");
+    await expect(rows).toHaveCount(1);
     const waitForDownload = page.waitForEvent("download");
     await section.getByRole("button", { name: "Export CSV" }).click();
     const downloaded = await waitForDownload;
     expect(downloaded.suggestedFilename()).toBe("mysls-course-911-progress.csv");
-    expect(f.csvRequests).toEqual([{ search: "QA", progress: "not_started", certificate: "issued" }]);
-    await expect(section.getByText("Search, progress and certificate filters apply across the full course", { exact: false }))
+    expect(f.csvRequests).toEqual([{ search: "QA", progress: "not_started", certificate: "issued", sort: "progress_low" }]);
+    await expect(section.getByText("Search, progress, certificate and sorting selections apply to the full course", { exact: false }))
       .toBeVisible();
   });
 
