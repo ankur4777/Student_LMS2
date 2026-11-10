@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import ModuleQuizBuilder from "@/components/learning/ModuleQuizBuilder";
 import ModuleAssignmentBuilder from "@/components/learning/ModuleAssignmentBuilder";
 import CourseFinalExamBuilder from "@/components/learning/CourseFinalExamBuilder";
@@ -306,6 +306,19 @@ function reportStatus(value: string) {
   return labels[value] || value;
 }
 
+type LearnerProgressFilter = "all" | "not_started" | "in_progress" | "completed" | "awaiting_grading" | "inactive_access";
+type LearnerCertificateFilter = "all" | "issued" | "revoked" | "not_issued";
+type LearnerSort = "default" | "name" | "progress_low" | "progress_high";
+function needsGrading(student: StudentProgressReport) {
+  return student.modules.some(module => module.assignment_status === "awaiting_review");
+}
+function learnerProgressLabel(student: StudentProgressReport) {
+  if (!student.modules_total) return "No published modules";
+  if (student.modules_completed === student.modules_total) return "Completed";
+  if (!student.modules_completed) return student.lectures_viewed ? "In progress" : "Not started";
+  return "In progress";
+}
+
 function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
   const [data,setData] = useState<CourseProgressResponse|null>(null);
   const [page,setPage] = useState(1);
@@ -315,6 +328,37 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
   const [loading,setLoading] = useState(true);
   const [exporting,setExporting] = useState(false);
   const [error,setError] = useState("");
+  const [progressFilter,setProgressFilter] = useState<LearnerProgressFilter>("all");
+  const [certificateFilter,setCertificateFilter] = useState<LearnerCertificateFilter>("all");
+  const [sort,setSort] = useState<LearnerSort>("default");
+
+  // The API is paginated. These filters apply only to the current loaded page.
+  // Server-side learner search and CSV export still span the full course.
+  const visibleStudents = useMemo(() => {
+    const matches = (data?.students || []).filter(student => {
+      if (certificateFilter !== "all" && student.certificate_status !== certificateFilter) return false;
+      if (progressFilter === "awaiting_grading") return needsGrading(student);
+      if (progressFilter === "inactive_access") return !student.access_active;
+      if (progressFilter === "completed") return student.modules_total > 0 &&
+        student.modules_completed === student.modules_total;
+      if (progressFilter === "not_started") return student.modules_total > 0 &&
+        student.modules_completed === 0 && student.lectures_viewed === 0;
+      if (progressFilter === "in_progress") return student.modules_total > 0 &&
+        (student.modules_completed < student.modules_total) &&
+        (student.modules_completed > 0 || student.lectures_viewed > 0);
+      return true;
+    });
+    if (sort === "default") return matches;
+    return [...matches].sort((a,b) => {
+      if (sort === "name") return a.student_name.localeCompare(b.student_name);
+      if (sort === "progress_low") return a.progress_percent - b.progress_percent;
+      return b.progress_percent - a.progress_percent;
+    });
+  }, [data,progressFilter,certificateFilter,sort]);
+  const hasPageFilters = progressFilter !== "all" || certificateFilter !== "all" || sort !== "default";
+  function resetPageFilters() {
+    setProgressFilter("all"); setCertificateFilter("all"); setSort("default");
+  }
 
   useEffect(()=>{
     const controller = new AbortController();
@@ -396,19 +440,76 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
         {search&&<button type="button" className="btn btn-outline-secondary btn-sm"
           onClick={()=>{setDraftSearch("");setSearch("");setPage(1);}}>Clear</button>}
       </form>
+      <p className="small text-muted mb-2">Search and CSV export include all matching learners across pages. Progress and certificate filters apply only to the current page.</p>
       {loading&&<p className="small text-muted" role="status">Loading learner progress…</p>}
       {error&&<p className="alert alert-danger py-2" role="alert">{error}</p>}
       {!loading&&!error&&data&&<>
         <p className="small text-muted">{data.students_total} enrolled students{search?" matching your search":""}</p>
+        {data.students.length>0&&<>
+          <div className="row g-2 align-items-end mb-3" aria-label="Current page learner filters">
+            <div className="col-md-4">
+              <label className="form-label small" htmlFor="learner-progress-filter">Filter learner progress (this page)</label>
+              <select id="learner-progress-filter" className="form-select form-select-sm"
+                value={progressFilter}
+                onChange={event=>setProgressFilter(event.target.value as LearnerProgressFilter)}>
+                <option value="all">All progress</option>
+                <option value="not_started">Not started</option>
+                <option value="in_progress">In progress</option>
+                <option value="completed">All modules completed</option>
+                <option value="awaiting_grading">Awaiting assignment grading</option>
+                <option value="inactive_access">Access inactive</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small" htmlFor="learner-certificate-filter">Filter certificates (this page)</label>
+              <select id="learner-certificate-filter" className="form-select form-select-sm"
+                value={certificateFilter}
+                onChange={event=>setCertificateFilter(event.target.value as LearnerCertificateFilter)}>
+                <option value="all">All certificates</option>
+                <option value="issued">Issued</option>
+                <option value="revoked">Revoked</option>
+                <option value="not_issued">Not issued</option>
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="form-label small" htmlFor="learner-progress-sort">Sort current page</label>
+              <select id="learner-progress-sort" className="form-select form-select-sm"
+                value={sort} onChange={event=>setSort(event.target.value as LearnerSort)}>
+                <option value="default">Default order</option>
+                <option value="name">Student name A–Z</option>
+                <option value="progress_low">Progress: low to high</option>
+                <option value="progress_high">Progress: high to low</option>
+              </select>
+            </div>
+            <div className="col-md-2">
+              <button type="button" className="btn btn-outline-secondary btn-sm w-100"
+                disabled={!hasPageFilters} onClick={resetPageFilters}>Clear page filters</button>
+            </div>
+          </div>
+          <p className="small text-muted" role="status">
+            Showing {visibleStudents.length} of {data.students.length} learners on this page
+            {" · "}Awaiting grading: {data.students.filter(needsGrading).length}
+            {" · "}Certificates issued: {data.students.filter(student=>student.certificate_status==="issued").length}
+            {" · "}Revoked: {data.students.filter(student=>student.certificate_status==="revoked").length}
+          </p>
+        </>}
         {data.students.length===0?<p className="text-muted">No students found for this course.</p>:
-        <div className="table-responsive"><table className="table table-hover align-middle">
+        visibleStudents.length===0?
+        <div className="py-3">
+          <p className="text-muted">No learners match the current-page filters. Other pages may have matches.</p>
+          <button type="button" className="btn btn-outline-primary btn-sm"
+            onClick={resetPageFilters}>Clear current-page filters</button>
+        </div>:
+        <div className="table-responsive"><table className="table table-hover align-middle" aria-label="Student course progress">
           <thead><tr><th scope="col">Student</th><th scope="col">Modules</th>
           <th scope="col">Progress</th><th scope="col">Final Exam</th><th scope="col">Certificate</th></tr></thead>
-          <tbody>{data.students.map(student=><tr key={student.student_id}>
+          <tbody>{visibleStudents.map(student=><tr key={student.student_id}>
             <td>
               <strong>{student.student_name}</strong>
               <div className="small text-muted">{student.admission_number}</div>
               {!student.access_active&&<span className="small text-danger">Access inactive</span>}
+              <div className="small text-muted">{learnerProgressLabel(student)}</div>
+              {needsGrading(student)&&<span className="badge bg-warning text-dark">Awaiting grading</span>}
             </td>
             <td>{student.modules_completed}/{student.modules_total} completed
               <div className="small text-muted">{student.lectures_viewed}/{student.lectures_total} lectures viewed</div>
@@ -435,7 +536,12 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
             <td>{student.final_exam_passed?"Passed":student.final_exam_best_percent!==null?"Not passed":"Not attempted"}
               {student.final_exam_best_percent!==null&&<div className="small text-muted">Best: {student.final_exam_best_percent}%</div>}
             </td>
-            <td>{reportStatus(student.certificate_status)}</td>
+            <td>
+              <span className={`badge ${student.certificate_status==="issued"
+                ?"bg-success":student.certificate_status==="revoked"?"bg-danger":"bg-secondary"}`}>
+                {reportStatus(student.certificate_status)}
+              </span>
+            </td>
           </tr>)}</tbody>
         </table></div>}
         <div className="d-flex align-items-center justify-content-between mt-3">
