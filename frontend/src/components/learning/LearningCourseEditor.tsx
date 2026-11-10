@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import ModuleQuizBuilder from "@/components/learning/ModuleQuizBuilder";
 import ModuleAssignmentBuilder from "@/components/learning/ModuleAssignmentBuilder";
 import CourseFinalExamBuilder from "@/components/learning/CourseFinalExamBuilder";
@@ -332,16 +332,8 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
   const [certificateFilter,setCertificateFilter] = useState<LearnerCertificateFilter>("all");
   const [sort,setSort] = useState<LearnerSort>("default");
 
-  // Backend filters before pagination; local sorting still affects this page only.
-  const visibleStudents = useMemo(() => {
-    const rows = data?.students || [];
-    if (sort === "default") return rows;
-    return [...rows].sort((a,b) => {
-      if (sort === "name") return a.student_name.localeCompare(b.student_name);
-      if (sort === "progress_low") return a.progress_percent - b.progress_percent;
-      return b.progress_percent - a.progress_percent;
-    });
-  }, [data,sort]);
+  // Backend filters and sorts the full learner cohort before pagination.
+  const visibleStudents = data?.students || [];
   const hasFilters = progressFilter !== "all" || certificateFilter !== "all" || sort !== "default";
   function resetFilters() {
     setProgressFilter("all"); setCertificateFilter("all"); setSort("default"); setPage(1);
@@ -360,6 +352,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
     if(search)params.set("search",search);
     if(progressFilter!=="all")params.set("progress",progressFilter);
     if(certificateFilter!=="all")params.set("certificate",certificateFilter);
+    if(sort!=="default")params.set("sort",sort);
     void fetch(ROOT + "/courses/" + courseId + "/progress/?" + params.toString(),{
       headers:{Authorization:"Bearer "+token},cache:"no-store",signal:controller.signal,
     }).then(async response=>{
@@ -373,7 +366,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
       .catch(err=>{if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Unable to load progress.");})
       .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
     return ()=>controller.abort();
-  },[courseId,role,page,search,progressFilter,certificateFilter,refreshCounter]);
+  },[courseId,role,page,search,progressFilter,certificateFilter,sort,refreshCounter]);
 
   async function exportCSV() {
     const token=localStorage.getItem(role==="teacher"?"teacher_access_token":"college_admin_access_token");
@@ -384,6 +377,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
       if(search)params.set("search",search);
       if(progressFilter!=="all")params.set("progress",progressFilter);
       if(certificateFilter!=="all")params.set("certificate",certificateFilter);
+      if(sort!=="default")params.set("sort",sort);
       const url=ROOT+"/courses/"+courseId+"/progress/export.csv"+(params.size?"?"+params.toString():"");
       const response=await fetch(url,{
         headers:{Authorization:"Bearer "+token},cache:"no-store",
@@ -431,7 +425,7 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
         {search&&<button type="button" className="btn btn-outline-secondary btn-sm"
           onClick={()=>{setDraftSearch("");setSearch("");setPage(1);}}>Clear</button>}
       </form>
-      <p className="small text-muted mb-2">Search, progress and certificate filters apply across the full course, including CSV export. Sorting affects only the current page.</p>
+      <p className="small text-muted mb-2">Search, progress, certificate and sorting selections apply to the full course and its CSV export.</p>
       {loading&&<p className="small text-muted" role="status">Loading learner progress…</p>}
       {error&&<p className="alert alert-danger py-2" role="alert">{error}</p>}
       {!loading&&!error&&data&&<>
@@ -465,9 +459,9 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
               </select>
             </div>
             <div className="col-md-3">
-              <label className="form-label small" htmlFor="learner-progress-sort">Sort current page</label>
+              <label className="form-label small" htmlFor="learner-progress-sort">Sort learners (all pages)</label>
               <select id="learner-progress-sort" className="form-select form-select-sm"
-                value={sort} onChange={event=>setSort(event.target.value as LearnerSort)}>
+                value={sort} onChange={event=>{setSort(event.target.value as LearnerSort);setPage(1);}}>
                 <option value="default">Default order</option>
                 <option value="name">Student name A–Z</option>
                 <option value="progress_low">Progress: low to high</option>
