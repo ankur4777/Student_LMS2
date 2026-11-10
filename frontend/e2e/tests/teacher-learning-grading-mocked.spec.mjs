@@ -151,7 +151,8 @@ async function setup(page, data) {
 async function openAssignment(page) {
   await page.goto("/teacher/recorded-courses/911");
   const editor = page.getByRole("region", { name: "Course modules and learning resources" });
-  await expect(editor.getByText("QA Module", { exact: true })).toBeVisible();
+  // Course editor prefixes module names with their position (e.g. "1. QA Module").
+  await expect(editor.getByText("1. QA Module", { exact: true })).toBeVisible();
   await editor.getByRole("button", { name: "Manage content" }).click();
   const section = page.getByRole("region", { name: "Module assignments" });
   await expect(section.getByText("Student submissions (3)")).toBeVisible();
@@ -240,6 +241,7 @@ test.describe("Teacher module assignment grading UI (mocked QA)", () => {
     await setup(page, f);
     await page.goto("/teacher/recorded-courses/911");
     const editor = page.getByRole("region", { name: "Course modules and learning resources" });
+    await expect(editor.getByText("1. QA Module", { exact: true })).toBeVisible();
     await editor.getByRole("button", { name: "Manage content" }).click();
     const section = page.getByRole("region", { name: "Module assignments" });
     await expect(section.getByRole("alert")).toContainText("QA submissions list unavailable");
