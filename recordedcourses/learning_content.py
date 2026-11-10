@@ -362,6 +362,7 @@ PROGRESS_FILTERS = {
     "awaiting_grading", "inactive_access",
 }
 CERTIFICATE_FILTERS = {"all", "issued", "revoked", "not_issued"}
+PROGRESS_SORTS = {"default", "name", "progress_low", "progress_high"}
 
 
 class ProgressFilterTooBroad(Exception):
@@ -377,6 +378,28 @@ def parse_progress_filters(params):
     if certificate not in CERTIFICATE_FILTERS:
         raise ValueError("Unknown certificate filter.")
     return progress, certificate
+
+
+def parse_progress_sort(params):
+    """Only documented server ordering is permitted."""
+    sort = params.get("sort", "default")
+    if sort not in PROGRESS_SORTS:
+        raise ValueError("Unknown learner sort order.")
+    return sort
+
+
+def sort_progress_students(students, sort):
+    """Stable cohort ordering makes page boundaries and CSV results consistent."""
+    if sort == "name":
+        students.sort(key=lambda row: (row["student_name"].casefold(), row["student_id"]))
+    elif sort == "progress_low":
+        students.sort(key=lambda row: (
+            row["progress_percent"], row["student_name"].casefold(), row["student_id"],
+        ))
+    elif sort == "progress_high":
+        students.sort(key=lambda row: (
+            -row["progress_percent"], row["student_name"].casefold(), row["student_id"],
+        ))
 
 
 def matches_progress_filters(student, progress, certificate):
@@ -425,8 +448,9 @@ class ManagedCourseProgressAPIView(APIView):
             return Response({"detail": "Search is limited to 80 characters."}, status=400)
         try:
             progress, certificate = parse_progress_filters(request.query_params)
+            sort = parse_progress_sort(request.query_params)
             report = self.filtered_report_page(
-                course, page, search, progress, certificate,
+                course, page, search, progress, certificate, sort=sort,
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
@@ -437,6 +461,7 @@ class ManagedCourseProgressAPIView(APIView):
     @classmethod
     def filtered_report_page(
         cls, course, page, search, progress="all", certificate="all", page_size=None,
+        sort="default",
     ):
         """Filter derived learning outcomes *before* paging, not merely the visible page.
 
@@ -446,14 +471,14 @@ class ManagedCourseProgressAPIView(APIView):
         """
         if page_size is None:
             page_size = cls.PAGE_SIZE
-        if progress == "all" and certificate == "all":
+        if progress == "all" and certificate == "all" and sort == "default":
             return cls.report_page(course, page, search, page_size=page_size)
 
         chunk = cls.FILTER_BATCH_SIZE
         first = cls.report_page(course, 1, search, page_size=chunk)
         if first["students_total"] > cls.MAX_FILTER_CANDIDATES:
             raise ProgressFilterTooBroad(
-                "Filtering is limited to 5,000 enrolled learners. "
+                "Course-wide filtering and sorting are limited to 5,000 enrolled learners. "
                 "Narrow the student search and try again."
             )
         matches = []
@@ -468,6 +493,7 @@ class ManagedCourseProgressAPIView(APIView):
             current = cls.report_page(
                 course, current["page"] + 1, search, page_size=chunk,
             )
+        sort_progress_students(matches, sort)
         start = (page - 1) * page_size
         return {
             "course_id": course.pk, "course_title": course.title,
