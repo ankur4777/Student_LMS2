@@ -332,6 +332,9 @@ function CourseProgressDashboard({courseId,role}:{courseId:number;role:Role}) {
     }).then(async response=>{
       const body=await response.json().catch(()=>({}));
       if(!response.ok)throw Error(body.detail||"Unable to load course progress.");
+      if (!body || !Array.isArray(body.students) || typeof body.students_total !== "number") {
+        throw Error("Course progress response is incomplete. Refresh to try again.");
+      }
       return body as CourseProgressResponse;
     }).then(body=>{if(!controller.signal.aborted)setData(body);})
       .catch(err=>{if(!controller.signal.aborted)setError(err instanceof Error?err.message:"Unable to load progress.");})
