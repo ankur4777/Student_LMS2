@@ -23,6 +23,29 @@ const seed = [
     feedback: "", graded_at: null,
   },
 ];
+function learnerRow(id, name, completed, total, viewed, certificate, { awaiting = false, active = true } = {}) {
+  return {
+    student_id: id, student_name: name, admission_number: `QA-${id}`,
+    access_active: active, modules_completed: completed, modules_total: total,
+    lectures_viewed: viewed, lectures_total: 4, session_backed_lectures: viewed,
+    progress_percent: total ? Math.round(100 * completed / total) : 0,
+    final_exam_best_percent: certificate === "issued" ? 90 : null,
+    final_exam_passed: certificate === "issued",
+    certificate_status: certificate,
+    modules: [{ id: 11, position: 1, title: "QA Module", completed: completed === total,
+      lectures_viewed: viewed, lectures_total: 4, session_backed_lectures: viewed,
+      quiz_status: "not_required", quiz_best_percent: null,
+      assignment_status: awaiting ? "awaiting_review" : "not_required",
+      assignment_best_percent: null }],
+  };
+}
+const progressSeed = [
+  learnerRow(201, "QA Alice", 0, 2, 0, "not_issued"),
+  learnerRow(202, "QA Bob", 1, 2, 2, "revoked", { awaiting: true }),
+  learnerRow(203, "QA Charlie", 2, 2, 4, "issued"),
+  learnerRow(204, "QA Dana", 1, 2, 1, "not_issued", { active: false }),
+  learnerRow(205, "QA Eve", 0, 2, 0, "issued"),
+];
 function fixture(overrides = {}) {
   return {
     assignment: {
@@ -32,6 +55,8 @@ function fixture(overrides = {}) {
     submissions: seed.map(value => ({ ...value })),
     submissionsGet: 200, assignmentGet: 200, gradeStatus: 200,
     failRefreshAfterGrade: false, grades: [],
+    progressRows: [], progressStatus: 200, progressMalformed: false,
+    progressRequests: [], csvRequests: [],
     ...overrides,
   };
 }
@@ -122,13 +147,39 @@ async function setup(page, data) {
       await route.fulfill({ status: 200, headers, json: { exam: null } });
       return;
     }
-    // The course editor also mounts the Student Progress dashboard, which
-    // requires its own complete response shape even in focused grading tests.
+    // These staff responses are simulated; no personal student data is accessed.
     if (path === ROOT + "courses/911/progress/" && method === "GET") {
+      const pageNumber = Number(url.searchParams.get("page") || "1");
+      const search = (url.searchParams.get("search") || "").toLocaleLowerCase();
+      data.progressRequests.push({ page: pageNumber, search });
+      if (data.progressStatus !== 200 || data.progressMalformed) {
+        await route.fulfill({
+          status: data.progressStatus, headers,
+          json: data.progressMalformed ? {} : { detail: "QA progress endpoint unavailable" },
+        });
+        return;
+      }
+      const matching = data.progressRows.filter(student =>
+        (student.student_name + " " + student.admission_number).toLocaleLowerCase().includes(search));
+      const pageSize = 4;
+      const start = (pageNumber - 1) * pageSize;
       await route.fulfill({ status: 200, headers, json: {
-        students_total: 0, page: 1, page_size: 20, has_next: false,
-        students: [],
+        students_total: matching.length, page: pageNumber, page_size: pageSize,
+        has_next: start + pageSize < matching.length,
+        students: matching.slice(start, start + pageSize),
       } });
+      return;
+    }
+    if (path === ROOT + "courses/911/progress/export.csv" && method === "GET") {
+      data.csvRequests.push(Object.fromEntries(url.searchParams));
+      const search = (url.searchParams.get("search") || "").toLocaleLowerCase();
+      const matches = data.progressRows.filter(student =>
+        (student.student_name + " " + student.admission_number).toLocaleLowerCase().includes(search));
+      await route.fulfill({
+        status: 200, headers: { ...headers, "Content-Disposition": 'attachment; filename="mysls-progress.csv"' },
+        contentType: "text/csv", body: "Student Name,Certificate Status\n" +
+          matches.map(student => `${student.student_name},${student.certificate_status}`).join("\n") + "\n",
+      });
       return;
     }
     if (path === ROOT + "courses/911/readiness/") {
@@ -311,5 +362,114 @@ test.describe("Teacher module assignment grading UI (mocked QA)", () => {
     await section.getByRole("button", { name: "Retry loading assignments" }).click();
     await expect(section.getByText("Student submissions (3)")).toBeVisible();
     await expect(section.getByLabel("Submission grading counts")).toContainText("Pending: 2 · Graded: 1");
+  });
+});
+
+
+const progress = page => page.getByRole("region", { name: "Student course progress dashboard" });
+
+test.describe("Teacher module assignment grading UI — learner progress dashboard (mocked QA)", () => {
+  test("filters current-page progress, pending grading and certificate states", async ({ page }) => {
+    const f = fixture({ progressRows: progressSeed });
+    await setup(page, f);
+    await page.goto("/teacher/recorded-courses/911");
+    const section = progress(page);
+    const rows = section.getByRole("table", { name: "Student course progress" }).locator("tbody tr");
+    const progressFilter = section.getByRole("combobox", { name: "Filter learner progress (this page)" });
+    const certificateFilter = section.getByRole("combobox", { name: "Filter certificates (this page)" });
+    await expect(rows).toHaveCount(4);
+    await expect(section.getByRole("status").filter({ hasText: "Showing 4 of 4 learners" }))
+      .toContainText("Awaiting grading: 1");
+    await expect(section.getByRole("status").filter({ hasText: "Showing 4 of 4 learners" }))
+      .toContainText("Certificates issued: 1");
+
+    await progressFilter.selectOption("awaiting_grading");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Bob");
+    await expect(rows.first().getByText("Awaiting grading")).toBeVisible();
+    await certificateFilter.selectOption("issued");
+    await expect(rows).toHaveCount(0);
+    await expect(section.getByText("No learners match the current-page filters. Other pages may have matches.")).toBeVisible();
+    await section.getByRole("button", { name: "Clear current-page filters" }).click();
+
+    await progressFilter.selectOption("completed");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Charlie");
+    await progressFilter.selectOption("not_started");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Alice");
+    await progressFilter.selectOption("in_progress");
+    await expect(rows).toHaveCount(2);
+    await progressFilter.selectOption("inactive_access");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Dana");
+    await progressFilter.selectOption("all");
+    await certificateFilter.selectOption("revoked");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Bob");
+    await expect(rows.first().getByText("Revoked")).toBeVisible();
+    expect(f.progressRequests.length).toBe(1); // local filters never refetch the full course
+  });
+
+  test("sorts progress rows and paginates without confusing page-level counts", async ({ page }) => {
+    const f = fixture({ progressRows: progressSeed });
+    await setup(page, f);
+    await page.goto("/teacher/recorded-courses/911");
+    const section = progress(page);
+    const rows = section.getByRole("table", { name: "Student course progress" }).locator("tbody tr");
+    const sort = section.getByRole("combobox", { name: "Sort current page" });
+    await expect(rows).toHaveCount(4);
+    await sort.selectOption("progress_high");
+    await expect(rows.first()).toContainText("QA Charlie");
+    await sort.selectOption("progress_low");
+    await expect(rows.first()).toContainText("QA Alice");
+    await sort.selectOption("name");
+    await expect(rows.nth(1)).toContainText("QA Bob");
+    await section.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(section.getByText("Page 2", { exact: true })).toBeVisible();
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Eve");
+    await expect(section.getByText("Showing 1 of 1 learners on this page", { exact: false })).toBeVisible();
+    await expect(section.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
+    await section.getByRole("button", { name: "Previous" }).click();
+    await expect(rows).toHaveCount(4);
+    expect(f.progressRequests.some(request => request.page === 2)).toBe(true);
+  });
+
+  test("keeps server search and CSV export independent from current-page filters", async ({ page }) => {
+    const f = fixture({ progressRows: progressSeed });
+    await setup(page, f);
+    await page.goto("/teacher/recorded-courses/911");
+    const section = progress(page);
+    await expect(section.getByText("5 enrolled students")).toBeVisible();
+    const search = section.getByRole("textbox", { name: "Search enrolled students" });
+    await search.fill("Alice");
+    await section.getByRole("button", { name: "Search", exact: true }).click();
+    const rows = section.getByRole("table", { name: "Student course progress" }).locator("tbody tr");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText("QA Alice");
+    await section.getByRole("combobox", { name: "Filter learner progress (this page)" }).selectOption("completed");
+    await expect(rows).toHaveCount(0);
+
+    const downloadEvent = page.waitForEvent("download");
+    await section.getByRole("button", { name: "Export CSV" }).click();
+    const download = await downloadEvent;
+    expect(download.suggestedFilename()).toBe("mysls-course-911-progress.csv");
+    expect(f.csvRequests).toEqual([{ search: "Alice" }]);
+    await expect(section.getByText("Search and CSV export include all matching learners across pages.", { exact: false }))
+      .toBeVisible();
+  });
+
+  test("recovers from invalid progress API data without crashing the Teacher page", async ({ page }) => {
+    const f = fixture({ progressRows: progressSeed, progressMalformed: true });
+    await setup(page, f);
+    await page.goto("/teacher/recorded-courses/911");
+    const section = progress(page);
+    await expect(section.getByRole("alert")).toContainText("Course progress response is incomplete");
+    await expect(page.getByRole("heading", { name: "Student Learning Progress" })).toBeVisible();
+    f.progressMalformed = false;
+    await section.getByRole("button", { name: "Refresh", exact: true }).click();
+    await expect(section.getByRole("table", { name: "Student course progress" }).locator("tbody tr")).toHaveCount(4);
+    await expect(section.getByRole("alert")).toHaveCount(0);
   });
 });
