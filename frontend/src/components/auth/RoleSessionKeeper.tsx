@@ -2,8 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = getApiBaseUrl();
 const CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const REFRESH_BEFORE_EXPIRY_SECONDS = 10 * 60;
 
