@@ -3,8 +3,9 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import PasswordField from "@/components/auth/PasswordField";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE = getApiBaseUrl();
 
 interface ChangePasswordCardProps {
   accessTokenKey: string;
