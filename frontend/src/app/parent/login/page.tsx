@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PasswordField from "@/components/auth/PasswordField";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function ParentLoginPage() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function ParentLoginPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/accounts/parent/login/`,
+        `${getApiBaseUrl()}/api/accounts/parent/login/`,
         {
           method: "POST",
           headers: {
