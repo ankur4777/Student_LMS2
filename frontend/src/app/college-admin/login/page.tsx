@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PasswordField from "@/components/auth/PasswordField";
+import { getApiBaseUrl } from "@/lib/apiBaseUrl";
 
 export default function CollegeAdminLoginPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function CollegeAdminLoginPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/accounts/college-admin/login/`,
+        `${getApiBaseUrl()}/api/accounts/college-admin/login/`,
         {
           method: "POST",
           headers: {
